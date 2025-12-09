@@ -149,7 +149,14 @@ export default function Home() {
   // Create prediction mutation
   const createPredictionMutation = useMutation({
     mutationFn: createPrediction,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["predictions"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["predictions"] });
+    },
+    onError: (error) => {
+      toast.error("Failed to add prediction", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    },
   });
 
   // Update prediction outcome mutation
