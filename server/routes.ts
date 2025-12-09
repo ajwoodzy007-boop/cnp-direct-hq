@@ -611,33 +611,38 @@ Provide a JSON response with exactly this structure:
           const momentumFactor = momentum > 0 ? 1 + (momentum / 10) : Math.max(0.5, 1 + (momentum / 20));
           const predictedGain = avgGain * upDayRatio * momentumFactor;
           
-          // Only include if positive expected gain AND positive score
-          if (score > 10 && predictedGain > 0.1) {
-            // Normalize confidence: based on up-day ratio (40-95 range)
-            // Higher up-day ratio = higher confidence
-            const baseConfidence = Math.min(95, Math.max(40, upDayRatio * 100));
-            // Boost confidence for strong signals (momentum + volume + sentiment)
-            const signalBoost = Math.min(20, (momentum > 0 ? 5 : 0) + (stock.rvol > 2 ? 5 : 0) + (stock.sentiment === "🟢 BULLISH" ? 10 : 0));
-            const confidence = Math.min(95, baseConfidence + signalBoost);
-            
-            // Use calendar day open/close prices (now guaranteed from StockData)
-            const todayOpen = stock.openPrice;
-            const yesterdayClose = stock.prevClose;
-            // Close price: during market hours use current price, after hours use last chart close
-            const todayClose = isMarketOpen ? priceToUse : prices[prices.length - 1];
-            
-            predictions.push({
-              ticker: stock.ticker,
-              price: priceToUse,
-              openPrice: todayOpen,
-              prevClose: yesterdayClose,
-              closePrice: todayClose,
-              predictedGain: parseFloat(Math.max(0.1, predictedGain).toFixed(2)),
-              confidence: Math.round(confidence),
-              reasoning: reasons.slice(0, 3).join(", "),
-              score
-            });
+          // Include all stocks with any positive characteristics
+          // Normalize confidence: based on up-day ratio (40-95 range)
+          // Higher up-day ratio = higher confidence
+          const baseConfidence = Math.min(95, Math.max(40, upDayRatio * 100));
+          // Boost confidence for strong signals (momentum + volume + sentiment)
+          const signalBoost = Math.min(20, (momentum > 0 ? 5 : 0) + (stock.rvol > 2 ? 5 : 0) + (stock.sentiment === "🟢 BULLISH" ? 10 : 0));
+          const confidence = Math.min(95, baseConfidence + signalBoost);
+          
+          // Use calendar day open/close prices (now guaranteed from StockData)
+          const todayOpen = stock.openPrice;
+          const yesterdayClose = stock.prevClose;
+          // Close price: during market hours use current price, after hours use last chart close
+          const todayClose = isMarketOpen ? priceToUse : prices[prices.length - 1];
+          
+          // Generate default reasoning if none
+          if (reasons.length === 0) {
+            if (momentum > 0) reasons.push(`+${momentum.toFixed(1)}% momentum`);
+            else reasons.push(`${momentum.toFixed(1)}% momentum`);
+            reasons.push(`RSI ${rsi.toFixed(0)}`);
           }
+          
+          predictions.push({
+            ticker: stock.ticker,
+            price: priceToUse,
+            openPrice: todayOpen,
+            prevClose: yesterdayClose,
+            closePrice: todayClose,
+            predictedGain: parseFloat(Math.max(0.1, Math.abs(predictedGain)).toFixed(2)),
+            confidence: Math.round(confidence),
+            reasoning: reasons.slice(0, 3).join(", "),
+            score: Math.max(1, score) // Ensure positive score for sorting
+          });
         } catch (error) {
           // Skip failed stocks
         }
