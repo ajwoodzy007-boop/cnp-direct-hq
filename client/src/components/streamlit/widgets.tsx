@@ -125,7 +125,7 @@ export function StSelect({ label, options, value, onChange, help }: { label: str
         <SelectTrigger className="w-full bg-background">
           <SelectValue placeholder="Select an option" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-h-60 overflow-y-auto">
           {options.map((opt) => (
             <SelectItem key={opt} value={opt}>
               {opt}
