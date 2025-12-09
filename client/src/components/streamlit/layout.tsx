@@ -1,8 +1,14 @@
-import React, { useState, useEffect } from "react";
-import { Menu, X, Settings, Moon, Sun, Github } from "lucide-react";
+import React, { useState } from "react";
+import { Menu, X, Settings, Moon, Sun, Github, Bell, BellOff, Volume2, VolumeX, RefreshCw, LayoutGrid, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSettings } from "@/contexts/SettingsContext";
+import { Separator } from "@/components/ui/separator";
 
 interface StreamlitLayoutProps {
   children: React.ReactNode;
@@ -11,16 +17,8 @@ interface StreamlitLayoutProps {
 
 export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
-  // Toggle Dark Mode
-  useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-  }, [isDarkMode]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { settings, updateSetting } = useSettings();
 
   return (
     <div className="flex min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
@@ -87,8 +85,8 @@ export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
             <div className="flex items-center justify-between text-muted-foreground text-sm">
               <span>v1.28.0</span>
               <div className="flex gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsDarkMode(!isDarkMode)}>
-                  {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateSetting("darkMode", !settings.darkMode)}>
+                  {settings.darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
                   <Github className="h-4 w-4" />
@@ -117,17 +115,177 @@ export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
             </Button>
           )}
           <div className="flex-1" />
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-muted-foreground"
+            onClick={() => setSettingsOpen(true)}
+            data-testid="button-settings"
+          >
             <Settings className="h-4 w-4 mr-2" />
             Settings
           </Button>
         </header>
 
         {/* Content Container */}
-        <div className="max-w-4xl mx-auto px-6 pb-20 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className={cn(
+          "max-w-4xl mx-auto px-6 pb-20 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500",
+          settings.compactMode && "max-w-6xl"
+        )}>
           {children}
         </div>
       </main>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Settings
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Alert Preferences */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Alert Preferences</h4>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {settings.notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4 text-muted-foreground" />}
+                  <Label htmlFor="notifications" className="cursor-pointer">
+                    <div>Browser Notifications</div>
+                    <p className="text-xs text-muted-foreground font-normal">Get alerts for rocket ships</p>
+                  </Label>
+                </div>
+                <Switch
+                  id="notifications"
+                  checked={settings.notificationsEnabled}
+                  onCheckedChange={(checked) => {
+                    if (checked && "Notification" in window) {
+                      Notification.requestPermission().then((permission) => {
+                        updateSetting("notificationsEnabled", permission === "granted");
+                      });
+                    } else {
+                      updateSetting("notificationsEnabled", false);
+                    }
+                  }}
+                  data-testid="switch-notifications"
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {settings.soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+                  <Label htmlFor="sound" className="cursor-pointer">
+                    <div>Sound Alerts</div>
+                    <p className="text-xs text-muted-foreground font-normal">Play sound on detection</p>
+                  </Label>
+                </div>
+                <Switch
+                  id="sound"
+                  checked={settings.soundEnabled}
+                  onCheckedChange={(checked) => updateSetting("soundEnabled", checked)}
+                  data-testid="switch-sound"
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Appearance */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Appearance</h4>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {settings.darkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  <Label htmlFor="darkMode" className="cursor-pointer">
+                    <div>Dark Mode</div>
+                    <p className="text-xs text-muted-foreground font-normal">Toggle dark theme</p>
+                  </Label>
+                </div>
+                <Switch
+                  id="darkMode"
+                  checked={settings.darkMode}
+                  onCheckedChange={(checked) => updateSetting("darkMode", checked)}
+                  data-testid="switch-darkmode"
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Minimize2 className="h-4 w-4" />
+                  <Label htmlFor="compactMode" className="cursor-pointer">
+                    <div>Compact Mode</div>
+                    <p className="text-xs text-muted-foreground font-normal">Denser layout for power users</p>
+                  </Label>
+                </div>
+                <Switch
+                  id="compactMode"
+                  checked={settings.compactMode}
+                  onCheckedChange={(checked) => updateSetting("compactMode", checked)}
+                  data-testid="switch-compact"
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Data Preferences */}
+            <div className="space-y-4">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Data Preferences</h4>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <RefreshCw className="h-4 w-4" />
+                  <Label>
+                    <div>Auto-Refresh Interval</div>
+                    <p className="text-xs text-muted-foreground font-normal">How often to update data</p>
+                  </Label>
+                </div>
+                <Select
+                  value={String(settings.refreshInterval)}
+                  onValueChange={(value) => updateSetting("refreshInterval", parseInt(value))}
+                >
+                  <SelectTrigger className="w-24" data-testid="select-refresh">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 min</SelectItem>
+                    <SelectItem value="5">5 min</SelectItem>
+                    <SelectItem value="15">15 min</SelectItem>
+                    <SelectItem value="30">30 min</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <LayoutGrid className="h-4 w-4" />
+                  <Label>
+                    <div>Default View</div>
+                    <p className="text-xs text-muted-foreground font-normal">Start with gainers or losers</p>
+                  </Label>
+                </div>
+                <Select
+                  value={settings.defaultView}
+                  onValueChange={(value: "gainers" | "losers") => updateSetting("defaultView", value)}
+                >
+                  <SelectTrigger className="w-24" data-testid="select-defaultview">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gainers">Gainers</SelectItem>
+                    <SelectItem value="losers">Losers</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
