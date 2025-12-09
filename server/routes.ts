@@ -542,6 +542,244 @@ Provide a JSON response with exactly this structure:
     }
   });
 
+  // GET /api/market/daily-picks - Analyze historical data and return top 5 daily stock picks
+  // Uses 1-day and 5-day performance analysis to predict today's winners
+  app.get("/api/market/daily-picks", async (req, res) => {
+    try {
+      const marketData = await scanMarket();
+      
+      interface AnalyzedStock {
+        ticker: string;
+        price: number;
+        change1d: number;
+        change5d: number;
+        rsi: number;
+        momentum: number;
+        signal: "BUY" | "SELL";
+        reasoning: string;
+        score: number;
+      }
+      
+      const analyzedStocks: AnalyzedStock[] = [];
+      
+      // Analyze each stock's historical performance
+      for (const stock of marketData) {
+        try {
+          const chartData = await getChartData(stock.ticker, "1m");
+          if (chartData.length < 10) continue;
+          
+          const prices = chartData.map(d => d.close);
+          const latestPrice = prices[prices.length - 1];
+          const price1dAgo = prices[prices.length - 2] || latestPrice;
+          const price5dAgo = prices[prices.length - 6] || prices[0];
+          
+          // Calculate performance
+          const change1d = ((latestPrice - price1dAgo) / price1dAgo) * 100;
+          const change5d = ((latestPrice - price5dAgo) / price5dAgo) * 100;
+          
+          // Calculate RSI
+          const calculateRSI = (prices: number[], period: number = 14): number => {
+            if (prices.length < period + 1) return 50;
+            let gains = 0, losses = 0;
+            for (let i = prices.length - period; i < prices.length; i++) {
+              const change = prices[i] - prices[i - 1];
+              if (change > 0) gains += change;
+              else losses -= change;
+            }
+            const avgGain = gains / period;
+            const avgLoss = losses / period;
+            if (avgLoss === 0) return 100;
+            return 100 - (100 / (1 + avgGain / avgLoss));
+          };
+          
+          const rsi = calculateRSI(prices);
+          
+          // Calculate momentum (recent trend strength)
+          const recentPrices = prices.slice(-5);
+          const oldPrices = prices.slice(-10, -5);
+          const recentAvg = recentPrices.reduce((a, b) => a + b, 0) / recentPrices.length;
+          const oldAvg = oldPrices.length > 0 ? oldPrices.reduce((a, b) => a + b, 0) / oldPrices.length : recentAvg;
+          const momentum = ((recentAvg - oldAvg) / oldAvg) * 100;
+          
+          // BUY signal: Oversold (RSI < 35) with positive momentum, or strong uptrend
+          if (rsi < 35 && momentum > -2) {
+            const score = (35 - rsi) * 2 + Math.max(0, momentum) * 3 + (stock.sentiment === "🟢 BULLISH" ? 10 : 0);
+            analyzedStocks.push({
+              ticker: stock.ticker,
+              price: stock.price,
+              change1d,
+              change5d,
+              rsi,
+              momentum,
+              signal: "BUY",
+              reasoning: `RSI ${rsi.toFixed(0)} oversold, 1d: ${change1d >= 0 ? '+' : ''}${change1d.toFixed(1)}%, 5d: ${change5d >= 0 ? '+' : ''}${change5d.toFixed(1)}%`,
+              score
+            });
+          }
+          // Also consider momentum plays
+          else if (momentum > 3 && rsi < 65 && change1d > 0) {
+            const score = momentum * 2 + change1d + (stock.sentiment === "🟢 BULLISH" ? 10 : 0);
+            analyzedStocks.push({
+              ticker: stock.ticker,
+              price: stock.price,
+              change1d,
+              change5d,
+              rsi,
+              momentum,
+              signal: "BUY",
+              reasoning: `Momentum +${momentum.toFixed(1)}%, 1d: +${change1d.toFixed(1)}%, 5d: ${change5d >= 0 ? '+' : ''}${change5d.toFixed(1)}%`,
+              score
+            });
+          }
+          // SELL signal: Overbought (RSI > 70) with negative momentum
+          else if (rsi > 70 && momentum < 2) {
+            const score = (rsi - 70) * 2 + Math.abs(Math.min(0, momentum)) * 3 + (stock.sentiment === "🔴 BEARISH" ? 10 : 0);
+            analyzedStocks.push({
+              ticker: stock.ticker,
+              price: stock.price,
+              change1d,
+              change5d,
+              rsi,
+              momentum,
+              signal: "SELL",
+              reasoning: `RSI ${rsi.toFixed(0)} overbought, 1d: ${change1d >= 0 ? '+' : ''}${change1d.toFixed(1)}%, 5d: ${change5d >= 0 ? '+' : ''}${change5d.toFixed(1)}%`,
+              score
+            });
+          }
+        } catch (error) {
+          console.error(`Analysis failed for ${stock.ticker}:`, error);
+        }
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      
+      // Sort by score and get top 5 picks
+      const sortedStocks = analyzedStocks.sort((a, b) => b.score - a.score);
+      const buyPicks = sortedStocks.filter(s => s.signal === "BUY").slice(0, 3);
+      const sellPicks = sortedStocks.filter(s => s.signal === "SELL").slice(0, 2);
+      const dailyPicks = [...buyPicks, ...sellPicks].slice(0, 5);
+      
+      res.json({
+        success: true,
+        data: {
+          picks: dailyPicks.map(({ ticker, price, signal, reasoning, change1d, change5d, rsi }) => ({
+            ticker,
+            price,
+            signal,
+            reasoning,
+            change1d: parseFloat(change1d.toFixed(2)),
+            change5d: parseFloat(change5d.toFixed(2)),
+            rsi: Math.round(rsi)
+          })),
+          generatedAt: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Daily picks error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate daily picks", data: { picks: [] } });
+    }
+  });
+
+  // POST /api/predictions/auto-generate - Auto-generate 5 daily predictions from historical analysis
+  app.post("/api/predictions/auto-generate", async (req, res) => {
+    try {
+      const marketData = await scanMarket();
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Check if we already have auto-generated predictions for today
+      const existingPredictions = await storage.getPredictions();
+      const todaysAutoPredictions = existingPredictions.filter(
+        p => p.predictionDate.startsWith(today) && p.signalType.startsWith("AUTO:")
+      );
+      
+      if (todaysAutoPredictions.length >= 5) {
+        return res.json({ 
+          success: true, 
+          message: "Daily predictions already generated",
+          data: todaysAutoPredictions 
+        });
+      }
+      
+      // Analyze stocks for best picks
+      const analyzedStocks: Array<{
+        ticker: string;
+        price: number;
+        signal: string;
+        score: number;
+      }> = [];
+      
+      for (const stock of marketData) {
+        try {
+          const chartData = await getChartData(stock.ticker, "1m");
+          if (chartData.length < 10) continue;
+          
+          const prices = chartData.map(d => d.close);
+          const latestPrice = prices[prices.length - 1];
+          const price5dAgo = prices[prices.length - 6] || prices[0];
+          const change5d = ((latestPrice - price5dAgo) / price5dAgo) * 100;
+          
+          // RSI calculation
+          let rsi = 50;
+          if (prices.length >= 15) {
+            let gains = 0, losses = 0;
+            for (let i = prices.length - 14; i < prices.length; i++) {
+              const change = prices[i] - prices[i - 1];
+              if (change > 0) gains += change;
+              else losses -= change;
+            }
+            const avgGain = gains / 14;
+            const avgLoss = losses / 14;
+            rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+          }
+          
+          // Score for BUY: oversold + positive trend
+          if (rsi < 40) {
+            const score = (40 - rsi) + (change5d > 0 ? change5d : 0) + (stock.sentiment === "🟢 BULLISH" ? 15 : 0);
+            analyzedStocks.push({ ticker: stock.ticker, price: stock.price, signal: "AUTO:BUY", score });
+          }
+          // Score for SELL: overbought
+          else if (rsi > 65) {
+            const score = (rsi - 65) + (stock.sentiment === "🔴 BEARISH" ? 15 : 0);
+            analyzedStocks.push({ ticker: stock.ticker, price: stock.price, signal: "AUTO:SELL", score });
+          }
+        } catch (error) {
+          // Skip failed stocks
+        }
+        await new Promise(resolve => setTimeout(resolve, 30));
+      }
+      
+      // Get top picks (3 buys, 2 sells)
+      const topBuys = analyzedStocks.filter(s => s.signal === "AUTO:BUY").sort((a, b) => b.score - a.score).slice(0, 3);
+      const topSells = analyzedStocks.filter(s => s.signal === "AUTO:SELL").sort((a, b) => b.score - a.score).slice(0, 2);
+      const topPicks = [...topBuys, ...topSells];
+      
+      // Create predictions for each pick
+      const createdPredictions = [];
+      for (const pick of topPicks) {
+        // Check if already exists
+        const exists = existingPredictions.some(
+          p => p.ticker === pick.ticker && p.predictionDate.startsWith(today)
+        );
+        if (!exists) {
+          const prediction = await storage.createPrediction({
+            ticker: pick.ticker,
+            signalType: pick.signal,
+            entryPrice: pick.price
+          });
+          createdPredictions.push(prediction);
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Generated ${createdPredictions.length} new predictions`,
+        data: createdPredictions
+      });
+    } catch (error) {
+      console.error("Auto-generate predictions error:", error);
+      res.status(500).json({ success: false, error: "Failed to auto-generate predictions" });
+    }
+  });
+
   // Training affiliate redirects - Configure these environment variables with your affiliate IDs:
   // AFFILIATE_WARRIOR_TRADING - Warrior Trading affiliate ID
   // AFFILIATE_TRADINGVIEW - TradingView affiliate ID  
