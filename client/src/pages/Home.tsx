@@ -9,13 +9,12 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, Calculator, Copy, Check, History, TrendingUp, TrendingDown, Target } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 
 // Types matching backend response
@@ -111,53 +110,6 @@ export default function Home() {
   const queryClient = useQueryClient();
   const [selectedTicker, setSelectedTicker] = useState<string>("NVDA");
   const [outcomeInputs, setOutcomeInputs] = useState<Record<string, { price: string; outcome: string }>>({});
-  
-  // Risk Calculator State
-  const [entryPrice, setEntryPrice] = useState<string>("");
-  const [stopLoss, setStopLoss] = useState<string>("");
-  const [targetPrice, setTargetPrice] = useState<string>("");
-  const [accountSize, setAccountSize] = useState<string>("10000");
-  const [riskPercent, setRiskPercent] = useState<string>("2");
-  const [copied, setCopied] = useState(false);
-
-  // Risk Calculator Calculations
-  const riskCalc = useMemo(() => {
-    const entry = parseFloat(entryPrice);
-    const stop = parseFloat(stopLoss);
-    const target = parseFloat(targetPrice);
-    const account = parseFloat(accountSize);
-    const riskPct = parseFloat(riskPercent);
-
-    if (isNaN(entry) || isNaN(stop) || isNaN(target) || entry <= 0) {
-      return null;
-    }
-
-    const riskPerShare = Math.abs(entry - stop);
-    const rewardPerShare = Math.abs(target - entry);
-    const riskRewardRatio = riskPerShare > 0 ? rewardPerShare / riskPerShare : 0;
-    const maxRiskAmount = (account * riskPct) / 100;
-    const positionSize = riskPerShare > 0 ? Math.floor(maxRiskAmount / riskPerShare) : 0;
-    const totalCost = positionSize * entry;
-    const potentialLoss = positionSize * riskPerShare;
-    const potentialGain = positionSize * rewardPerShare;
-
-    return {
-      riskRewardRatio: riskRewardRatio.toFixed(2),
-      positionSize,
-      totalCost: totalCost.toFixed(2),
-      potentialLoss: potentialLoss.toFixed(2),
-      potentialGain: potentialGain.toFixed(2),
-      riskPerShare: riskPerShare.toFixed(2),
-    };
-  }, [entryPrice, stopLoss, targetPrice, accountSize, riskPercent]);
-
-  const copyToClipboard = () => {
-    if (!riskCalc) return;
-    const text = `Entry: $${entryPrice} | Stop: $${stopLoss} | Target: $${targetPrice}\nShares: ${riskCalc.positionSize} | R:R ${riskCalc.riskRewardRatio}\nRisk: $${riskCalc.potentialLoss} | Reward: $${riskCalc.potentialGain}`;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   // Fetch market data with React Query
   const { data: marketData = [], isLoading, refetch } = useQuery({
@@ -229,9 +181,9 @@ export default function Home() {
     return { total: predictionsData.length, completed: completed.length, wins, losses, winRate };
   }, [predictionsData]);
 
-  // Derived state for tables
+  // Derived state for tables - always show top 10 by change percent
   const gainers = useMemo(
-    () => [...marketData].filter((d) => d.changePercent > 0).sort((a, b) => b.changePercent - a.changePercent),
+    () => [...marketData].sort((a, b) => b.changePercent - a.changePercent).slice(0, 10),
     [marketData]
   );
 
@@ -321,113 +273,101 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Risk Calculator */}
+      {/* Prediction History */}
       <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-4">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
-          <Calculator className="h-4 w-4" />
-          Risk Calculator
+          <History className="h-4 w-4" />
+          Prediction History
         </h4>
         
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Entry Price</Label>
-            <Input
-              type="number"
-              placeholder="100.00"
-              value={entryPrice}
-              onChange={(e) => setEntryPrice(e.target.value)}
-              className="h-8 text-sm"
-              data-testid="input-entry-price"
-            />
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-muted/50 rounded p-2 text-center">
+            <p className="text-lg font-bold">{predictionStats.total}</p>
+            <p className="text-[10px] text-muted-foreground">Total</p>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Stop Loss</Label>
-            <Input
-              type="number"
-              placeholder="95.00"
-              value={stopLoss}
-              onChange={(e) => setStopLoss(e.target.value)}
-              className="h-8 text-sm"
-              data-testid="input-stop-loss"
-            />
+          <div className="bg-muted/50 rounded p-2 text-center">
+            <p className="text-lg font-bold">{predictionStats.winRate}%</p>
+            <p className="text-[10px] text-muted-foreground">Win Rate</p>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Target Price</Label>
-            <Input
-              type="number"
-              placeholder="115.00"
-              value={targetPrice}
-              onChange={(e) => setTargetPrice(e.target.value)}
-              className="h-8 text-sm"
-              data-testid="input-target-price"
-            />
+          <div className="bg-green-500/10 rounded p-2 text-center">
+            <p className="text-lg font-bold text-green-600">{predictionStats.wins}</p>
+            <p className="text-[10px] text-muted-foreground">Wins</p>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Account Size</Label>
-            <Input
-              type="number"
-              placeholder="10000"
-              value={accountSize}
-              onChange={(e) => setAccountSize(e.target.value)}
-              className="h-8 text-sm"
-              data-testid="input-account-size"
-            />
-          </div>
-          <div className="col-span-2 space-y-1">
-            <Label className="text-xs text-muted-foreground">Risk % per Trade</Label>
-            <Input
-              type="number"
-              placeholder="2"
-              value={riskPercent}
-              onChange={(e) => setRiskPercent(e.target.value)}
-              className="h-8 text-sm"
-              data-testid="input-risk-percent"
-            />
+          <div className="bg-red-500/10 rounded p-2 text-center">
+            <p className="text-lg font-bold text-red-600">{predictionStats.losses}</p>
+            <p className="text-[10px] text-muted-foreground">Losses</p>
           </div>
         </div>
 
-        {riskCalc && (
-          <div className="pt-3 border-t border-border space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Risk:Reward</span>
-              <span className={`font-bold ${parseFloat(riskCalc.riskRewardRatio) >= 2 ? 'text-green-600 dark:text-green-400' : parseFloat(riskCalc.riskRewardRatio) >= 1 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
-                1:{riskCalc.riskRewardRatio}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Position Size</span>
-              <span className="font-mono font-medium">{riskCalc.positionSize} shares</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Total Cost</span>
-              <span className="font-mono">${riskCalc.totalCost}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Potential Loss</span>
-              <span className="font-mono text-red-600 dark:text-red-400">-${riskCalc.potentialLoss}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Potential Gain</span>
-              <span className="font-mono text-green-600 dark:text-green-400">+${riskCalc.potentialGain}</span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full mt-2"
-              onClick={copyToClipboard}
-              data-testid="button-copy-trade"
-            >
-              {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-              {copied ? "Copied!" : "Copy Trade Plan"}
-            </Button>
+        {/* Recent Predictions */}
+        <div className="pt-2 border-t border-border">
+          <p className="text-xs text-muted-foreground mb-2">Recent Predictions</p>
+          <div className="space-y-2 max-h-[300px] overflow-y-auto">
+            {predictionsData.slice(0, 10).map((pred) => (
+              <div key={pred.id} className="flex items-center justify-between text-xs bg-muted/30 rounded p-2" data-testid={`sidebar-prediction-${pred.id}`}>
+                <div>
+                  <span className="font-bold">{pred.ticker}</span>
+                  <span className="text-muted-foreground ml-1">${pred.entryPrice.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {pred.outcome ? (
+                    <Badge className={`text-[10px] ${pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}`}>
+                      {pred.outcome.toUpperCase()}
+                    </Badge>
+                  ) : (
+                    <>
+                      <Input
+                        type="number"
+                        placeholder="Exit $"
+                        className="h-6 w-14 text-[10px]"
+                        value={outcomeInputs[pred.id]?.price || ""}
+                        onChange={(e) =>
+                          setOutcomeInputs((prev) => ({
+                            ...prev,
+                            [pred.id]: { ...prev[pred.id], price: e.target.value },
+                          }))
+                        }
+                        data-testid={`sidebar-input-exit-${pred.id}`}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-green-600 hover:bg-green-50"
+                        onClick={() => {
+                          setOutcomeInputs((prev) => ({ ...prev, [pred.id]: { ...prev[pred.id], outcome: "win" } }));
+                          setTimeout(() => handleUpdateOutcome(pred.id), 0);
+                        }}
+                        disabled={!outcomeInputs[pred.id]?.price}
+                        data-testid={`sidebar-button-win-${pred.id}`}
+                      >
+                        <TrendingUp className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
+                        onClick={() => {
+                          setOutcomeInputs((prev) => ({ ...prev, [pred.id]: { ...prev[pred.id], outcome: "loss" } }));
+                          setTimeout(() => handleUpdateOutcome(pred.id), 0);
+                        }}
+                        disabled={!outcomeInputs[pred.id]?.price}
+                        data-testid={`sidebar-button-loss-${pred.id}`}
+                      >
+                        <TrendingDown className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+            {predictionsData.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                No predictions yet. Log picks from the Top Gainers table!
+              </p>
+            )}
           </div>
-        )}
-
-        {!riskCalc && entryPrice && (
-          <p className="text-xs text-muted-foreground text-center py-2">
-            Enter all values to see calculations
-          </p>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -681,188 +621,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* --- PREDICTION HISTORY SECTION --- */}
-      <div className="mt-12 border-t border-border pt-8">
-        <StHeader>📊 Prediction History</StHeader>
-        <StText>Track your "highest rated" stock predictions and see how they perform over time.</StText>
-
-        {/* Stats Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-6">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-2xl font-bold">{predictionStats.total}</p>
-                  <p className="text-xs text-muted-foreground">Total Predictions</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-500" />
-                <div>
-                  <p className="text-2xl font-bold text-green-600">{predictionStats.wins}</p>
-                  <p className="text-xs text-muted-foreground">Wins</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <TrendingDown className="h-5 w-5 text-red-500" />
-                <div>
-                  <p className="text-2xl font-bold text-red-600">{predictionStats.losses}</p>
-                  <p className="text-xs text-muted-foreground">Losses</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <History className="h-5 w-5 text-primary" />
-                <div>
-                  <p className="text-2xl font-bold">{predictionStats.winRate}%</p>
-                  <p className="text-xs text-muted-foreground">Win Rate</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Add from Current Top Picks */}
-        {gainers.length > 0 && (
-          <div className="mb-6">
-            <StSubheader>Quick Log: Today's Top Picks</StSubheader>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {gainers.slice(0, 5).map((stock) => (
-                <Button
-                  key={stock.ticker}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleLogPrediction(stock, stock.rvol > 3 ? "Rocket Ship" : stock.rsi < 30 ? "Diamond" : "Gainer")}
-                  disabled={createPredictionMutation.isPending}
-                  data-testid={`button-log-${stock.ticker}`}
-                >
-                  + Log {stock.ticker} @ ${stock.price.toFixed(2)}
-                </Button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Prediction History Table */}
-        <div className="rounded-md border border-border overflow-hidden my-4 bg-card shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left">
-              <thead className="bg-muted/50 text-muted-foreground font-mono uppercase text-xs">
-                <tr>
-                  <th className="px-4 py-3 font-medium">Ticker</th>
-                  <th className="px-4 py-3 font-medium">Signal</th>
-                  <th className="px-4 py-3 font-medium">Entry Price</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
-                  <th className="px-4 py-3 font-medium">Outcome</th>
-                  <th className="px-4 py-3 font-medium">Exit Price</th>
-                  <th className="px-4 py-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border font-mono">
-                {predictionsData.map((pred) => (
-                  <tr key={pred.id} className="hover:bg-muted/30 transition-colors" data-testid={`row-prediction-${pred.id}`}>
-                    <td className="px-4 py-2 font-bold">
-                      <a
-                        href={`https://finance.yahoo.com/quote/${pred.ticker}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        {pred.ticker}
-                      </a>
-                    </td>
-                    <td className="px-4 py-2">
-                      <Badge variant="outline" className="text-xs">
-                        {pred.signalType}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-2">${pred.entryPrice.toFixed(2)}</td>
-                    <td className="px-4 py-2 text-muted-foreground">
-                      {new Date(pred.predictionDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-2">
-                      {pred.outcome ? (
-                        <Badge className={pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}>
-                          {pred.outcome.toUpperCase()}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">Pending</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-2">
-                      {pred.outcomePrice ? `$${pred.outcomePrice.toFixed(2)}` : "-"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {!pred.outcome && (
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="number"
-                            placeholder="Exit $"
-                            className="h-7 w-20 text-xs"
-                            value={outcomeInputs[pred.id]?.price || ""}
-                            onChange={(e) =>
-                              setOutcomeInputs((prev) => ({
-                                ...prev,
-                                [pred.id]: { ...prev[pred.id], price: e.target.value },
-                              }))
-                            }
-                            data-testid={`input-exit-${pred.id}`}
-                          />
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs text-green-600 border-green-600 hover:bg-green-50"
-                            onClick={() => {
-                              setOutcomeInputs((prev) => ({ ...prev, [pred.id]: { ...prev[pred.id], outcome: "win" } }));
-                              setTimeout(() => handleUpdateOutcome(pred.id), 0);
-                            }}
-                            disabled={!outcomeInputs[pred.id]?.price}
-                            data-testid={`button-win-${pred.id}`}
-                          >
-                            Win
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 text-xs text-red-600 border-red-600 hover:bg-red-50"
-                            onClick={() => {
-                              setOutcomeInputs((prev) => ({ ...prev, [pred.id]: { ...prev[pred.id], outcome: "loss" } }));
-                              setTimeout(() => handleUpdateOutcome(pred.id), 0);
-                            }}
-                            disabled={!outcomeInputs[pred.id]?.price}
-                            data-testid={`button-loss-${pred.id}`}
-                          >
-                            Loss
-                          </Button>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {predictionsData.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                      No predictions logged yet. Use the "Quick Log" buttons above to start tracking!
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
     </StreamlitLayout>
   );
 }
