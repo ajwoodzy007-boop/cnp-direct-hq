@@ -1060,7 +1060,7 @@ export default function Home() {
                         href={`/api/go/${row.ticker}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline"
+                        className="text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         {row.ticker}
                       </a>
@@ -1140,7 +1140,7 @@ export default function Home() {
                         href={`/api/go/${row.ticker}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline"
+                        className="text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         {row.ticker}
                       </a>
