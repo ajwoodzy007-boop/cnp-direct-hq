@@ -9,7 +9,7 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX, GraduationCap } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -727,6 +727,67 @@ export default function Home() {
             </span>
             <p className="text-xs text-muted-foreground">Low RSI ({'<'}30) + Bullish News</p>
           </div>
+        </div>
+      </div>
+
+      {/* Trading Education */}
+      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
+        <h4 className="font-semibold text-foreground flex items-center gap-2">
+          <GraduationCap className="h-4 w-4" />
+          Trading Education
+        </h4>
+        <p className="text-xs text-muted-foreground">Free resources to improve your trading</p>
+        <div className="space-y-2">
+          <a 
+            href="https://www.investopedia.com/trading-4427765" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs text-primary hover:underline"
+            data-testid="link-education-investopedia"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Investopedia Trading Guide
+          </a>
+          <a 
+            href="https://www.babypips.com/learn/forex" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs text-primary hover:underline"
+            data-testid="link-education-babypips"
+          >
+            <ExternalLink className="h-3 w-3" />
+            BabyPips - Technical Analysis
+          </a>
+          <a 
+            href="https://www.investopedia.com/terms/r/rsi.asp" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs text-primary hover:underline"
+            data-testid="link-education-rsi"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Understanding RSI
+          </a>
+          <a 
+            href="https://www.investopedia.com/articles/trading/12/using-trading-volume.asp" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs text-primary hover:underline"
+            data-testid="link-education-volume"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Reading Trading Volume
+          </a>
+          <a 
+            href="https://www.stockcharts.com/school/doku.php?id=chart_school" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs text-primary hover:underline"
+            data-testid="link-education-chartschool"
+          >
+            <ExternalLink className="h-3 w-3" />
+            StockCharts Chart School
+          </a>
         </div>
       </div>
 
