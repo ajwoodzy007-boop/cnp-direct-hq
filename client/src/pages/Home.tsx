@@ -602,7 +602,7 @@ export default function Home() {
       : "0";
     const gainSign = parseFloat(gainPercent) >= 0 ? "+" : "";
     
-    const tweetText = `🚀 Just called $${pred.ticker} correctly! ${gainSign}${gainPercent}% gain\n\nEntry: $${pred.entryPrice.toFixed(2)} → Exit: $${pred.outcomePrice?.toFixed(2)}\n\nTrack your trades with Pro Trader Dashboard 📈`;
+    const tweetText = `🚀 Just called $${pred.ticker} correctly! ${gainSign}${gainPercent}% gain\n\nEntry: $${pred.entryPrice.toFixed(2)} → Exit: $${pred.outcomePrice?.toFixed(2)}\n\nTrack your trades with CNPdirect 📈`;
     
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(twitterUrl, '_blank', 'width=550,height=420');

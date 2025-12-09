@@ -1,8 +1,8 @@
-# Pro Trader Dashboard
+# CNPdirect
 
 ## Overview
 
-A real-time stock trading dashboard application that provides market scanning, technical analysis, sentiment analysis, and prediction tracking. The app displays market gainers/losers, interactive price charts, news sentiment, and allows users to record and track trading predictions.
+CNPdirect is a real-time stock trading dashboard application that provides market scanning, technical analysis, sentiment analysis, and prediction tracking. The app displays market gainers/losers, interactive price charts, news sentiment, and allows users to record and track trading predictions.
 
 ## User Preferences
 
