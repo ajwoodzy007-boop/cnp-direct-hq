@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { StreamlitLayout } from "@/components/streamlit/layout";
 import {
@@ -9,7 +9,7 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2 } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -170,6 +170,60 @@ export default function Home() {
   const [manualTicker, setManualTicker] = useState("");
   const [manualSignal, setManualSignal] = useState("Manual");
   const [watchlistInput, setWatchlistInput] = useState("");
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize audio element for alerts
+  useEffect(() => {
+    audioRef.current = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleT1Q3eruvmk4LY/g6NO3bDghmN7u3bBmMRyT4e7ds2YxG5jf8N+wZC4ambDi7caPQBeN0+fcrWQvGZjg8N+wZC4Zmarmmo9DFI3T59yuZDAZmODw37BkLhiZ3+/drmQvGZbg7d+vZC8Zl97v3bBkLhiY3u/ds2YwGZbf7t2xZDAYl9/u3bJlMRiV3+7dsmUxGJbf7t2xZC8Ylt/u3bFkLxiX3+/dsmQvGJff792yZC8Yl9/v3bJkLxeX3+/dsmQvGJbf792yZC8Xlt/v3bJlLxeW4O/dsmUvF5bg8N2yZS8Wlt/w3bJlLxaW3/DdsmUvFpbf8N2zZS4Wlt/w3bNlLhaW3/Des2UuFpbf8N6zZS4Wlt/x3rRlLRaW4PHetGUtFpbg8d60ZS0Wlt/x3rRlLRaW3/Hes2UtFpbe8d6zZS0Vld7x3rNlLRWV3vHes2UtFZXe8d6zZS0VlN7x3rNlLRWU3fDes2UtFZTd8N6zZS0Vk93w3rNlLRWS3fDesWUtFZHd8N6xZS0Vkd3w3rFlLRSR3PDdsWYtFJHc8N2xZi0Ukdzv3bFmLRSR3O/dsWYtFJHb7t2xZy0Tkdvt3bFnLROQ2+3dsWctE4/a7N2xZy0TjtrrzK5mKhSO2uvMrmYqFI7Z6susZioVjtjqy6xmKhWN1+nLrGYqFYzW6MurZioVjNXoy6tmKhWL1OfKq2YqFYrU58qrZioVitPmyqxmKRWJ0uXKrGYpFYjR5MmsZikViNDkyaxmKRWHz+PIrGYpFYbO4seqZSkUhs3hx6plKRSFzODGqmUpFIXL38apZSkUhMrdxqllKBSD");
+    audioRef.current.volume = 0.5;
+  }, []);
+
+  // Request notification permission
+  useEffect(() => {
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        setNotificationsEnabled(true);
+      }
+    }
+  }, []);
+
+  // Function to request notification permission
+  const requestNotificationPermission = useCallback(async () => {
+    if (!("Notification" in window)) {
+      toast.error("Notifications not supported", { description: "Your browser doesn't support notifications" });
+      return;
+    }
+    
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      setNotificationsEnabled(true);
+      toast.success("Alerts enabled!", { description: "You'll get notified when Rocket Ships are detected" });
+    } else {
+      toast.error("Notifications blocked", { description: "Enable notifications in your browser settings" });
+    }
+  }, []);
+
+  // Function to send alert (browser notification + sound)
+  const sendRocketShipAlert = useCallback((stock: StockData, signalType: string) => {
+    // Play sound if enabled
+    if (soundEnabled && audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => {});
+    }
+    
+    // Send browser notification if enabled and supported
+    if (notificationsEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      const icon = signalType === "Rocket Ship" ? "🚀" : "💎";
+      new Notification(`${icon} ${signalType} Alert!`, {
+        body: `${stock.ticker} at $${stock.price.toFixed(2)} - ${signalType === "Rocket Ship" ? "High volume + bullish" : "Oversold + bullish"}`,
+        icon: "/favicon.ico",
+        tag: `${stock.ticker}-${signalType}`,
+        requireInteraction: true,
+      });
+    }
+  }, [notificationsEnabled, soundEnabled]);
 
   // Fetch market data with React Query
   const { data: marketData = [], isLoading, refetch } = useQuery({
@@ -440,6 +494,7 @@ export default function Home() {
             signalType: "Rocket Ship",
             entryPrice: stock.price,
           });
+          sendRocketShipAlert(stock, "Rocket Ship");
           toast.success(`🚀 Rocket Ship Detected!`, {
             description: `${stock.ticker} at $${stock.price.toFixed(2)} - High volume + bullish sentiment`,
             duration: 5000,
@@ -456,6 +511,7 @@ export default function Home() {
             signalType: "Diamond",
             entryPrice: stock.price,
           });
+          sendRocketShipAlert(stock, "Diamond");
           toast.success(`💎 Diamond in the Rough!`, {
             description: `${stock.ticker} at $${stock.price.toFixed(2)} - Oversold + bullish sentiment`,
             duration: 5000,
@@ -463,7 +519,7 @@ export default function Home() {
         }
       }
     });
-  }, [marketData, predictionsData, autoLoggedTickers, createPredictionMutation]);
+  }, [marketData, predictionsData, autoLoggedTickers, createPredictionMutation, sendRocketShipAlert]);
 
   // Auto-update outcomes at market close (or when market data updates after close)
   // For simplicity, we'll check on each market data update if current price differs from entry
@@ -574,6 +630,74 @@ export default function Home() {
             </>
           )}
         </Button>
+      </div>
+
+      {/* Real-time Alert Controls */}
+      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
+        <h4 className="font-semibold text-foreground flex items-center gap-2">
+          <Bell className="h-4 w-4" />
+          Real-time Alerts
+        </h4>
+        <p className="text-xs text-muted-foreground">Get notified when Rocket Ships or Diamonds are detected</p>
+        
+        <div className="space-y-2">
+          {/* Browser Notifications Toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs">Browser Notifications</span>
+            <Button
+              size="sm"
+              variant={notificationsEnabled ? "default" : "outline"}
+              className="h-7 text-xs"
+              onClick={() => {
+                if (notificationsEnabled) {
+                  setNotificationsEnabled(false);
+                  toast.info("Notifications disabled");
+                } else {
+                  requestNotificationPermission();
+                }
+              }}
+              data-testid="button-toggle-notifications"
+            >
+              {notificationsEnabled ? (
+                <><Bell className="h-3 w-3 mr-1" /> On</>
+              ) : (
+                <><BellOff className="h-3 w-3 mr-1" /> Off</>
+              )}
+            </Button>
+          </div>
+          
+          {/* Sound Toggle */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs">Sound Alerts</span>
+            <Button
+              size="sm"
+              variant={soundEnabled ? "default" : "outline"}
+              className="h-7 text-xs"
+              onClick={() => {
+                setSoundEnabled(!soundEnabled);
+                toast.info(soundEnabled ? "Sound alerts disabled" : "Sound alerts enabled");
+              }}
+              data-testid="button-toggle-sound"
+            >
+              {soundEnabled ? (
+                <><Volume2 className="h-3 w-3 mr-1" /> On</>
+              ) : (
+                <><VolumeX className="h-3 w-3 mr-1" /> Off</>
+              )}
+            </Button>
+          </div>
+        </div>
+        
+        {!notificationsEnabled && typeof Notification !== "undefined" && Notification.permission !== "denied" && (
+          <p className="text-[10px] text-amber-600 dark:text-amber-400">
+            Enable notifications to get alerts even when this tab isn't focused
+          </p>
+        )}
+        {typeof Notification === "undefined" && (
+          <p className="text-[10px] text-muted-foreground">
+            Browser notifications not supported - sound alerts only
+          </p>
+        )}
       </div>
 
       <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
