@@ -318,6 +318,58 @@ export default function Home() {
     });
   }, [marketData, predictionsData, autoLoggedTickers, createPredictionMutation]);
 
+  // Auto-update outcomes at market close (or when market data updates after close)
+  // For simplicity, we'll check on each market data update if current price differs from entry
+  const [processedOutcomes, setProcessedOutcomes] = useState<Set<string>>(new Set());
+  
+  useEffect(() => {
+    if (marketData.length === 0 || predictionsData.length === 0) return;
+    
+    // Check if market is closed (after 4 PM ET on weekdays)
+    const now = new Date();
+    const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const hour = etTime.getHours();
+    const day = etTime.getDay();
+    const isWeekend = day === 0 || day === 6;
+    const isAfterMarketClose = hour >= 16;
+    
+    // Only auto-process outcomes after market close or on weekends
+    if (!isAfterMarketClose && !isWeekend) return;
+    
+    // Get pending predictions that were created today or earlier
+    const pendingPredictions = predictionsData.filter(p => !p.outcome && !processedOutcomes.has(p.id));
+    
+    pendingPredictions.forEach((prediction) => {
+      const currentStock = marketData.find(s => s.ticker === prediction.ticker);
+      if (!currentStock) return;
+      
+      // Determine outcome based on price change
+      const outcome = currentStock.price >= prediction.entryPrice ? "win" : "loss";
+      const pctChange = ((currentStock.price - prediction.entryPrice) / prediction.entryPrice * 100).toFixed(2);
+      
+      // Update outcome - only mark as processed on success
+      updateOutcomeMutation.mutate({
+        id: prediction.id,
+        outcome,
+        outcomePrice: currentStock.price,
+      }, {
+        onSuccess: () => {
+          // Mark as processed only after successful update
+          setProcessedOutcomes(prev => new Set(Array.from(prev).concat(prediction.id)));
+          const emoji = outcome === "win" ? "🎉" : "📉";
+          toast.info(`${emoji} ${prediction.ticker} marked as ${outcome.toUpperCase()}`, {
+            description: `Entry: $${prediction.entryPrice.toFixed(2)} → Close: $${currentStock.price.toFixed(2)} (${pctChange}%)`,
+          });
+        },
+        onError: (error) => {
+          toast.error(`Failed to update ${prediction.ticker} outcome`, {
+            description: error instanceof Error ? error.message : "Will retry on next refresh",
+          });
+        }
+      });
+    });
+  }, [marketData, predictionsData, processedOutcomes, updateOutcomeMutation]);
+
   // Format chart data for Recharts
   const formattedChartData = useMemo(
     () => chartData.map((d) => ({ date: d.date, price: d.close })),
