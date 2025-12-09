@@ -407,5 +407,61 @@ Provide a JSON response with exactly this structure:
     }
   });
 
+  // Training affiliate redirects - Configure these environment variables with your affiliate IDs:
+  // AFFILIATE_WARRIOR_TRADING - Warrior Trading affiliate ID
+  // AFFILIATE_TRADINGVIEW - TradingView affiliate ID  
+  // AFFILIATE_TRADE_IDEAS - Trade Ideas affiliate ID
+  // AFFILIATE_SIMPLER_TRADING - Simpler Trading affiliate ID
+  
+  app.get("/api/affiliate/training/:partner", async (req, res) => {
+    const { partner } = req.params;
+    
+    const affiliateLinks: Record<string, { base: string; paramName: string; envVar: string }> = {
+      warrior: { 
+        base: "https://www.warriortrading.com/", 
+        paramName: "ref", 
+        envVar: "AFFILIATE_WARRIOR_TRADING" 
+      },
+      tradingview: { 
+        base: "https://www.tradingview.com/", 
+        paramName: "aff_id", 
+        envVar: "AFFILIATE_TRADINGVIEW" 
+      },
+      tradeideas: { 
+        base: "https://www.trade-ideas.com/", 
+        paramName: "ref", 
+        envVar: "AFFILIATE_TRADE_IDEAS" 
+      },
+      simpler: { 
+        base: "https://www.simplertrading.com/", 
+        paramName: "ref", 
+        envVar: "AFFILIATE_SIMPLER_TRADING" 
+      },
+    };
+    
+    const config = affiliateLinks[partner.toLowerCase()];
+    if (!config) {
+      return res.status(404).json({ success: false, error: "Unknown partner" });
+    }
+    
+    const affiliateId = process.env[config.envVar];
+    const destination = affiliateId 
+      ? `${config.base}?${config.paramName}=${affiliateId}`
+      : config.base;
+    
+    try {
+      await storage.logAffiliateClick({
+        ticker: `TRAINING:${partner.toUpperCase()}`,
+        destination,
+        referrer: req.get('referer') || null,
+        userAgent: req.get('user-agent') || null,
+      });
+    } catch (error) {
+      console.error("Failed to log training affiliate click:", error);
+    }
+    
+    res.redirect(destination);
+  });
+
   return httpServer;
 }

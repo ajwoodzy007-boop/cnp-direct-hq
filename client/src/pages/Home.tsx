@@ -1611,7 +1611,7 @@ export default function Home() {
             </CardHeader>
             <CardContent className="space-y-3">
               <a 
-                href="https://www.warriortrading.com/?ref=protrader" 
+                href="/api/affiliate/training/warrior" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors group"
@@ -1624,7 +1624,7 @@ export default function Home() {
                 <Badge className="bg-amber-500 text-xs">Popular</Badge>
               </a>
               <a 
-                href="https://www.tradingview.com/?aff_id=protrader" 
+                href="/api/affiliate/training/tradingview" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
@@ -1637,7 +1637,7 @@ export default function Home() {
                 <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
               <a 
-                href="https://www.tradeideas.com/?ref=protrader" 
+                href="/api/affiliate/training/tradeideas" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
@@ -1650,7 +1650,7 @@ export default function Home() {
                 <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
               <a 
-                href="https://www.simplertrading.com/?ref=protrader" 
+                href="/api/affiliate/training/simpler" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
