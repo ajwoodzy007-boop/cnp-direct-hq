@@ -10,12 +10,14 @@ export async function registerRoutes(
   // GET /api/market/scan - Scan market for gainers/losers
   app.get("/api/market/scan", async (req, res) => {
     try {
-      const data = scanMarket();
-      res.json({ success: true, data, timestamp: new Date().toISOString() });
+      const data = await scanMarket();
+      res.json({ success: true, data: Array.isArray(data) ? data : [], timestamp: new Date().toISOString() });
     } catch (error) {
+      console.error("Market scan error:", error);
       res.status(500).json({ 
         success: false, 
-        error: "Failed to scan market data" 
+        error: "Failed to scan market data",
+        data: []
       });
     }
   });
@@ -26,12 +28,14 @@ export async function registerRoutes(
       const { ticker } = req.params;
       const period = (req.query.period as "1d" | "1w" | "1m" | "3m") || "3m";
       
-      const data = getChartData(ticker.toUpperCase(), period);
-      res.json({ success: true, ticker, period, data });
+      const data = await getChartData(ticker.toUpperCase(), period);
+      res.json({ success: true, ticker, period, data: Array.isArray(data) ? data : [] });
     } catch (error) {
+      console.error("Chart data error:", error);
       res.status(500).json({ 
         success: false, 
-        error: "Failed to fetch chart data" 
+        error: "Failed to fetch chart data",
+        data: []
       });
     }
   });
@@ -40,12 +44,14 @@ export async function registerRoutes(
   app.get("/api/market/news/:ticker", async (req, res) => {
     try {
       const { ticker } = req.params;
-      const data = getNews(ticker.toUpperCase());
-      res.json({ success: true, ticker, data });
+      const data = await getNews(ticker.toUpperCase());
+      res.json({ success: true, ticker, data: Array.isArray(data) ? data : [] });
     } catch (error) {
+      console.error("News data error:", error);
       res.status(500).json({ 
         success: false, 
-        error: "Failed to fetch news data" 
+        error: "Failed to fetch news data",
+        data: []
       });
     }
   });
