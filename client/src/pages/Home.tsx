@@ -632,74 +632,6 @@ export default function Home() {
         </Button>
       </div>
 
-      {/* Real-time Alert Controls */}
-      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
-        <h4 className="font-semibold text-foreground flex items-center gap-2">
-          <Bell className="h-4 w-4" />
-          Real-time Alerts
-        </h4>
-        <p className="text-xs text-muted-foreground">Get notified when Rocket Ships or Diamonds are detected</p>
-        
-        <div className="space-y-2">
-          {/* Browser Notifications Toggle */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs">Browser Notifications</span>
-            <Button
-              size="sm"
-              variant={notificationsEnabled ? "default" : "outline"}
-              className="h-7 text-xs"
-              onClick={() => {
-                if (notificationsEnabled) {
-                  setNotificationsEnabled(false);
-                  toast.info("Notifications disabled");
-                } else {
-                  requestNotificationPermission();
-                }
-              }}
-              data-testid="button-toggle-notifications"
-            >
-              {notificationsEnabled ? (
-                <><Bell className="h-3 w-3 mr-1" /> On</>
-              ) : (
-                <><BellOff className="h-3 w-3 mr-1" /> Off</>
-              )}
-            </Button>
-          </div>
-          
-          {/* Sound Toggle */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs">Sound Alerts</span>
-            <Button
-              size="sm"
-              variant={soundEnabled ? "default" : "outline"}
-              className="h-7 text-xs"
-              onClick={() => {
-                setSoundEnabled(!soundEnabled);
-                toast.info(soundEnabled ? "Sound alerts disabled" : "Sound alerts enabled");
-              }}
-              data-testid="button-toggle-sound"
-            >
-              {soundEnabled ? (
-                <><Volume2 className="h-3 w-3 mr-1" /> On</>
-              ) : (
-                <><VolumeX className="h-3 w-3 mr-1" /> Off</>
-              )}
-            </Button>
-          </div>
-        </div>
-        
-        {!notificationsEnabled && typeof Notification !== "undefined" && Notification.permission !== "denied" && (
-          <p className="text-[10px] text-amber-600 dark:text-amber-400">
-            Enable notifications to get alerts even when this tab isn't focused
-          </p>
-        )}
-        {typeof Notification === "undefined" && (
-          <p className="text-[10px] text-muted-foreground">
-            Browser notifications not supported - sound alerts only
-          </p>
-        )}
-      </div>
-
       {/* Watchlist */}
       <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
@@ -1068,6 +1000,66 @@ export default function Home() {
         Real-time market scanner powered by AI sentiment analysis. Identify breakout candidates and oversold
         opportunities instantly.
       </StText>
+
+      {/* Real-time Alert Controls */}
+      <div className="mt-4 rounded-lg bg-card border border-border p-4 text-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4" />
+            <span className="font-semibold">Real-time Alerts</span>
+            <span className="text-xs text-muted-foreground">- Get notified when signals are detected</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Notifications:</span>
+              <Button
+                size="sm"
+                variant={notificationsEnabled ? "default" : "outline"}
+                className="h-7 text-xs"
+                onClick={() => {
+                  if (notificationsEnabled) {
+                    setNotificationsEnabled(false);
+                    toast.info("Notifications disabled");
+                  } else {
+                    requestNotificationPermission();
+                  }
+                }}
+                data-testid="button-toggle-notifications"
+              >
+                {notificationsEnabled ? (
+                  <><Bell className="h-3 w-3 mr-1" /> On</>
+                ) : (
+                  <><BellOff className="h-3 w-3 mr-1" /> Off</>
+                )}
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Sound:</span>
+              <Button
+                size="sm"
+                variant={soundEnabled ? "default" : "outline"}
+                className="h-7 text-xs"
+                onClick={() => {
+                  setSoundEnabled(!soundEnabled);
+                  toast.info(soundEnabled ? "Sound alerts disabled" : "Sound alerts enabled");
+                }}
+                data-testid="button-toggle-sound"
+              >
+                {soundEnabled ? (
+                  <><Volume2 className="h-3 w-3 mr-1" /> On</>
+                ) : (
+                  <><VolumeX className="h-3 w-3 mr-1" /> Off</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+        {!notificationsEnabled && typeof Notification !== "undefined" && Notification.permission !== "denied" && (
+          <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2">
+            Enable notifications to get alerts even when this tab isn't focused
+          </p>
+        )}
+      </div>
 
       {/* --- GAINERS SECTION --- */}
       <div className="mt-8">
