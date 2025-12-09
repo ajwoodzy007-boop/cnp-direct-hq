@@ -9,7 +9,7 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX, GraduationCap } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -1477,6 +1477,125 @@ export default function Home() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Trading Resources Section */}
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Free Learning Resources */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <GraduationCap className="h-5 w-5" />
+                Free Trading Resources
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <a 
+                href="https://www.investopedia.com/trading-4427765" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
+                data-testid="link-resource-investopedia"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-sm group-hover:text-primary">Investopedia Trading Guide</p>
+                  <p className="text-xs text-muted-foreground">Complete beginner to advanced trading concepts</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </a>
+              <a 
+                href="https://www.investopedia.com/terms/r/rsi.asp" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
+                data-testid="link-resource-rsi"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-sm group-hover:text-primary">Understanding RSI Indicator</p>
+                  <p className="text-xs text-muted-foreground">Learn to read overbought/oversold signals</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </a>
+              <a 
+                href="https://www.stockcharts.com/school/doku.php?id=chart_school" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
+                data-testid="link-resource-chartschool"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-sm group-hover:text-primary">StockCharts Chart School</p>
+                  <p className="text-xs text-muted-foreground">Technical analysis & chart patterns</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </a>
+            </CardContent>
+          </Card>
+
+          {/* Premium Training - Affiliate Links */}
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Crown className="h-5 w-5 text-amber-500" />
+                Premium Trading Courses
+                <Badge variant="outline" className="text-[10px] ml-auto">Recommended</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <a 
+                href="/api/affiliate/training/warrior" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors group"
+                data-testid="link-affiliate-warrior"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-sm group-hover:text-amber-600">Warrior Trading</p>
+                  <p className="text-xs text-muted-foreground">Day trading courses & live trading room</p>
+                </div>
+                <Badge className="bg-amber-500 text-xs">Popular</Badge>
+              </a>
+              <a 
+                href="/api/affiliate/training/tradingview" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
+                data-testid="link-affiliate-tradingview"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-sm group-hover:text-primary">TradingView Pro</p>
+                  <p className="text-xs text-muted-foreground">Advanced charting & screening tools</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </a>
+              <a 
+                href="/api/affiliate/training/tradeideas" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
+                data-testid="link-affiliate-tradeideas"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-sm group-hover:text-primary">Trade Ideas</p>
+                  <p className="text-xs text-muted-foreground">AI-powered stock scanner & alerts</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </a>
+              <a 
+                href="/api/affiliate/training/simpler" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors group"
+                data-testid="link-affiliate-simpler"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-sm group-hover:text-primary">Simpler Trading</p>
+                  <p className="text-xs text-muted-foreground">Options & futures trading education</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </a>
+            </CardContent>
+          </Card>
         </div>
       </div>
 
