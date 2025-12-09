@@ -164,6 +164,49 @@ async function getRealStockData(ticker: string): Promise<StockData | null> {
   }
 }
 
+// Get stock data from chart history when real-time quote fails
+async function getStockDataFromChart(ticker: string): Promise<StockData | null> {
+  try {
+    const now = Math.floor(Date.now() / 1000);
+    const from = now - (30 * 24 * 60 * 60); // 30 days
+    const candles = await getCandles(ticker, "D", from, now);
+    
+    if (!candles || candles.s !== "ok" || candles.c.length < 2) {
+      return null;
+    }
+    
+    const prices = candles.c;
+    const lastPrice = prices[prices.length - 1];
+    const prevPrice = prices[prices.length - 2];
+    const changePercent = ((lastPrice - prevPrice) / prevPrice) * 100;
+    
+    // Calculate RSI from chart data
+    const rsi = calculateRSI(prices);
+    
+    // Calculate relative volume
+    const volumes = candles.v;
+    const avgVolume = volumes.slice(0, -1).reduce((a, b) => a + b, 0) / (volumes.length - 1);
+    const lastVolume = volumes[volumes.length - 1];
+    const rvol = avgVolume > 0 ? lastVolume / avgVolume : 1;
+    
+    // Get sentiment from news
+    const { sentiment, score } = await getNewsSentimentFromHeadlines(ticker);
+    
+    return {
+      ticker,
+      price: parseFloat(lastPrice.toFixed(2)),
+      changePercent: parseFloat(changePercent.toFixed(2)),
+      rvol: parseFloat(Math.max(0.5, Math.min(5, rvol)).toFixed(1)),
+      rsi: Math.max(0, Math.min(100, Math.round(rsi))),
+      sentiment,
+      sentimentScore: score
+    };
+  } catch (error) {
+    console.error(`Error getting chart data for ${ticker}:`, error);
+    return null;
+  }
+}
+
 // Scan market for gainers/losers
 export async function scanMarket(): Promise<StockData[]> {
   const cacheKey = "market_scan";
@@ -180,11 +223,18 @@ export async function scanMarket(): Promise<StockData[]> {
   if (hasApiKey) {
     // Fetch real data (limit concurrent requests)
     for (const ticker of MARKET_TICKERS) {
-      const data = await getRealStockData(ticker);
+      let data = await getRealStockData(ticker);
+      
+      // If real-time quote fails, try to get data from chart history
+      if (!data) {
+        data = await getStockDataFromChart(ticker);
+      }
+      
+      // Only use mock data as last resort
       if (data) {
         results.push(data);
       } else {
-        // Fallback to mock for failed fetches
+        console.warn(`Using mock data for ${ticker} - all API calls failed`);
         results.push(generateMockData(ticker));
       }
       // Small delay to avoid rate limiting
