@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { StreamlitLayout } from "@/components/streamlit/layout";
 import {
   StTitle,
@@ -9,7 +9,7 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, Calculator, Copy, Check } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, Calculator, Copy, Check, History, TrendingUp, TrendingDown, Target } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +45,17 @@ interface NewsItem {
   publishedAt: string;
 }
 
+interface Prediction {
+  id: string;
+  ticker: string;
+  signalType: string;
+  entryPrice: number;
+  predictionDate: string;
+  outcome: string | null;
+  outcomePrice: number | null;
+  outcomeDate: string | null;
+}
+
 // API calls
 async function fetchMarketScan(): Promise<StockData[]> {
   const res = await fetch("/api/market/scan");
@@ -67,8 +78,39 @@ async function fetchNews(ticker: string): Promise<NewsItem[]> {
   return json.data;
 }
 
+async function fetchPredictions(): Promise<Prediction[]> {
+  const res = await fetch("/api/predictions");
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function createPrediction(data: { ticker: string; signalType: string; entryPrice: number }): Promise<Prediction> {
+  const res = await fetch("/api/predictions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function updatePredictionOutcome(id: string, outcome: string, outcomePrice: number): Promise<Prediction> {
+  const res = await fetch(`/api/predictions/${id}/outcome`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ outcome, outcomePrice }),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
 export default function Home() {
+  const queryClient = useQueryClient();
   const [selectedTicker, setSelectedTicker] = useState<string>("NVDA");
+  const [outcomeInputs, setOutcomeInputs] = useState<Record<string, { price: string; outcome: string }>>({});
   
   // Risk Calculator State
   const [entryPrice, setEntryPrice] = useState<string>("");
@@ -137,6 +179,55 @@ export default function Home() {
     queryFn: () => fetchNews(selectedTicker),
     enabled: !!selectedTicker,
   });
+
+  // Fetch predictions
+  const { data: predictionsData = [] } = useQuery({
+    queryKey: ["predictions"],
+    queryFn: fetchPredictions,
+  });
+
+  // Create prediction mutation
+  const createPredictionMutation = useMutation({
+    mutationFn: createPrediction,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["predictions"] }),
+  });
+
+  // Update prediction outcome mutation
+  const updateOutcomeMutation = useMutation({
+    mutationFn: ({ id, outcome, outcomePrice }: { id: string; outcome: string; outcomePrice: number }) =>
+      updatePredictionOutcome(id, outcome, outcomePrice),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["predictions"] }),
+  });
+
+  // Handler to log a prediction from a stock row
+  const handleLogPrediction = (stock: StockData, signalType: string) => {
+    createPredictionMutation.mutate({
+      ticker: stock.ticker,
+      signalType,
+      entryPrice: stock.price,
+    });
+  };
+
+  // Handler to update prediction outcome
+  const handleUpdateOutcome = (id: string) => {
+    const input = outcomeInputs[id];
+    if (!input || !input.price || !input.outcome) return;
+    updateOutcomeMutation.mutate({ id, outcome: input.outcome, outcomePrice: parseFloat(input.price) });
+    setOutcomeInputs((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  };
+
+  // Calculate prediction stats
+  const predictionStats = useMemo(() => {
+    const completed = predictionsData.filter((p) => p.outcome);
+    const wins = completed.filter((p) => p.outcome === "win").length;
+    const losses = completed.filter((p) => p.outcome === "loss").length;
+    const winRate = completed.length > 0 ? ((wins / completed.length) * 100).toFixed(1) : "0";
+    return { total: predictionsData.length, completed: completed.length, wins, losses, winRate };
+  }, [predictionsData]);
 
   // Derived state for tables
   const gainers = useMemo(
@@ -586,6 +677,189 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- PREDICTION HISTORY SECTION --- */}
+      <div className="mt-12 border-t border-border pt-8">
+        <StHeader>📊 Prediction History</StHeader>
+        <StText>Track your "highest rated" stock predictions and see how they perform over time.</StText>
+
+        {/* Stats Summary */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 my-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-2xl font-bold">{predictionStats.total}</p>
+                  <p className="text-xs text-muted-foreground">Total Predictions</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-green-500" />
+                <div>
+                  <p className="text-2xl font-bold text-green-600">{predictionStats.wins}</p>
+                  <p className="text-xs text-muted-foreground">Wins</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <TrendingDown className="h-5 w-5 text-red-500" />
+                <div>
+                  <p className="text-2xl font-bold text-red-600">{predictionStats.losses}</p>
+                  <p className="text-xs text-muted-foreground">Losses</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2">
+                <History className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="text-2xl font-bold">{predictionStats.winRate}%</p>
+                  <p className="text-xs text-muted-foreground">Win Rate</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Add from Current Top Picks */}
+        {gainers.length > 0 && (
+          <div className="mb-6">
+            <StSubheader>Quick Log: Today's Top Picks</StSubheader>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {gainers.slice(0, 5).map((stock) => (
+                <Button
+                  key={stock.ticker}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleLogPrediction(stock, stock.rvol > 3 ? "Rocket Ship" : stock.rsi < 30 ? "Diamond" : "Gainer")}
+                  disabled={createPredictionMutation.isPending}
+                  data-testid={`button-log-${stock.ticker}`}
+                >
+                  + Log {stock.ticker} @ ${stock.price.toFixed(2)}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Prediction History Table */}
+        <div className="rounded-md border border-border overflow-hidden my-4 bg-card shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted/50 text-muted-foreground font-mono uppercase text-xs">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Ticker</th>
+                  <th className="px-4 py-3 font-medium">Signal</th>
+                  <th className="px-4 py-3 font-medium">Entry Price</th>
+                  <th className="px-4 py-3 font-medium">Date</th>
+                  <th className="px-4 py-3 font-medium">Outcome</th>
+                  <th className="px-4 py-3 font-medium">Exit Price</th>
+                  <th className="px-4 py-3 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border font-mono">
+                {predictionsData.map((pred) => (
+                  <tr key={pred.id} className="hover:bg-muted/30 transition-colors" data-testid={`row-prediction-${pred.id}`}>
+                    <td className="px-4 py-2 font-bold">
+                      <a
+                        href={`https://finance.yahoo.com/quote/${pred.ticker}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {pred.ticker}
+                      </a>
+                    </td>
+                    <td className="px-4 py-2">
+                      <Badge variant="outline" className="text-xs">
+                        {pred.signalType}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-2">${pred.entryPrice.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-muted-foreground">
+                      {new Date(pred.predictionDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-2">
+                      {pred.outcome ? (
+                        <Badge className={pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}>
+                          {pred.outcome.toUpperCase()}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">Pending</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2">
+                      {pred.outcomePrice ? `$${pred.outcomePrice.toFixed(2)}` : "-"}
+                    </td>
+                    <td className="px-4 py-2">
+                      {!pred.outcome && (
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="number"
+                            placeholder="Exit $"
+                            className="h-7 w-20 text-xs"
+                            value={outcomeInputs[pred.id]?.price || ""}
+                            onChange={(e) =>
+                              setOutcomeInputs((prev) => ({
+                                ...prev,
+                                [pred.id]: { ...prev[pred.id], price: e.target.value },
+                              }))
+                            }
+                            data-testid={`input-exit-${pred.id}`}
+                          />
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs text-green-600 border-green-600 hover:bg-green-50"
+                            onClick={() => {
+                              setOutcomeInputs((prev) => ({ ...prev, [pred.id]: { ...prev[pred.id], outcome: "win" } }));
+                              setTimeout(() => handleUpdateOutcome(pred.id), 0);
+                            }}
+                            disabled={!outcomeInputs[pred.id]?.price}
+                            data-testid={`button-win-${pred.id}`}
+                          >
+                            Win
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs text-red-600 border-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              setOutcomeInputs((prev) => ({ ...prev, [pred.id]: { ...prev[pred.id], outcome: "loss" } }));
+                              setTimeout(() => handleUpdateOutcome(pred.id), 0);
+                            }}
+                            disabled={!outcomeInputs[pred.id]?.price}
+                            data-testid={`button-loss-${pred.id}`}
+                          >
+                            Loss
+                          </Button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {predictionsData.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                      No predictions logged yet. Use the "Quick Log" buttons above to start tracking!
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
