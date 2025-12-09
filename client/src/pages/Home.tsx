@@ -474,13 +474,18 @@ export default function Home() {
         {/* Suggested Stocks */}
         {suggestedStocks.length > 0 && (
           <div className="pt-3 border-t border-border">
-            <p className="text-xs text-muted-foreground mb-2">Suggested Stocks</p>
+            <p className="text-xs text-muted-foreground mb-2">Hot Picks (Click to Add)</p>
             <div className="space-y-1">
               {suggestedStocks.map((suggestion) => (
                 <div
                   key={`${suggestion.stock.ticker}-${suggestion.signalType}`}
                   className="flex items-center justify-between text-xs bg-primary/5 rounded p-2 cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => handleLogPrediction(suggestion.stock, suggestion.signalType)}
+                  onClick={() => {
+                    handleLogPrediction(suggestion.stock, suggestion.signalType);
+                    toast.success(`Added ${suggestion.stock.ticker}`, {
+                      description: `${suggestion.signalType} at $${suggestion.stock.price.toFixed(2)}`,
+                    });
+                  }}
                   data-testid={`suggested-${suggestion.stock.ticker}-${suggestion.signalType}`}
                 >
                   <div className="flex items-center gap-2">
@@ -494,6 +499,30 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* Top Performers Quick Add */}
+        <div className="pt-3 border-t border-border">
+          <p className="text-xs text-muted-foreground mb-2">Top Performers (Quick Add)</p>
+          <div className="flex flex-wrap gap-1">
+            {gainers.slice(0, 6).map((stock) => (
+              <Button
+                key={stock.ticker}
+                variant="outline"
+                size="sm"
+                className="h-7 text-[10px] px-2"
+                onClick={() => {
+                  handleLogPrediction(stock, "Top Gainer");
+                  toast.success(`Added ${stock.ticker}`, {
+                    description: `Top Gainer at $${stock.price.toFixed(2)} (+${stock.changePercent.toFixed(1)}%)`,
+                  });
+                }}
+                data-testid={`quick-add-${stock.ticker}`}
+              >
+                {stock.ticker} <span className="text-green-600 ml-1">+{stock.changePercent.toFixed(1)}%</span>
+              </Button>
+            ))}
+          </div>
+        </div>
 
         {/* Manual Add */}
         <div className="pt-3 border-t border-border">
