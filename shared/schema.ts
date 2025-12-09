@@ -38,3 +38,17 @@ export const insertPredictionSchema = createInsertSchema(predictions).omit({
 
 export type InsertPrediction = z.infer<typeof insertPredictionSchema>;
 export type Prediction = typeof predictions.$inferSelect;
+
+export const watchlist = pgTable("watchlist", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticker: text("ticker").notNull().unique(),
+  addedAt: timestamp("added_at").notNull().defaultNow(),
+});
+
+export const insertWatchlistSchema = createInsertSchema(watchlist).omit({
+  id: true,
+  addedAt: true,
+});
+
+export type InsertWatchlist = z.infer<typeof insertWatchlistSchema>;
+export type WatchlistItem = typeof watchlist.$inferSelect;

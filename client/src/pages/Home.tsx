@@ -9,7 +9,7 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -55,6 +55,12 @@ interface Prediction {
   outcome: string | null;
   outcomePrice: number | null;
   outcomeDate: string | null;
+}
+
+interface WatchlistItem {
+  id: string;
+  ticker: string;
+  addedAt: string;
 }
 
 // API calls
@@ -108,6 +114,32 @@ async function updatePredictionOutcome(id: string, outcome: string, outcomePrice
   return json.data;
 }
 
+async function fetchWatchlist(): Promise<WatchlistItem[]> {
+  const res = await fetch("/api/watchlist");
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function addToWatchlist(ticker: string): Promise<WatchlistItem> {
+  const res = await fetch("/api/watchlist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker }),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function removeFromWatchlist(ticker: string): Promise<void> {
+  const res = await fetch(`/api/watchlist/${ticker}`, {
+    method: "DELETE",
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+}
+
 export default function Home() {
   const queryClient = useQueryClient();
   const [selectedTicker, setSelectedTicker] = useState<string>("NVDA");
@@ -118,6 +150,7 @@ export default function Home() {
   const [historyFilter, setHistoryFilter] = useState<"all" | "win" | "loss">("all");
   const [manualTicker, setManualTicker] = useState("");
   const [manualSignal, setManualSignal] = useState("Manual");
+  const [watchlistInput, setWatchlistInput] = useState("");
 
   // Fetch market data with React Query
   const { data: marketData = [], isLoading, refetch } = useQuery({
@@ -165,6 +198,53 @@ export default function Home() {
       updatePredictionOutcome(id, outcome, outcomePrice),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["predictions"] }),
   });
+
+  // Fetch watchlist
+  const { data: watchlistData = [] } = useQuery({
+    queryKey: ["watchlist"],
+    queryFn: fetchWatchlist,
+  });
+
+  // Add to watchlist mutation
+  const addWatchlistMutation = useMutation({
+    mutationFn: addToWatchlist,
+    onSuccess: (item) => {
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+      toast.success(`Added ${item.ticker} to watchlist`);
+    },
+    onError: (error) => {
+      toast.error("Failed to add to watchlist", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    },
+  });
+
+  // Remove from watchlist mutation
+  const removeWatchlistMutation = useMutation({
+    mutationFn: removeFromWatchlist,
+    onSuccess: (_, ticker) => {
+      queryClient.invalidateQueries({ queryKey: ["watchlist"] });
+      toast.success(`Removed ${ticker} from watchlist`);
+    },
+    onError: (error) => {
+      toast.error("Failed to remove from watchlist", {
+        description: error instanceof Error ? error.message : "Unknown error",
+      });
+    },
+  });
+
+  // Get watchlist stocks with current prices
+  const watchlistWithPrices = useMemo(() => {
+    return watchlistData.map(item => {
+      const stock = marketData.find(s => s.ticker === item.ticker);
+      return {
+        ...item,
+        price: stock?.price,
+        changePercent: stock?.changePercent,
+        sentiment: stock?.sentiment,
+      };
+    });
+  }, [watchlistData, marketData]);
 
   // Handler to log a prediction from a stock row
   const handleLogPrediction = (stock: StockData, signalType: string) => {
@@ -439,6 +519,88 @@ export default function Home() {
             </span>
             <p className="text-xs text-muted-foreground">Low RSI ({'<'}30) + Bullish News</p>
           </div>
+        </div>
+      </div>
+
+      {/* Watchlist */}
+      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
+        <h4 className="font-semibold text-foreground flex items-center gap-2">
+          <Star className="h-4 w-4" />
+          My Watchlist
+        </h4>
+        
+        {/* Add to watchlist input */}
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add ticker..."
+            value={watchlistInput}
+            onChange={(e) => setWatchlistInput(e.target.value.toUpperCase())}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && watchlistInput.trim()) {
+                addWatchlistMutation.mutate(watchlistInput.trim());
+                setWatchlistInput("");
+              }
+            }}
+            className="h-8 text-xs"
+            data-testid="input-watchlist-ticker"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-2"
+            onClick={() => {
+              if (watchlistInput.trim()) {
+                addWatchlistMutation.mutate(watchlistInput.trim());
+                setWatchlistInput("");
+              }
+            }}
+            disabled={!watchlistInput.trim() || addWatchlistMutation.isPending}
+            data-testid="button-add-watchlist"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Watchlist items */}
+        <div className="space-y-2">
+          {watchlistWithPrices.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-2">
+              No stocks in watchlist. Add one above!
+            </p>
+          ) : (
+            watchlistWithPrices.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => setSelectedTicker(item.ticker)}
+                data-testid={`watchlist-item-${item.ticker}`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{item.ticker}</span>
+                  {item.price !== undefined && (
+                    <span className="text-muted-foreground">${item.price.toFixed(2)}</span>
+                  )}
+                  {item.changePercent !== undefined && (
+                    <span className={item.changePercent >= 0 ? "text-green-600" : "text-red-600"}>
+                      {item.changePercent >= 0 ? "+" : ""}{item.changePercent.toFixed(2)}%
+                    </span>
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-red-500/10"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeWatchlistMutation.mutate(item.ticker);
+                  }}
+                  data-testid={`button-remove-watchlist-${item.ticker}`}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

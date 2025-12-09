@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { scanMarket, getChartData, getNews } from "./lib/marketData";
 import { storage } from "./storage";
-import { insertPredictionSchema } from "@shared/schema";
+import { insertPredictionSchema, insertWatchlistSchema } from "@shared/schema";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -100,6 +100,47 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Update prediction error:", error);
       res.status(500).json({ success: false, error: "Failed to update prediction" });
+    }
+  });
+
+  // GET /api/watchlist - Get all watchlist items
+  app.get("/api/watchlist", async (req, res) => {
+    try {
+      const data = await storage.getWatchlist();
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error("Get watchlist error:", error);
+      res.status(500).json({ success: false, error: "Failed to get watchlist", data: [] });
+    }
+  });
+
+  // POST /api/watchlist - Add to watchlist
+  app.post("/api/watchlist", async (req, res) => {
+    try {
+      const parsed = insertWatchlistSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ success: false, error: parsed.error.message });
+      }
+      const item = await storage.addToWatchlist(parsed.data);
+      res.json({ success: true, data: item });
+    } catch (error) {
+      console.error("Add to watchlist error:", error);
+      res.status(500).json({ success: false, error: "Failed to add to watchlist" });
+    }
+  });
+
+  // DELETE /api/watchlist/:ticker - Remove from watchlist
+  app.delete("/api/watchlist/:ticker", async (req, res) => {
+    try {
+      const { ticker } = req.params;
+      const removed = await storage.removeFromWatchlist(ticker);
+      if (!removed) {
+        return res.status(404).json({ success: false, error: "Ticker not in watchlist" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Remove from watchlist error:", error);
+      res.status(500).json({ success: false, error: "Failed to remove from watchlist" });
     }
   });
 

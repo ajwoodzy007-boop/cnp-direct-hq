@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Prediction, type InsertPrediction } from "@shared/schema";
+import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -8,15 +8,20 @@ export interface IStorage {
   createPrediction(prediction: InsertPrediction): Promise<Prediction>;
   getPredictions(): Promise<Prediction[]>;
   updatePredictionOutcome(id: string, outcome: string, outcomePrice: number): Promise<Prediction | undefined>;
+  getWatchlist(): Promise<WatchlistItem[]>;
+  addToWatchlist(item: InsertWatchlist): Promise<WatchlistItem>;
+  removeFromWatchlist(ticker: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private predictions: Map<string, Prediction>;
+  private watchlistItems: Map<string, WatchlistItem>;
 
   constructor() {
     this.users = new Map();
     this.predictions = new Map();
+    this.watchlistItems = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -68,6 +73,37 @@ export class MemStorage implements IStorage {
     };
     this.predictions.set(id, updated);
     return updated;
+  }
+
+  async getWatchlist(): Promise<WatchlistItem[]> {
+    return Array.from(this.watchlistItems.values()).sort(
+      (a, b) => new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime()
+    );
+  }
+
+  async addToWatchlist(item: InsertWatchlist): Promise<WatchlistItem> {
+    const existing = Array.from(this.watchlistItems.values()).find(
+      w => w.ticker.toUpperCase() === item.ticker.toUpperCase()
+    );
+    if (existing) return existing;
+
+    const id = randomUUID();
+    const watchlistItem: WatchlistItem = {
+      id,
+      ticker: item.ticker.toUpperCase(),
+      addedAt: new Date(),
+    };
+    this.watchlistItems.set(id, watchlistItem);
+    return watchlistItem;
+  }
+
+  async removeFromWatchlist(ticker: string): Promise<boolean> {
+    const item = Array.from(this.watchlistItems.values()).find(
+      w => w.ticker.toUpperCase() === ticker.toUpperCase()
+    );
+    if (!item) return false;
+    this.watchlistItems.delete(item.id);
+    return true;
   }
 }
 
