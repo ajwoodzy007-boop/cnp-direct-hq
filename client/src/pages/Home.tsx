@@ -278,6 +278,9 @@ export default function Home() {
                   <th className="px-4 py-3 font-medium">
                     <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">RSI <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Relative Strength Index: below 30 = oversold, above 70 = overbought</PopoverContent></Popover>
                   </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">AI Verdict <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Sentiment analysis based on recent news headlines</PopoverContent></Popover>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border font-mono">
@@ -300,11 +303,12 @@ export default function Home() {
                       {row.rsi}
                       {row.rsi < 30 && <span className="ml-1">💎</span>}
                     </td>
+                    <td className="px-4 py-2">{row.sentiment}</td>
                   </tr>
                 ))}
                 {losers.length === 0 && !isLoading && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                       No losers found.
                     </td>
                   </tr>
