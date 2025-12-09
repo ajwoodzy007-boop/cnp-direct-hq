@@ -664,181 +664,78 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Your 5 Predictions */}
+        {/* Your 5 Predictions - System Generated */}
         <div className="pt-2 border-t border-border">
           <p className="text-xs text-muted-foreground mb-2">Your 5 Predictions</p>
           <div className="space-y-2">
-            {predictionsData.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                No predictions yet. Add stocks from the scanner!
-              </p>
-            ) : (
-              predictionsData.slice(0, 5).map((pred) => {
-                const plPercent = pred.outcomePrice && pred.entryPrice 
-                  ? ((pred.outcomePrice - pred.entryPrice) / pred.entryPrice) * 100 
-                  : null;
+            {(() => {
+              const allPicks = [
+                ...(recommendationsData?.buys?.map(r => ({ ...r, type: "BUY" as const })) || []),
+                ...(recommendationsData?.sells?.map(r => ({ ...r, type: "SELL" as const })) || []),
+              ];
+              const uniquePicks = allPicks.filter((pick, idx, arr) => 
+                arr.findIndex(p => p.ticker === pick.ticker) === idx
+              ).slice(0, 5);
+              
+              if (uniquePicks.length === 0) {
                 return (
-                  <div 
-                    key={pred.id}
-                    className={`flex items-center justify-between text-xs rounded p-2 cursor-pointer transition-colors ${
-                      pred.outcome === "win" 
-                        ? "bg-green-500/10 hover:bg-green-500/20 border border-green-500/20" 
-                        : pred.outcome === "loss"
-                        ? "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20"
-                        : "bg-muted/30 hover:bg-muted/50"
-                    }`}
-                    onClick={() => {
-                      setSelectedTicker(pred.ticker);
-                      setSelectedPrediction(pred);
-                    }}
-                    data-testid={`your-prediction-${pred.id}`}
-                  >
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-1">
-                        <span>
-                          {pred.outcome === "win" ? "✅" : pred.outcome === "loss" ? "❌" : "⏳"}
-                        </span>
-                        <span className="font-bold">{pred.ticker}</span>
-                        <Badge variant="outline" className="text-[8px] px-1 py-0">{pred.signalType}</Badge>
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(pred.predictionDate).toLocaleDateString()} • ${pred.entryPrice.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {pred.outcome ? (
-                        <>
-                          {plPercent !== null && (
-                            <span className={`text-[10px] font-medium ${plPercent >= 0 ? "text-green-600" : "text-red-600"}`}>
-                              {plPercent >= 0 ? "+" : ""}{plPercent.toFixed(1)}%
-                            </span>
-                          )}
-                          <Badge className={`text-[10px] ${pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}`}>
-                            {pred.outcome.toUpperCase()}
-                          </Badge>
-                        </>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px]">Pending</Badge>
-                      )}
-                      <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                    </div>
-                  </div>
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Analyzing market data...
+                  </p>
                 );
-              })
-            )}
+              }
+              
+              return uniquePicks.map((pick, idx) => (
+                <div 
+                  key={`${pick.ticker}-${idx}`}
+                  className={`flex items-center justify-between text-xs rounded p-2 cursor-pointer transition-colors ${
+                    pick.type === "BUY" 
+                      ? "bg-green-500/10 hover:bg-green-500/20 border border-green-500/20" 
+                      : "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20"
+                  }`}
+                  onClick={() => setSelectedTicker(pick.ticker)}
+                  data-testid={`prediction-${pick.ticker}`}
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1">
+                      <span className={pick.type === "BUY" ? "text-green-600" : "text-red-600"}>
+                        {pick.type === "BUY" ? "📈" : "📉"}
+                      </span>
+                      <span className="font-bold">{pick.ticker}</span>
+                      <Badge 
+                        variant="outline" 
+                        className={`text-[8px] px-1 py-0 ${
+                          pick.type === "BUY" ? "text-green-600 border-green-600" : "text-red-600 border-red-600"
+                        }`}
+                      >
+                        {pick.type === "BUY" ? "Buy Low" : "Sell High"}
+                      </Badge>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+                      {pick.reasoning}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">${pick.price.toFixed(2)}</span>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                  </div>
+                </div>
+              ));
+            })()}
           </div>
           
           {/* View Top 10 Predictions Link */}
-          {predictionsData.length > 5 && (
-            <Button
-              variant="link"
-              size="sm"
-              className="w-full mt-2 text-xs"
-              onClick={() => { setHistoryFilter("all"); setShowFullHistory(true); }}
-              data-testid="button-view-top-10"
-            >
-              View Top 10 Predictions
-            </Button>
-          )}
+          <Button
+            variant="link"
+            size="sm"
+            className="w-full mt-2 text-xs"
+            onClick={() => { setHistoryFilter("all"); setShowFullHistory(true); }}
+            data-testid="button-view-top-10"
+          >
+            View Top 10 Predictions
+          </Button>
         </div>
 
-        {/* Suggested Stocks */}
-        {suggestedStocks.length > 0 && (
-          <div className="pt-3 border-t border-border">
-            <p className="text-xs text-muted-foreground mb-2">Hot Picks (Click to Add)</p>
-            <div className="space-y-1">
-              {suggestedStocks.map((suggestion) => (
-                <div
-                  key={`${suggestion.stock.ticker}-${suggestion.signalType}`}
-                  className="flex items-center justify-between text-xs bg-primary/5 rounded p-2 cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => {
-                    handleLogPrediction(suggestion.stock, suggestion.signalType);
-                    toast.success(`Added ${suggestion.stock.ticker}`, {
-                      description: `${suggestion.signalType} at $${suggestion.stock.price.toFixed(2)}`,
-                    });
-                  }}
-                  data-testid={`suggested-top-${suggestion.stock.ticker}-${suggestion.signalType}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{suggestion.icon}</span>
-                    <span className="font-bold">{suggestion.stock.ticker}</span>
-                    <span className="text-muted-foreground">${suggestion.stock.price.toFixed(2)}</span>
-                  </div>
-                  <Badge variant="outline" className="text-[8px] px-1 py-0">{suggestion.signalType}</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Top Performers Quick Add */}
-        <div className="pt-3 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-2">Top Performers (Quick Add)</p>
-          <div className="flex flex-wrap gap-1">
-            {gainers.slice(0, 6).map((stock) => (
-              <Button
-                key={stock.ticker}
-                variant="outline"
-                size="sm"
-                className="h-7 text-[10px] px-2"
-                onClick={() => {
-                  createPredictionMutation.mutate({
-                    ticker: stock.ticker,
-                    signalType: "Top Gainer",
-                    entryPrice: stock.price,
-                  }, {
-                    onSuccess: () => {
-                      toast.success(`Added ${stock.ticker}`, {
-                        description: `Top Gainer at $${stock.price.toFixed(2)} (+${stock.changePercent.toFixed(1)}%)`,
-                      });
-                    }
-                  });
-                }}
-                disabled={createPredictionMutation.isPending}
-                data-testid={`quick-add-top-${stock.ticker}`}
-              >
-                {stock.ticker} <span className="text-green-600 ml-1">+{stock.changePercent.toFixed(1)}%</span>
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Manual Add */}
-        <div className="pt-3 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-2">Add Stock Manually</p>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Input
-                placeholder="AAPL"
-                value={manualTicker}
-                onChange={(e) => setManualTicker(e.target.value.toUpperCase())}
-                className="flex-1 h-8 text-xs"
-                onKeyDown={(e) => e.key === "Enter" && handleManualAdd()}
-                data-testid="input-manual-ticker-top"
-              />
-              <select
-                value={manualSignal}
-                onChange={(e) => setManualSignal(e.target.value)}
-                className="h-8 text-xs rounded border border-input bg-background px-2"
-                data-testid="select-manual-signal-top"
-              >
-                <option value="Manual">Manual</option>
-                <option value="Bullish">Bullish</option>
-                <option value="Bearish">Bearish</option>
-                <option value="Swing">Swing</option>
-              </select>
-            </div>
-            <Button
-              size="sm"
-              className="w-full h-8 text-xs"
-              onClick={handleManualAdd}
-              disabled={!manualTicker.trim() || createPredictionMutation.isPending}
-              data-testid="button-add-manual-top"
-            >
-              Add to Tracker
-            </Button>
-          </div>
-        </div>
       </div>
 
       {/* Watchlist */}
@@ -1647,90 +1544,73 @@ export default function Home() {
         </DialogContent>
       </Dialog>
 
-      {/* Full History Dialog */}
+      {/* Top 10 Predictions Dialog */}
       <Dialog open={showFullHistory} onOpenChange={(open) => { setShowFullHistory(open); if (!open) setHistoryFilter("all"); }}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>
-              {historyFilter === "win" ? "Winning Predictions" : historyFilter === "loss" ? "Losing Predictions" : "All Prediction History"}
-            </DialogTitle>
+            <DialogTitle>Top 10 Predictions</DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto flex-1">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 sticky top-0">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium">Date</th>
+                  <th className="px-3 py-2 text-left font-medium">#</th>
                   <th className="px-3 py-2 text-left font-medium">Ticker</th>
                   <th className="px-3 py-2 text-left font-medium">Signal</th>
-                  <th className="px-3 py-2 text-left font-medium">Entry</th>
-                  <th className="px-3 py-2 text-left font-medium">Exit</th>
-                  <th className="px-3 py-2 text-left font-medium">P/L %</th>
-                  <th className="px-3 py-2 text-left font-medium">Outcome</th>
+                  <th className="px-3 py-2 text-left font-medium">Price</th>
+                  <th className="px-3 py-2 text-left font-medium">Reasoning</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {predictionsData
-                  .filter((pred) => historyFilter === "all" ? true : pred.outcome === historyFilter)
-                  .map((pred) => {
-                    const plPercent = pred.outcomePrice && pred.entryPrice 
-                      ? ((pred.outcomePrice - pred.entryPrice) / pred.entryPrice) * 100 
-                      : null;
-                    return (
-                  <tr 
-                    key={pred.id} 
-                    className="hover:bg-muted/30 cursor-pointer"
-                    onClick={() => {
-                      setShowFullHistory(false);
-                      setSelectedPrediction(pred);
-                    }}
-                    data-testid={`history-row-${pred.id}`}
-                  >
-                    <td className="px-3 py-2 text-muted-foreground">
-                      {new Date(pred.predictionDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-3 py-2 font-bold">{pred.ticker}</td>
-                    <td className="px-3 py-2">
-                      <Badge variant="outline" className="text-xs">{pred.signalType}</Badge>
-                    </td>
-                    <td className="px-3 py-2">${pred.entryPrice.toFixed(2)}</td>
-                    <td className="px-3 py-2">
-                      {pred.outcomePrice ? `$${pred.outcomePrice.toFixed(2)}` : "-"}
-                    </td>
-                    <td className="px-3 py-2">
-                      {plPercent !== null ? (
-                        <span className={`font-medium ${plPercent >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          {plPercent >= 0 ? "+" : ""}{plPercent.toFixed(2)}%
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        {pred.outcome ? (
-                          <>
-                            <Badge className={pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}>
-                              {pred.outcome.toUpperCase()}
-                            </Badge>
-                            {pred.outcome === "win" && (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); handleShareWin(pred); }}
-                                className="p-1 rounded hover:bg-green-500/20 text-green-600 transition-colors"
-                                title="Share your win on Twitter"
-                                data-testid={`button-share-history-${pred.id}`}
-                              >
-                                <Share2 className="h-4 w-4" />
-                              </button>
-                            )}
-                          </>
-                        ) : (
-                          <Badge variant="outline">Pending</Badge>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                    );
-                  })}
+                {(() => {
+                  const allPicks = [
+                    ...(recommendationsData?.buys?.map(r => ({ ...r, type: "BUY" as const })) || []),
+                    ...(recommendationsData?.sells?.map(r => ({ ...r, type: "SELL" as const })) || []),
+                  ];
+                  const uniquePicks = allPicks.filter((pick, idx, arr) => 
+                    arr.findIndex(p => p.ticker === pick.ticker) === idx
+                  ).slice(0, 10);
+                  
+                  return uniquePicks.map((pick, idx) => (
+                    <tr 
+                      key={`${pick.ticker}-${idx}`}
+                      className={`hover:bg-muted/30 cursor-pointer ${
+                        pick.type === "BUY" ? "bg-green-500/5" : "bg-red-500/5"
+                      }`}
+                      onClick={() => {
+                        setShowFullHistory(false);
+                        setSelectedTicker(pick.ticker);
+                      }}
+                      data-testid={`top10-row-${pick.ticker}`}
+                    >
+                      <td className="px-3 py-2 text-muted-foreground font-medium">
+                        {idx + 1}
+                      </td>
+                      <td className="px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className={pick.type === "BUY" ? "text-green-600" : "text-red-600"}>
+                            {pick.type === "BUY" ? "📈" : "📉"}
+                          </span>
+                          <span className="font-bold">{pick.ticker}</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2">
+                        <Badge 
+                          variant="outline" 
+                          className={`text-xs ${
+                            pick.type === "BUY" ? "text-green-600 border-green-600" : "text-red-600 border-red-600"
+                          }`}
+                        >
+                          {pick.type === "BUY" ? "Buy Low" : "Sell High"}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2 font-medium">${pick.price.toFixed(2)}</td>
+                      <td className="px-3 py-2 text-muted-foreground text-xs">
+                        {pick.reasoning}
+                      </td>
+                    </tr>
+                  ));
+                })()}
               </tbody>
             </table>
           </div>
