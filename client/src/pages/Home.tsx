@@ -9,7 +9,8 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,6 +111,9 @@ export default function Home() {
   const queryClient = useQueryClient();
   const [selectedTicker, setSelectedTicker] = useState<string>("NVDA");
   const [outcomeInputs, setOutcomeInputs] = useState<Record<string, { price: string; outcome: string }>>({});
+  const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(null);
+  const [showFullHistory, setShowFullHistory] = useState(false);
+  const [autoLoggedTickers, setAutoLoggedTickers] = useState<Set<string>>(new Set());
 
   // Fetch market data with React Query
   const { data: marketData = [], isLoading, refetch } = useQuery({
@@ -200,6 +204,44 @@ export default function Home() {
       setSelectedTicker(allTickers[0]);
     }
   }, [allTickers, selectedTicker]);
+
+  // Auto-log rocket ships and diamonds
+  useEffect(() => {
+    if (marketData.length === 0 || predictionsData === undefined) return;
+    
+    const today = new Date().toISOString().split('T')[0];
+    const todaysPredictions = predictionsData.filter(p => p.predictionDate.startsWith(today));
+    const alreadyLoggedToday = new Set(todaysPredictions.map(p => `${p.ticker}-${p.signalType}`));
+    
+    marketData.forEach((stock) => {
+      const isRocketShip = stock.rvol > 3 && stock.sentiment === "🟢 BULLISH";
+      const isDiamond = stock.rsi < 30 && stock.sentiment === "🟢 BULLISH";
+      
+      if (isRocketShip) {
+        const key = `${stock.ticker}-Rocket Ship`;
+        if (!alreadyLoggedToday.has(key) && !autoLoggedTickers.has(key)) {
+          setAutoLoggedTickers(prev => new Set(Array.from(prev).concat(key)));
+          createPredictionMutation.mutate({
+            ticker: stock.ticker,
+            signalType: "Rocket Ship",
+            entryPrice: stock.price,
+          });
+        }
+      }
+      
+      if (isDiamond) {
+        const key = `${stock.ticker}-Diamond`;
+        if (!alreadyLoggedToday.has(key) && !autoLoggedTickers.has(key)) {
+          setAutoLoggedTickers(prev => new Set(Array.from(prev).concat(key)));
+          createPredictionMutation.mutate({
+            ticker: stock.ticker,
+            signalType: "Diamond",
+            entryPrice: stock.price,
+          });
+        }
+      }
+    });
+  }, [marketData, predictionsData, autoLoggedTickers, createPredictionMutation]);
 
   // Format chart data for Recharts
   const formattedChartData = useMemo(
@@ -300,73 +342,57 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Recent Predictions */}
+        {/* Recent Predictions - Last 5 */}
         <div className="pt-2 border-t border-border">
           <p className="text-xs text-muted-foreground mb-2">Recent Predictions</p>
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-            {predictionsData.slice(0, 10).map((pred) => (
-              <div key={pred.id} className="flex items-center justify-between text-xs bg-muted/30 rounded p-2" data-testid={`sidebar-prediction-${pred.id}`}>
-                <div>
-                  <span className="font-bold">{pred.ticker}</span>
-                  <span className="text-muted-foreground ml-1">${pred.entryPrice.toFixed(2)}</span>
+          <div className="space-y-2">
+            {predictionsData.slice(0, 5).map((pred) => (
+              <div 
+                key={pred.id} 
+                className="flex items-center justify-between text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50 transition-colors" 
+                onClick={() => setSelectedPrediction(pred)}
+                data-testid={`sidebar-prediction-${pred.id}`}
+              >
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold">{pred.ticker}</span>
+                    <Badge variant="outline" className="text-[8px] px-1 py-0">{pred.signalType}</Badge>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(pred.predictionDate).toLocaleDateString()}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   {pred.outcome ? (
                     <Badge className={`text-[10px] ${pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}`}>
                       {pred.outcome.toUpperCase()}
                     </Badge>
                   ) : (
-                    <>
-                      <Input
-                        type="number"
-                        placeholder="Exit $"
-                        className="h-6 w-14 text-[10px]"
-                        value={outcomeInputs[pred.id]?.price || ""}
-                        onChange={(e) =>
-                          setOutcomeInputs((prev) => ({
-                            ...prev,
-                            [pred.id]: { ...prev[pred.id], price: e.target.value },
-                          }))
-                        }
-                        data-testid={`sidebar-input-exit-${pred.id}`}
-                      />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0 text-green-600 hover:bg-green-50"
-                        onClick={() => {
-                          setOutcomeInputs((prev) => ({ ...prev, [pred.id]: { ...prev[pred.id], outcome: "win" } }));
-                          setTimeout(() => handleUpdateOutcome(pred.id), 0);
-                        }}
-                        disabled={!outcomeInputs[pred.id]?.price}
-                        data-testid={`sidebar-button-win-${pred.id}`}
-                      >
-                        <TrendingUp className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 w-6 p-0 text-red-600 hover:bg-red-50"
-                        onClick={() => {
-                          setOutcomeInputs((prev) => ({ ...prev, [pred.id]: { ...prev[pred.id], outcome: "loss" } }));
-                          setTimeout(() => handleUpdateOutcome(pred.id), 0);
-                        }}
-                        disabled={!outcomeInputs[pred.id]?.price}
-                        data-testid={`sidebar-button-loss-${pred.id}`}
-                      >
-                        <TrendingDown className="h-3 w-3" />
-                      </Button>
-                    </>
+                    <Badge variant="outline" className="text-[10px]">Pending</Badge>
                   )}
+                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
                 </div>
               </div>
             ))}
             {predictionsData.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">
-                No predictions yet. Log picks from the Top Gainers table!
+                No predictions yet. Rocket ships and diamonds are auto-logged!
               </p>
             )}
           </div>
+          
+          {/* View All Link */}
+          {predictionsData.length > 5 && (
+            <Button
+              variant="link"
+              size="sm"
+              className="w-full mt-2 text-xs"
+              onClick={() => setShowFullHistory(true)}
+              data-testid="button-view-all-history"
+            >
+              View All {predictionsData.length} Predictions
+            </Button>
+          )}
         </div>
       </div>
     </div>
@@ -621,6 +647,155 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Prediction Detail Dialog */}
+      <Dialog open={!!selectedPrediction} onOpenChange={() => setSelectedPrediction(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {selectedPrediction?.ticker} Prediction
+              <Badge variant="outline">{selectedPrediction?.signalType}</Badge>
+            </DialogTitle>
+          </DialogHeader>
+          {selectedPrediction && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Entry Price</p>
+                  <p className="font-bold text-lg">${selectedPrediction.entryPrice.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Date Logged</p>
+                  <p className="font-medium">{new Date(selectedPrediction.predictionDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Outcome</p>
+                  {selectedPrediction.outcome ? (
+                    <Badge className={selectedPrediction.outcome === "win" ? "bg-green-600" : "bg-red-600"}>
+                      {selectedPrediction.outcome.toUpperCase()}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline">Pending</Badge>
+                  )}
+                </div>
+                {selectedPrediction.outcomePrice && (
+                  <div>
+                    <p className="text-muted-foreground">Exit Price</p>
+                    <p className="font-bold text-lg">${selectedPrediction.outcomePrice.toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+              
+              {!selectedPrediction.outcome && (
+                <div className="pt-4 border-t space-y-3">
+                  <p className="text-sm text-muted-foreground">Record Outcome:</p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Exit Price"
+                      className="flex-1"
+                      value={outcomeInputs[selectedPrediction.id]?.price || ""}
+                      onChange={(e) =>
+                        setOutcomeInputs((prev) => ({
+                          ...prev,
+                          [selectedPrediction.id]: { ...prev[selectedPrediction.id], price: e.target.value },
+                        }))
+                      }
+                      data-testid="dialog-input-exit"
+                    />
+                    <Button
+                      variant="outline"
+                      className="text-green-600 border-green-600"
+                      onClick={() => {
+                        setOutcomeInputs((prev) => ({ ...prev, [selectedPrediction.id]: { ...prev[selectedPrediction.id], outcome: "win" } }));
+                        setTimeout(() => {
+                          handleUpdateOutcome(selectedPrediction.id);
+                          setSelectedPrediction(null);
+                        }, 0);
+                      }}
+                      disabled={!outcomeInputs[selectedPrediction.id]?.price}
+                      data-testid="dialog-button-win"
+                    >
+                      <TrendingUp className="h-4 w-4 mr-1" /> Win
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="text-red-600 border-red-600"
+                      onClick={() => {
+                        setOutcomeInputs((prev) => ({ ...prev, [selectedPrediction.id]: { ...prev[selectedPrediction.id], outcome: "loss" } }));
+                        setTimeout(() => {
+                          handleUpdateOutcome(selectedPrediction.id);
+                          setSelectedPrediction(null);
+                        }, 0);
+                      }}
+                      disabled={!outcomeInputs[selectedPrediction.id]?.price}
+                      data-testid="dialog-button-loss"
+                    >
+                      <TrendingDown className="h-4 w-4 mr-1" /> Loss
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Full History Dialog */}
+      <Dialog open={showFullHistory} onOpenChange={setShowFullHistory}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>All Prediction History</DialogTitle>
+          </DialogHeader>
+          <div className="overflow-y-auto flex-1">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Date</th>
+                  <th className="px-3 py-2 text-left font-medium">Ticker</th>
+                  <th className="px-3 py-2 text-left font-medium">Signal</th>
+                  <th className="px-3 py-2 text-left font-medium">Entry</th>
+                  <th className="px-3 py-2 text-left font-medium">Exit</th>
+                  <th className="px-3 py-2 text-left font-medium">Outcome</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {predictionsData.map((pred) => (
+                  <tr 
+                    key={pred.id} 
+                    className="hover:bg-muted/30 cursor-pointer"
+                    onClick={() => {
+                      setShowFullHistory(false);
+                      setSelectedPrediction(pred);
+                    }}
+                    data-testid={`history-row-${pred.id}`}
+                  >
+                    <td className="px-3 py-2 text-muted-foreground">
+                      {new Date(pred.predictionDate).toLocaleDateString()}
+                    </td>
+                    <td className="px-3 py-2 font-bold">{pred.ticker}</td>
+                    <td className="px-3 py-2">
+                      <Badge variant="outline" className="text-xs">{pred.signalType}</Badge>
+                    </td>
+                    <td className="px-3 py-2">${pred.entryPrice.toFixed(2)}</td>
+                    <td className="px-3 py-2">
+                      {pred.outcomePrice ? `$${pred.outcomePrice.toFixed(2)}` : "-"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {pred.outcome ? (
+                        <Badge className={pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}>
+                          {pred.outcome.toUpperCase()}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Pending</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </StreamlitLayout>
   );
 }
