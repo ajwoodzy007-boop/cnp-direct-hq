@@ -1153,7 +1153,7 @@ export default function Home() {
 
   return (
     <StreamlitLayout sidebar={SidebarContent}>
-      <StTitle>⚡ Pro Trader's Dashboard</StTitle>
+      <StTitle>⚡ Dashboard</StTitle>
 
       <StText>
         Real-time market scanner powered by AI sentiment analysis. Identify breakout candidates and oversold
