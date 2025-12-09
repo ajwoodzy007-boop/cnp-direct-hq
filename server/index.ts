@@ -146,6 +146,41 @@ app.use((req, res, next) => {
   next();
 });
 
+// Scheduler for daily predictions at 7:30 AM Eastern time
+function startPredictionScheduler() {
+  const checkAndTriggerPredictions = async () => {
+    const now = new Date();
+    const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const hour = etTime.getHours();
+    const minute = etTime.getMinutes();
+    const day = etTime.getDay();
+    
+    // Check if it's 7:30 AM ET on a weekday (Mon-Fri)
+    const isWeekday = day >= 1 && day <= 5;
+    const isTargetTime = hour === 7 && minute === 30;
+    
+    if (isWeekday && isTargetTime) {
+      log("Triggering daily prediction generation at 7:30 AM ET", "scheduler");
+      try {
+        // Force regenerate predictions for the new day
+        const response = await fetch(`http://localhost:${process.env.PORT || 5000}/api/market/top10-today?refresh=true`);
+        if (response.ok) {
+          const data = await response.json();
+          log(`Daily predictions generated successfully - ${data.data?.picks?.length || 0} picks`, "scheduler");
+        } else {
+          log("Failed to generate daily predictions", "scheduler");
+        }
+      } catch (error) {
+        log(`Error generating predictions: ${error}`, "scheduler");
+      }
+    }
+  };
+  
+  // Check every minute
+  setInterval(checkAndTriggerPredictions, 60 * 1000);
+  log("Prediction scheduler started - predictions will be generated at 7:30 AM ET", "scheduler");
+}
+
 (async () => {
   await registerRoutes(httpServer, app);
 
@@ -180,6 +215,8 @@ app.use((req, res, next) => {
     },
     () => {
       log(`serving on port ${port}`);
+      // Start the prediction scheduler after server is running
+      startPredictionScheduler();
     },
   );
 })();

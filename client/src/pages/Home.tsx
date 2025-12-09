@@ -183,6 +183,9 @@ async function fetchRecommendations(): Promise<RecommendationsData> {
 interface Top10Pick {
   ticker: string;
   price: number;
+  openPrice: number;
+  prevClose: number;
+  closePrice?: number;
   predictedGain: number;
   confidence: number;
   reasoning: string;
@@ -193,6 +196,7 @@ interface Top10TodayData {
   generatedAt: string;
   date: string;
   marketOpen?: boolean;
+  isAfterHours?: boolean;
   dataSource?: "live" | "previous_close";
 }
 
@@ -402,21 +406,47 @@ export default function Home() {
   });
 
   // Calculate daily win/loss based on top 10 predictions vs current market prices
+  // Entry price = today's open price, show close P/L and after-hours P/L separately
   const dailyPredictionResults = useMemo(() => {
     if (!top10TodayData?.picks || !top10TodayData.picks.length) {
-      return { predictions: [], wins: 0, losses: 0, pending: 0, date: top10TodayData?.date || "" };
+      return { 
+        predictions: [], 
+        wins: 0, 
+        losses: 0, 
+        pending: 0, 
+        date: top10TodayData?.date || "",
+        isAfterHours: top10TodayData?.isAfterHours || false,
+        marketOpen: top10TodayData?.marketOpen || false
+      };
     }
+    
+    const isAfterHours = top10TodayData?.isAfterHours || false;
+    const marketOpen = top10TodayData?.marketOpen || false;
     
     const results = top10TodayData.picks.map(pick => {
       const currentStock = marketData.find(s => s.ticker === pick.ticker);
       const hasLivePrice = !!currentStock;
-      const currentPrice = currentStock?.price || pick.price;
-      const pnl = hasLivePrice ? ((currentPrice - pick.price) / pick.price) * 100 : 0;
       
+      // Entry price is always the day's open price
+      const entryPrice = pick.openPrice || pick.price;
+      
+      // Close price from the API (end of regular trading hours)
+      const closePrice = pick.closePrice || pick.price;
+      
+      // Current price (could be after-hours)
+      const currentPrice = currentStock?.price || pick.price;
+      
+      // P/L from open to close (regular trading hours result)
+      const closePnl = ((closePrice - entryPrice) / entryPrice) * 100;
+      
+      // P/L from open to current (includes after-hours if applicable)
+      const totalPnl = hasLivePrice ? ((currentPrice - entryPrice) / entryPrice) * 100 : closePnl;
+      
+      // Determine outcome based on close price P/L (regular hours result)
       let outcome: "win" | "loss" | "pending";
-      if (!hasLivePrice) {
+      if (!hasLivePrice && !pick.closePrice) {
         outcome = "pending";
-      } else if (pnl > 0) {
+      } else if (closePnl > 0) {
         outcome = "win";
       } else {
         outcome = "loss";
@@ -424,9 +454,14 @@ export default function Home() {
       
       return {
         ...pick,
+        entryPrice,
+        closePrice,
         currentPrice,
-        pnl: parseFloat(pnl.toFixed(2)),
-        outcome
+        closePnl: parseFloat(closePnl.toFixed(2)),
+        totalPnl: parseFloat(totalPnl.toFixed(2)),
+        pnl: parseFloat(closePnl.toFixed(2)), // backwards compat
+        outcome,
+        hasAfterHours: isAfterHours && Math.abs(currentPrice - closePrice) > 0.01
       };
     });
     
@@ -438,7 +473,9 @@ export default function Home() {
       wins: resolvedResults.filter(r => r.outcome === "win").length,
       losses: resolvedResults.filter(r => r.outcome === "loss").length,
       pending: results.filter(r => r.outcome === "pending").length,
-      date: top10TodayData.date || ""
+      date: top10TodayData.date || "",
+      isAfterHours,
+      marketOpen
     };
   }, [top10TodayData, marketData]);
 
@@ -784,10 +821,13 @@ export default function Home() {
                     </span>
                   </div>
                   <div className="flex flex-col items-end">
-                    <span className={`font-bold ${pick.pnl >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {pick.pnl >= 0 ? "+" : ""}{pick.pnl}%
+                    <span className={`font-bold ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {pick.closePnl >= 0 ? "+" : ""}{pick.closePnl}%
                     </span>
-                    <span className="text-[10px] text-muted-foreground">${pick.currentPrice.toFixed(2)}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      ${pick.closePrice.toFixed(2)}
+                      {pick.hasAfterHours && <span className="text-yellow-600 ml-1">({pick.totalPnl >= 0 ? "+" : ""}{pick.totalPnl}% AH)</span>}
+                    </span>
                   </div>
                 </div>
               ))
@@ -1664,13 +1704,19 @@ export default function Home() {
             <table className="w-full text-sm">
               <thead className="bg-muted/50 sticky top-0">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium">#</th>
-                  <th className="px-3 py-2 text-left font-medium">Ticker</th>
-                  <th className="px-3 py-2 text-left font-medium">Entry Price</th>
-                  <th className="px-3 py-2 text-left font-medium">Current</th>
-                  <th className="px-3 py-2 text-left font-medium">P/L</th>
-                  <th className="px-3 py-2 text-left font-medium">Status</th>
-                  <th className="px-3 py-2 text-left font-medium">Reasoning</th>
+                  <th className="px-2 py-2 text-left font-medium">#</th>
+                  <th className="px-2 py-2 text-left font-medium">Ticker</th>
+                  <th className="px-2 py-2 text-left font-medium">Entry (Open)</th>
+                  <th className="px-2 py-2 text-left font-medium">Close</th>
+                  <th className="px-2 py-2 text-left font-medium">Close P/L</th>
+                  {dailyPredictionResults.isAfterHours && (
+                    <>
+                      <th className="px-2 py-2 text-left font-medium">Current</th>
+                      <th className="px-2 py-2 text-left font-medium">Total P/L</th>
+                    </>
+                  )}
+                  <th className="px-2 py-2 text-left font-medium">Status</th>
+                  <th className="px-2 py-2 text-left font-medium">Reasoning</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -1687,10 +1733,10 @@ export default function Home() {
                     }}
                     data-testid={`top10-row-${pick.ticker}`}
                   >
-                    <td className="px-3 py-2 text-muted-foreground font-medium">
+                    <td className="px-2 py-2 text-muted-foreground font-medium">
                       {idx + 1}
                     </td>
-                    <td className="px-3 py-2">
+                    <td className="px-2 py-2">
                       <div className="flex items-center gap-2">
                         <span className={pick.outcome === "win" ? "text-green-600" : pick.outcome === "loss" ? "text-red-600" : ""}>
                           {pick.outcome === "win" ? "📈" : pick.outcome === "loss" ? "📉" : "⏳"}
@@ -1698,12 +1744,23 @@ export default function Home() {
                         <span className="font-bold">{pick.ticker}</span>
                       </div>
                     </td>
-                    <td className="px-3 py-2">${pick.price.toFixed(2)}</td>
-                    <td className="px-3 py-2 font-medium">${pick.currentPrice.toFixed(2)}</td>
-                    <td className={`px-3 py-2 font-bold ${pick.pnl >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {pick.pnl >= 0 ? "+" : ""}{pick.pnl}%
+                    <td className="px-2 py-2">${pick.entryPrice.toFixed(2)}</td>
+                    <td className="px-2 py-2 font-medium">${pick.closePrice.toFixed(2)}</td>
+                    <td className={`px-2 py-2 font-bold ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {pick.closePnl >= 0 ? "+" : ""}{pick.closePnl}%
                     </td>
-                    <td className="px-3 py-2">
+                    {dailyPredictionResults.isAfterHours && (
+                      <>
+                        <td className="px-2 py-2 font-medium">
+                          ${pick.currentPrice.toFixed(2)}
+                          {pick.hasAfterHours && <span className="text-xs text-yellow-600 ml-1">AH</span>}
+                        </td>
+                        <td className={`px-2 py-2 font-bold ${pick.totalPnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {pick.totalPnl >= 0 ? "+" : ""}{pick.totalPnl}%
+                        </td>
+                      </>
+                    )}
+                    <td className="px-2 py-2">
                       <Badge 
                         variant="outline" 
                         className={`text-xs ${
@@ -1715,14 +1772,14 @@ export default function Home() {
                         {pick.outcome === "win" ? "WIN" : pick.outcome === "loss" ? "LOSS" : "PENDING"}
                       </Badge>
                     </td>
-                    <td className="px-3 py-2 text-muted-foreground text-xs max-w-[200px] truncate">
+                    <td className="px-2 py-2 text-muted-foreground text-xs max-w-[150px] truncate">
                       {pick.reasoning}
                     </td>
                   </tr>
                 ))}
                 {dailyPredictionResults.predictions.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={dailyPredictionResults.isAfterHours ? 9 : 7} className="px-3 py-8 text-center text-muted-foreground">
                       Analyzing market data to generate predictions...
                     </td>
                   </tr>

@@ -8,6 +8,32 @@ import { z } from "zod";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 
+// Cache for daily predictions - regenerated at 7:30 AM ET each weekday
+interface DailyPredictionsCache {
+  date: string;
+  generatedAt: string;
+  picks: any[];
+  marketOpen: boolean;
+  isAfterHours: boolean;
+  isPreMarket: boolean;
+}
+
+let dailyPredictionsCache: DailyPredictionsCache | null = null;
+
+// Helper to get current ET date string
+function getETDateString(): string {
+  const now = new Date();
+  return now.toLocaleDateString("en-US", { timeZone: "America/New_York" });
+}
+
+// Check if cache is valid for today
+function isCacheValid(): boolean {
+  if (!dailyPredictionsCache) return false;
+  const today = getETDateString();
+  const cacheDate = dailyPredictionsCache.date;
+  return today === cacheDate;
+}
+
 const aiPlaybookResponseSchema = z.object({
   summary: z.string().default("Unable to generate summary"),
   insights: z.array(z.string()).default([]),
@@ -419,12 +445,10 @@ Provide a JSON response with exactly this structure:
   });
 
   // GET /api/market/top10-today - Get top 10 stocks most likely to gain TODAY
-  // Pure gain prediction based on historical momentum and technical indicators
-  // After hours: uses previous trading day data
+  // Predictions are generated at 7:30 AM ET and cached for the day
+  // Prices are updated with live data during market hours
   app.get("/api/market/top10-today", async (req, res) => {
     try {
-      const marketData = await scanMarket();
-      
       // Check if market is currently open (9:30 AM - 4:00 PM ET, weekdays)
       const now = new Date();
       const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
@@ -433,15 +457,59 @@ Provide a JSON response with exactly this structure:
       const day = etTime.getDay();
       const isWeekend = day === 0 || day === 6;
       const timeInMinutes = hour * 60 + minute;
-      const marketOpen = 9 * 60 + 30; // 9:30 AM
+      const marketOpenTime = 9 * 60 + 30; // 9:30 AM
       const marketClose = 16 * 60; // 4:00 PM
-      const isMarketOpen = !isWeekend && timeInMinutes >= marketOpen && timeInMinutes < marketClose;
+      const isMarketOpen = !isWeekend && timeInMinutes >= marketOpenTime && timeInMinutes < marketClose;
+      
+      // Determine if we're in after-hours (4 PM - 8 PM ET) or pre-market (4 AM - 9:30 AM ET)
+      const isAfterHours = !isWeekend && timeInMinutes >= marketClose && timeInMinutes < 20 * 60; // 4 PM - 8 PM
+      const isPreMarket = !isWeekend && timeInMinutes >= 4 * 60 && timeInMinutes < marketOpenTime; // 4 AM - 9:30 AM
+      
+      // Check for force refresh query param (for scheduler use)
+      const forceRefresh = req.query.refresh === 'true';
+      
+      // Use cached predictions if available for today (but refresh prices)
+      if (isCacheValid() && !forceRefresh && dailyPredictionsCache) {
+        // Re-fetch current prices to update closePrice with live data
+        const marketData = await scanMarket();
+        const updatedPicks = await Promise.all(dailyPredictionsCache.picks.map(async (pick: any) => {
+          const stock = marketData.find((s: any) => s.ticker === pick.ticker);
+          if (stock) {
+            // Get latest chart data for accurate close price
+            const chartData = await getChartData(pick.ticker, "1m");
+            const chartClose = chartData.length > 0 ? chartData[chartData.length - 1].close : pick.closePrice;
+            return {
+              ...pick,
+              price: stock.price, // Current live price
+              openPrice: stock.openPrice || pick.openPrice, // Today's open
+              closePrice: isMarketOpen ? stock.price : chartClose, // During market: live price, after: last close
+              prevClose: stock.prevClose || pick.prevClose
+            };
+          }
+          return pick;
+        }));
+        
+        return res.json({
+          success: true,
+          data: {
+            ...dailyPredictionsCache,
+            picks: updatedPicks,
+            marketOpen: isMarketOpen,
+            isAfterHours,
+            isPreMarket,
+            dataSource: isMarketOpen ? "live" : "previous_close"
+          }
+        });
+      }
+      
+      const marketData = await scanMarket();
       
       interface StockPrediction {
         ticker: string;
         price: number;
         openPrice: number;
         prevClose: number;
+        closePrice: number;
         predictedGain: number;
         confidence: number;
         reasoning: string;
@@ -555,12 +623,15 @@ Provide a JSON response with exactly this structure:
             // Use calendar day open/close prices (now guaranteed from StockData)
             const todayOpen = stock.openPrice;
             const yesterdayClose = stock.prevClose;
+            // Close price: during market hours use current price, after hours use last chart close
+            const todayClose = isMarketOpen ? priceToUse : prices[prices.length - 1];
             
             predictions.push({
               ticker: stock.ticker,
               price: priceToUse,
               openPrice: todayOpen,
               prevClose: yesterdayClose,
+              closePrice: todayClose,
               predictedGain: parseFloat(Math.max(0.1, predictedGain).toFixed(2)),
               confidence: Math.round(confidence),
               reasoning: reasons.slice(0, 3).join(", "),
@@ -577,11 +648,12 @@ Provide a JSON response with exactly this structure:
       const top10 = predictions
         .sort((a, b) => b.score - a.score)
         .slice(0, 10)
-        .map(({ ticker, price, openPrice, prevClose, predictedGain, confidence, reasoning }) => ({
+        .map(({ ticker, price, openPrice, prevClose, closePrice, predictedGain, confidence, reasoning }) => ({
           ticker,
           price,
           openPrice,
           prevClose,
+          closePrice,
           predictedGain,
           confidence,
           reasoning
@@ -597,13 +669,27 @@ Provide a JSON response with exactly this structure:
         }
       }
       
+      // Cache the predictions for the day
+      dailyPredictionsCache = {
+        date: getETDateString(),
+        generatedAt: new Date().toISOString(),
+        picks: top10,
+        marketOpen: isMarketOpen,
+        isAfterHours: isAfterHours,
+        isPreMarket: isPreMarket
+      };
+      
+      console.log(`Generated ${top10.length} predictions for ${getETDateString()}`);
+      
       res.json({
         success: true,
         data: {
           picks: top10,
-          generatedAt: new Date().toISOString(),
+          generatedAt: dailyPredictionsCache.generatedAt,
           date: predictionDate,
           marketOpen: isMarketOpen,
+          isAfterHours: isAfterHours,
+          isPreMarket: isPreMarket,
           dataSource: isMarketOpen ? "live" : "previous_close"
         }
       });
