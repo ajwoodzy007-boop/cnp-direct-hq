@@ -357,5 +357,37 @@ Provide a JSON response with exactly this structure:
     }
   });
 
+  // GET /api/go/:ticker - Affiliate redirect with click tracking
+  app.get("/api/go/:ticker", async (req, res) => {
+    try {
+      const { ticker } = req.params;
+      const destination = `https://finance.yahoo.com/quote/${ticker.toUpperCase()}`;
+      
+      await storage.logAffiliateClick({
+        ticker: ticker.toUpperCase(),
+        destination,
+        referrer: req.get('referer') || null,
+        userAgent: req.get('user-agent') || null,
+      });
+      
+      res.redirect(destination);
+    } catch (error) {
+      console.error("Affiliate redirect error:", error);
+      // Still redirect even if logging fails
+      res.redirect(`https://finance.yahoo.com/quote/${req.params.ticker.toUpperCase()}`);
+    }
+  });
+
+  // GET /api/affiliate/stats - Get click statistics
+  app.get("/api/affiliate/stats", async (req, res) => {
+    try {
+      const stats = await storage.getAffiliateClickStats();
+      res.json({ success: true, data: stats });
+    } catch (error) {
+      console.error("Affiliate stats error:", error);
+      res.status(500).json({ success: false, error: "Failed to get affiliate stats", data: [] });
+    }
+  });
+
   return httpServer;
 }

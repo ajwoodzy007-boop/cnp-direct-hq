@@ -979,7 +979,7 @@ export default function Home() {
                   <tr key={row.ticker} className="hover:bg-muted/30 transition-colors" data-testid={`row-gainer-${row.ticker}`}>
                     <td className="px-4 py-2 font-bold">
                       <a 
-                        href={`https://finance.yahoo.com/quote/${row.ticker}`} 
+                        href={`/api/go/${row.ticker}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
@@ -1059,7 +1059,7 @@ export default function Home() {
                   <tr key={row.ticker} className="hover:bg-muted/30 transition-colors" data-testid={`row-loser-${row.ticker}`}>
                     <td className="px-4 py-2 font-bold">
                       <a 
-                        href={`https://finance.yahoo.com/quote/${row.ticker}`} 
+                        href={`/api/go/${row.ticker}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
