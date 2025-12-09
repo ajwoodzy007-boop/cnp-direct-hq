@@ -25,11 +25,11 @@ const SALES_DATA = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 const DATAFRAME_DATA = [
-  { id: 101, product: "Neural Chip A1", region: "North America", status: "Active", stock: 1240 },
-  { id: 102, product: "Quantum Core V2", region: "Europe", status: "Low Stock", stock: 85 },
-  { id: 103, product: "Synth Optic", region: "Asia Pacific", status: "Active", stock: 4300 },
-  { id: 104, product: "Bio-Link Interface", region: "North America", status: "Backorder", stock: 0 },
-  { id: 105, product: "Holo-Projector", region: "Europe", status: "Active", stock: 890 },
+  { id: 101, asset: "BTC/USD", signal: "Strong Buy", sentiment: "Bullish", volume: "1.2B" },
+  { id: 102, asset: "ETH/USD", signal: "Buy", sentiment: "Bullish", volume: "850M" },
+  { id: 103, asset: "SOL/USD", signal: "Hold", sentiment: "Neutral", volume: "430M" },
+  { id: 104, asset: "XRP/USD", signal: "Sell", sentiment: "Bearish", volume: "210M" },
+  { id: 105, asset: "ADA/USD", signal: "Strong Sell", sentiment: "Bearish", volume: "89M" },
 ];
 
 export default function Home() {
@@ -105,32 +105,32 @@ export default function Home() {
         </div>
       </div>
 
-      <StTitle>Sales Performance Dashboard</StTitle>
+      <StTitle>Pro Trader Dashboard</StTitle>
       
       <StText>
-        This interactive dashboard visualizes sales performance across different regions. 
-        Use the sidebar controls to filter data and adjust visualization parameters. 
-        Built with <code className="bg-muted px-1 py-0.5 rounded font-mono text-sm">replit-design-engine</code> mimicking the Streamlit aesthetic.
+        Real-time market analysis and portfolio performance tracking.
+        Use the sidebar controls to filter assets and adjust risk parameters. 
+        Built with <code className="bg-muted px-1 py-0.5 rounded font-mono text-sm">replit-design-engine</code> for professional traders.
       </StText>
 
       {/* Metrics Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 my-8">
         <StMetric 
-          label="Total Revenue" 
+          label="Portfolio Value" 
           value={`$${(filteredData.reduce((a, b) => a + b.revenue, 0)).toLocaleString()}`} 
           delta="+12.5%" 
           deltaType="positive" 
         />
         <StMetric 
-          label="Net Profit" 
+          label="Daily P&L" 
           value={`$${(filteredData.reduce((a, b) => a + b.profit, 0)).toLocaleString()}`} 
           delta="-2.4%" 
           deltaType="negative" 
         />
         <StMetric 
-          label="Active Customers" 
-          value="1,240" 
-          delta="+8.1%" 
+          label="Open Positions" 
+          value="12" 
+          delta="+2" 
           deltaType="positive" 
         />
       </div>
@@ -200,7 +200,7 @@ export default function Home() {
       
       <StDataFrame 
         data={DATAFRAME_DATA} 
-        columns={["product", "region", "status", "stock"]} 
+        columns={["asset", "signal", "sentiment", "volume"]} 
       />
 
       {/* Code Toggle Section */}
