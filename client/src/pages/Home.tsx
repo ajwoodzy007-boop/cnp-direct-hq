@@ -9,7 +9,7 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3 } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -61,6 +61,12 @@ interface WatchlistItem {
   id: string;
   ticker: string;
   addedAt: string;
+}
+
+interface AIPlaybook {
+  summary: string;
+  insights: string[];
+  recommendation: string;
 }
 
 // API calls
@@ -138,6 +144,17 @@ async function removeFromWatchlist(ticker: string): Promise<void> {
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
+}
+
+async function generateAIPlaybook(marketSummary?: string): Promise<AIPlaybook> {
+  const res = await fetch("/api/ai/playbook", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ marketSummary }),
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
 }
 
 export default function Home() {
@@ -245,6 +262,16 @@ export default function Home() {
       };
     });
   }, [watchlistData, marketData]);
+
+  // AI Playbook mutation
+  const aiPlaybookMutation = useMutation({
+    mutationFn: generateAIPlaybook,
+    onError: (error) => {
+      toast.error("Failed to generate AI insights", {
+        description: error instanceof Error ? error.message : "Please try again",
+      });
+    },
+  });
 
   // Handler to log a prediction from a stock row
   const handleLogPrediction = (stock: StockData, signalType: string) => {
@@ -640,6 +667,65 @@ export default function Home() {
             ))
           )}
         </div>
+      </div>
+
+      {/* AI Playbook */}
+      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
+        <h4 className="font-semibold text-foreground flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-yellow-500" />
+          AI Playbook
+        </h4>
+        
+        <Button
+          size="sm"
+          className="w-full"
+          onClick={() => aiPlaybookMutation.mutate()}
+          disabled={aiPlaybookMutation.isPending}
+          data-testid="button-generate-insights"
+        >
+          {aiPlaybookMutation.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+              Analyzing...
+            </>
+          ) : (
+            <>
+              <Sparkles className="mr-2 h-3 w-3" />
+              Generate Insights
+            </>
+          )}
+        </Button>
+
+        {aiPlaybookMutation.data && (
+          <div className="space-y-3 pt-2">
+            <div className="bg-primary/5 rounded p-3">
+              <p className="text-xs leading-relaxed">{aiPlaybookMutation.data.summary}</p>
+            </div>
+            
+            {aiPlaybookMutation.data.insights.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Key Insights</p>
+                {aiPlaybookMutation.data.insights.map((insight, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <Lightbulb className="h-3 w-3 mt-0.5 text-yellow-500 flex-shrink-0" />
+                    <span>{insight}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="bg-green-500/10 rounded p-3 border-l-2 border-green-500">
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Recommendation</p>
+              <p className="text-xs text-green-700 dark:text-green-400">{aiPlaybookMutation.data.recommendation}</p>
+            </div>
+          </div>
+        )}
+
+        {!aiPlaybookMutation.data && !aiPlaybookMutation.isPending && (
+          <p className="text-xs text-muted-foreground text-center py-2">
+            Click above to get AI-powered trading insights based on your performance.
+          </p>
+        )}
       </div>
 
       {/* Prediction History */}
