@@ -180,6 +180,15 @@ async function fetchRecommendations(): Promise<RecommendationsData> {
   return json.data;
 }
 
+async function seedHistoricalPredictions(): Promise<{ message: string; data: Prediction[] }> {
+  const res = await fetch("/api/predictions/seed-historical", {
+    method: "POST",
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json;
+}
+
 export default function Home() {
   const queryClient = useQueryClient();
   const [selectedTicker, setSelectedTicker] = useState<string>("NVDA");

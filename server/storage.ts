@@ -1,7 +1,7 @@
-import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick, type WeeklyRecommendation, type InsertWeeklyRecommendation } from "@shared/schema";
+import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick, type WeeklyRecommendation, type InsertWeeklyRecommendation, predictions } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { sql } from "drizzle-orm";
+import { sql, eq } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -57,37 +57,50 @@ export class MemStorage implements IStorage {
   }
 
   async createPrediction(insertPrediction: InsertPrediction): Promise<Prediction> {
-    const id = randomUUID();
-    const prediction: Prediction = {
-      ...insertPrediction,
-      id,
-      predictionDate: new Date(),
-      outcome: null,
-      outcomePrice: null,
-      outcomeDate: null,
-    };
-    this.predictions.set(id, prediction);
-    return prediction;
+    const result = await db.insert(predictions).values({
+      ticker: insertPrediction.ticker,
+      signalType: insertPrediction.signalType,
+      entryPrice: insertPrediction.entryPrice,
+    }).returning();
+    return result[0];
+  }
+
+  async createHistoricalPrediction(data: {
+    ticker: string;
+    signalType: string;
+    entryPrice: number;
+    predictionDate: Date;
+    outcome: string;
+    outcomePrice: number;
+    outcomeDate: Date;
+  }): Promise<Prediction> {
+    const result = await db.insert(predictions).values({
+      ticker: data.ticker,
+      signalType: data.signalType,
+      entryPrice: data.entryPrice,
+      predictionDate: data.predictionDate,
+      outcome: data.outcome,
+      outcomePrice: data.outcomePrice,
+      outcomeDate: data.outcomeDate,
+    }).returning();
+    return result[0];
+  }
+
+  async clearAllPredictions(): Promise<void> {
+    await db.delete(predictions);
   }
 
   async getPredictions(): Promise<Prediction[]> {
-    return Array.from(this.predictions.values()).sort(
-      (a, b) => new Date(b.predictionDate).getTime() - new Date(a.predictionDate).getTime()
-    );
+    const result = await db.select().from(predictions).orderBy(sql`prediction_date DESC`);
+    return result;
   }
 
   async updatePredictionOutcome(id: string, outcome: string, outcomePrice: number): Promise<Prediction | undefined> {
-    const prediction = this.predictions.get(id);
-    if (!prediction) return undefined;
-    
-    const updated: Prediction = {
-      ...prediction,
-      outcome,
-      outcomePrice,
-      outcomeDate: new Date(),
-    };
-    this.predictions.set(id, updated);
-    return updated;
+    const result = await db.update(predictions)
+      .set({ outcome, outcomePrice, outcomeDate: new Date() })
+      .where(eq(predictions.id, id))
+      .returning();
+    return result[0];
   }
 
   async getWatchlist(): Promise<WatchlistItem[]> {
