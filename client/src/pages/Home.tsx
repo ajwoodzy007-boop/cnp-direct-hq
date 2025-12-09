@@ -198,7 +198,16 @@ export default function Home() {
               <tbody className="divide-y divide-border font-mono">
                 {gainers.map((row) => (
                   <tr key={row.ticker} className="hover:bg-muted/30 transition-colors" data-testid={`row-gainer-${row.ticker}`}>
-                    <td className="px-4 py-2 font-bold">{row.ticker}</td>
+                    <td className="px-4 py-2 font-bold">
+                      <a 
+                        href={`https://finance.yahoo.com/quote/${row.ticker}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {row.ticker}
+                      </a>
+                    </td>
                     <td className="px-4 py-2" data-testid={`text-price-${row.ticker}`}>${row.price.toFixed(2)}</td>
                     <td className="px-4 py-2 text-green-600 dark:text-green-400">+{row.changePercent.toFixed(2)}%</td>
                     <td className="px-4 py-2">
@@ -251,7 +260,16 @@ export default function Home() {
               <tbody className="divide-y divide-border font-mono">
                 {losers.map((row) => (
                   <tr key={row.ticker} className="hover:bg-muted/30 transition-colors" data-testid={`row-loser-${row.ticker}`}>
-                    <td className="px-4 py-2 font-bold">{row.ticker}</td>
+                    <td className="px-4 py-2 font-bold">
+                      <a 
+                        href={`https://finance.yahoo.com/quote/${row.ticker}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        {row.ticker}
+                      </a>
+                    </td>
                     <td className="px-4 py-2">${row.price.toFixed(2)}</td>
                     <td className="px-4 py-2 text-red-600 dark:text-red-400">{row.changePercent.toFixed(2)}%</td>
                     <td className="px-4 py-2">{row.rvol.toFixed(1)}x</td>
