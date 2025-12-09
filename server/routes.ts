@@ -420,9 +420,22 @@ Provide a JSON response with exactly this structure:
 
   // GET /api/market/top10-today - Get top 10 stocks most likely to gain TODAY
   // Pure gain prediction based on historical momentum and technical indicators
+  // After hours: uses previous trading day data
   app.get("/api/market/top10-today", async (req, res) => {
     try {
       const marketData = await scanMarket();
+      
+      // Check if market is currently open (9:30 AM - 4:00 PM ET, weekdays)
+      const now = new Date();
+      const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+      const hour = etTime.getHours();
+      const minute = etTime.getMinutes();
+      const day = etTime.getDay();
+      const isWeekend = day === 0 || day === 6;
+      const timeInMinutes = hour * 60 + minute;
+      const marketOpen = 9 * 60 + 30; // 9:30 AM
+      const marketClose = 16 * 60; // 4:00 PM
+      const isMarketOpen = !isWeekend && timeInMinutes >= marketOpen && timeInMinutes < marketClose;
       
       interface StockPrediction {
         ticker: string;
@@ -441,7 +454,9 @@ Provide a JSON response with exactly this structure:
           if (chartData.length < 10) continue;
           
           const prices = chartData.map(d => d.close);
-          const latestPrice = prices[prices.length - 1];
+          // Use last chart close price for after-hours, otherwise use live price
+          const latestPrice = isMarketOpen ? stock.price : prices[prices.length - 1];
+          const priceToUse = latestPrice;
           
           // Calculate daily returns for past 20 days
           const dailyReturns: number[] = [];
@@ -537,7 +552,7 @@ Provide a JSON response with exactly this structure:
             
             predictions.push({
               ticker: stock.ticker,
-              price: stock.price,
+              price: priceToUse,
               predictedGain: parseFloat(Math.max(0.1, predictedGain).toFixed(2)),
               confidence: Math.round(confidence),
               reasoning: reasons.slice(0, 3).join(", "),
@@ -562,12 +577,24 @@ Provide a JSON response with exactly this structure:
           reasoning
         }));
       
+      // Get the date to use - for after hours, use previous trading day
+      let predictionDate = new Date().toISOString().split('T')[0];
+      if (!isMarketOpen) {
+        // Use the last available chart data date as the prediction reference
+        const chartSample = await getChartData("NVDA", "1m");
+        if (chartSample.length > 0) {
+          predictionDate = chartSample[chartSample.length - 1].date;
+        }
+      }
+      
       res.json({
         success: true,
         data: {
           picks: top10,
           generatedAt: new Date().toISOString(),
-          date: new Date().toISOString().split('T')[0]
+          date: predictionDate,
+          marketOpen: isMarketOpen,
+          dataSource: isMarketOpen ? "live" : "previous_close"
         }
       });
     } catch (error) {

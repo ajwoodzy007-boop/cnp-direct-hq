@@ -192,6 +192,8 @@ interface Top10TodayData {
   picks: Top10Pick[];
   generatedAt: string;
   date: string;
+  marketOpen?: boolean;
+  dataSource?: "live" | "previous_close";
 }
 
 async function fetchTop10Today(): Promise<Top10TodayData> {
@@ -704,6 +706,21 @@ export default function Home() {
           <TrendingUp className="h-4 w-4" />
           Today's Top 10 Predictions
         </h4>
+        
+        {/* Market Status Indicator */}
+        {top10TodayData && (
+          <div className="flex items-center gap-2 text-xs">
+            <Badge 
+              variant="outline" 
+              className={top10TodayData.marketOpen ? "text-green-600 border-green-600" : "text-yellow-600 border-yellow-600"}
+            >
+              {top10TodayData.marketOpen ? "🟢 Market Open" : "🌙 After Hours"}
+            </Badge>
+            {!top10TodayData.marketOpen && (
+              <span className="text-muted-foreground">Using {top10TodayData.date} close</span>
+            )}
+          </div>
+        )}
         
         {/* Daily Win/Loss Stats */}
         <div className="grid grid-cols-3 gap-2">
@@ -1606,6 +1623,14 @@ export default function Home() {
               {top10TodayData?.date && (
                 <Badge variant="outline" className="text-xs font-normal">
                   {new Date(top10TodayData.date).toLocaleDateString()}
+                </Badge>
+              )}
+              {top10TodayData && (
+                <Badge 
+                  variant="outline" 
+                  className={`text-xs font-normal ${top10TodayData.marketOpen ? "text-green-600 border-green-600" : "text-yellow-600 border-yellow-600"}`}
+                >
+                  {top10TodayData.marketOpen ? "🟢 Live" : "🌙 Previous Close"}
                 </Badge>
               )}
             </DialogTitle>
