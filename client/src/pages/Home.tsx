@@ -518,11 +518,19 @@ export default function Home() {
                 size="sm"
                 className="h-7 text-[10px] px-2"
                 onClick={() => {
-                  handleLogPrediction(stock, "Top Gainer");
-                  toast.success(`Added ${stock.ticker}`, {
-                    description: `Top Gainer at $${stock.price.toFixed(2)} (+${stock.changePercent.toFixed(1)}%)`,
+                  createPredictionMutation.mutate({
+                    ticker: stock.ticker,
+                    signalType: "Top Gainer",
+                    entryPrice: stock.price,
+                  }, {
+                    onSuccess: () => {
+                      toast.success(`Added ${stock.ticker}`, {
+                        description: `Top Gainer at $${stock.price.toFixed(2)} (+${stock.changePercent.toFixed(1)}%)`,
+                      });
+                    }
                   });
                 }}
+                disabled={createPredictionMutation.isPending}
                 data-testid={`quick-add-${stock.ticker}`}
               >
                 {stock.ticker} <span className="text-green-600 ml-1">+{stock.changePercent.toFixed(1)}%</span>
