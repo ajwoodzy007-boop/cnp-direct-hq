@@ -9,11 +9,13 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, Calculator, Copy, Check } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 
 // Types matching backend response
@@ -67,6 +69,53 @@ async function fetchNews(ticker: string): Promise<NewsItem[]> {
 
 export default function Home() {
   const [selectedTicker, setSelectedTicker] = useState<string>("NVDA");
+  
+  // Risk Calculator State
+  const [entryPrice, setEntryPrice] = useState<string>("");
+  const [stopLoss, setStopLoss] = useState<string>("");
+  const [targetPrice, setTargetPrice] = useState<string>("");
+  const [accountSize, setAccountSize] = useState<string>("10000");
+  const [riskPercent, setRiskPercent] = useState<string>("2");
+  const [copied, setCopied] = useState(false);
+
+  // Risk Calculator Calculations
+  const riskCalc = useMemo(() => {
+    const entry = parseFloat(entryPrice);
+    const stop = parseFloat(stopLoss);
+    const target = parseFloat(targetPrice);
+    const account = parseFloat(accountSize);
+    const riskPct = parseFloat(riskPercent);
+
+    if (isNaN(entry) || isNaN(stop) || isNaN(target) || entry <= 0) {
+      return null;
+    }
+
+    const riskPerShare = Math.abs(entry - stop);
+    const rewardPerShare = Math.abs(target - entry);
+    const riskRewardRatio = riskPerShare > 0 ? rewardPerShare / riskPerShare : 0;
+    const maxRiskAmount = (account * riskPct) / 100;
+    const positionSize = riskPerShare > 0 ? Math.floor(maxRiskAmount / riskPerShare) : 0;
+    const totalCost = positionSize * entry;
+    const potentialLoss = positionSize * riskPerShare;
+    const potentialGain = positionSize * rewardPerShare;
+
+    return {
+      riskRewardRatio: riskRewardRatio.toFixed(2),
+      positionSize,
+      totalCost: totalCost.toFixed(2),
+      potentialLoss: potentialLoss.toFixed(2),
+      potentialGain: potentialGain.toFixed(2),
+      riskPerShare: riskPerShare.toFixed(2),
+    };
+  }, [entryPrice, stopLoss, targetPrice, accountSize, riskPercent]);
+
+  const copyToClipboard = () => {
+    if (!riskCalc) return;
+    const text = `Entry: $${entryPrice} | Stop: $${stopLoss} | Target: $${targetPrice}\nShares: ${riskCalc.positionSize} | R:R ${riskCalc.riskRewardRatio}\nRisk: $${riskCalc.potentialLoss} | Reward: $${riskCalc.potentialGain}`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Fetch market data with React Query
   const { data: marketData = [], isLoading, refetch } = useQuery({
@@ -179,6 +228,115 @@ export default function Home() {
             <p className="text-xs text-muted-foreground">Low RSI ({'<'}30) + Bullish News</p>
           </div>
         </div>
+      </div>
+
+      {/* Risk Calculator */}
+      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-4">
+        <h4 className="font-semibold text-foreground flex items-center gap-2">
+          <Calculator className="h-4 w-4" />
+          Risk Calculator
+        </h4>
+        
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Entry Price</Label>
+            <Input
+              type="number"
+              placeholder="100.00"
+              value={entryPrice}
+              onChange={(e) => setEntryPrice(e.target.value)}
+              className="h-8 text-sm"
+              data-testid="input-entry-price"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Stop Loss</Label>
+            <Input
+              type="number"
+              placeholder="95.00"
+              value={stopLoss}
+              onChange={(e) => setStopLoss(e.target.value)}
+              className="h-8 text-sm"
+              data-testid="input-stop-loss"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Target Price</Label>
+            <Input
+              type="number"
+              placeholder="115.00"
+              value={targetPrice}
+              onChange={(e) => setTargetPrice(e.target.value)}
+              className="h-8 text-sm"
+              data-testid="input-target-price"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Account Size</Label>
+            <Input
+              type="number"
+              placeholder="10000"
+              value={accountSize}
+              onChange={(e) => setAccountSize(e.target.value)}
+              className="h-8 text-sm"
+              data-testid="input-account-size"
+            />
+          </div>
+          <div className="col-span-2 space-y-1">
+            <Label className="text-xs text-muted-foreground">Risk % per Trade</Label>
+            <Input
+              type="number"
+              placeholder="2"
+              value={riskPercent}
+              onChange={(e) => setRiskPercent(e.target.value)}
+              className="h-8 text-sm"
+              data-testid="input-risk-percent"
+            />
+          </div>
+        </div>
+
+        {riskCalc && (
+          <div className="pt-3 border-t border-border space-y-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Risk:Reward</span>
+              <span className={`font-bold ${parseFloat(riskCalc.riskRewardRatio) >= 2 ? 'text-green-600 dark:text-green-400' : parseFloat(riskCalc.riskRewardRatio) >= 1 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>
+                1:{riskCalc.riskRewardRatio}
+              </span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Position Size</span>
+              <span className="font-mono font-medium">{riskCalc.positionSize} shares</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Total Cost</span>
+              <span className="font-mono">${riskCalc.totalCost}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Potential Loss</span>
+              <span className="font-mono text-red-600 dark:text-red-400">-${riskCalc.potentialLoss}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">Potential Gain</span>
+              <span className="font-mono text-green-600 dark:text-green-400">+${riskCalc.potentialGain}</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full mt-2"
+              onClick={copyToClipboard}
+              data-testid="button-copy-trade"
+            >
+              {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
+              {copied ? "Copied!" : "Copy Trade Plan"}
+            </Button>
+          </div>
+        )}
+
+        {!riskCalc && entryPrice && (
+          <p className="text-xs text-muted-foreground text-center py-2">
+            Enter all values to see calculations
+          </p>
+        )}
       </div>
     </div>
   );
