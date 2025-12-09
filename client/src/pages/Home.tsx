@@ -13,6 +13,7 @@ import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDo
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AdBanner, AdSidebar } from "@/components/AdBanner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -930,6 +931,9 @@ export default function Home() {
           </Button>
         </Link>
       </div>
+
+      {/* Sidebar Advertisement */}
+      <AdSidebar />
     </div>
   );
 
@@ -1015,6 +1019,11 @@ export default function Home() {
             </table>
           </div>
         </div>
+      </div>
+
+      {/* Inline Advertisement */}
+      <div className="my-6">
+        <AdBanner size="inline" />
       </div>
 
       {/* --- LOSERS SECTION --- */}
