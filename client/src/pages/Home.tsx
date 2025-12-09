@@ -160,6 +160,26 @@ async function generateAIPlaybook(marketSummary?: string): Promise<AIPlaybook> {
   return json.data;
 }
 
+interface Recommendation {
+  ticker: string;
+  price: number;
+  signal: string;
+  reasoning: string;
+}
+
+interface RecommendationsData {
+  buys: Recommendation[];
+  sells: Recommendation[];
+  generatedAt: string;
+}
+
+async function fetchRecommendations(): Promise<RecommendationsData> {
+  const res = await fetch("/api/market/recommendations");
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
 export default function Home() {
   const queryClient = useQueryClient();
   const [selectedTicker, setSelectedTicker] = useState<string>("NVDA");
@@ -333,6 +353,13 @@ export default function Home() {
         description: error instanceof Error ? error.message : "Please try again",
       });
     },
+  });
+
+  // Fetch weekly recommendations
+  const { data: recommendationsData } = useQuery({
+    queryKey: ["recommendations"],
+    queryFn: fetchRecommendations,
+    refetchInterval: 5 * 60 * 1000,
   });
 
   // Handler to log a prediction from a stock row
@@ -654,7 +681,11 @@ export default function Home() {
         <div className="pt-2 border-t border-border">
           <p className="text-xs text-muted-foreground mb-2">Recent Predictions</p>
           <div className="space-y-2">
-            {predictionsData.slice(0, 5).map((pred) => (
+            {predictionsData.slice(0, 5).map((pred) => {
+              const plPercent = pred.outcomePrice && pred.entryPrice 
+                ? ((pred.outcomePrice - pred.entryPrice) / pred.entryPrice) * 100 
+                : null;
+              return (
               <div 
                 key={pred.id} 
                 className="flex items-center justify-between text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50 transition-colors" 
@@ -673,6 +704,11 @@ export default function Home() {
                 <div className="flex items-center gap-1">
                   {pred.outcome ? (
                     <>
+                      {plPercent !== null && (
+                        <span className={`text-[10px] font-medium ${plPercent >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {plPercent >= 0 ? "+" : ""}{plPercent.toFixed(1)}%
+                        </span>
+                      )}
                       <Badge className={`text-[10px] ${pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}`}>
                         {pred.outcome.toUpperCase()}
                       </Badge>
@@ -693,7 +729,8 @@ export default function Home() {
                   <ChevronRight className="h-3 w-3 text-muted-foreground" />
                 </div>
               </div>
-            ))}
+              );
+            })}
             {predictionsData.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">
                 No predictions yet. Buy signals are auto-logged!
@@ -1322,6 +1359,118 @@ export default function Home() {
         )}
       </div>
 
+      {/* --- WEEKLY TOP 5 PICKS SECTION --- */}
+      <div className="mt-12 border-t border-border pt-8">
+        <StHeader>🎯 Weekly Top 5 Picks</StHeader>
+        <p className="text-muted-foreground text-sm mb-6">AI-generated buy and sell recommendations based on technical indicators</p>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Top 5 Buys */}
+          <Card className="border-green-500/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                Top Buy Opportunities
+                <Badge variant="outline" className="text-green-600 border-green-600 ml-auto text-xs">
+                  Oversold
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!recommendationsData?.buys?.length ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No buy signals detected currently</p>
+              ) : (
+                <div className="space-y-3">
+                  {recommendationsData.buys.map((rec, idx) => (
+                    <div 
+                      key={rec.ticker} 
+                      className="flex items-center justify-between p-3 rounded-lg bg-green-500/5 border border-green-500/20 hover:bg-green-500/10 transition-colors cursor-pointer"
+                      onClick={() => setSelectedTicker(rec.ticker)}
+                      data-testid={`rec-buy-${rec.ticker}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg font-bold text-green-600">#{idx + 1}</span>
+                        <div>
+                          <a 
+                            href={`/api/go/${rec.ticker}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="font-bold text-green-600 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {rec.ticker}
+                          </a>
+                          <p className="text-xs text-muted-foreground">{rec.reasoning}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">${rec.price.toFixed(2)}</p>
+                        <Badge className="bg-green-600 text-xs">BUY</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Top 5 Sells */}
+          <Card className="border-red-500/20">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <TrendingDown className="h-4 w-4 text-red-600" />
+                Sell Warnings
+                <Badge variant="outline" className="text-red-600 border-red-600 ml-auto text-xs">
+                  Overbought
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!recommendationsData?.sells?.length ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No sell warnings detected currently</p>
+              ) : (
+                <div className="space-y-3">
+                  {recommendationsData.sells.map((rec, idx) => (
+                    <div 
+                      key={rec.ticker} 
+                      className="flex items-center justify-between p-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors cursor-pointer"
+                      onClick={() => setSelectedTicker(rec.ticker)}
+                      data-testid={`rec-sell-${rec.ticker}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg font-bold text-red-600">#{idx + 1}</span>
+                        <div>
+                          <a 
+                            href={`/api/go/${rec.ticker}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="font-bold text-red-600 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {rec.ticker}
+                          </a>
+                          <p className="text-xs text-muted-foreground">{rec.reasoning}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium">${rec.price.toFixed(2)}</p>
+                        <Badge className="bg-red-600 text-xs">SELL</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        
+        {recommendationsData?.generatedAt && (
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            Last updated: {new Date(recommendationsData.generatedAt).toLocaleString()}
+          </p>
+        )}
+      </div>
+
       {/* --- DEEP DIVE SECTION --- */}
       <div className="mt-12 border-t border-border pt-8">
         <StHeader>🔍 Deep Dive</StHeader>
@@ -1667,13 +1816,18 @@ export default function Home() {
                   <th className="px-3 py-2 text-left font-medium">Signal</th>
                   <th className="px-3 py-2 text-left font-medium">Entry</th>
                   <th className="px-3 py-2 text-left font-medium">Exit</th>
+                  <th className="px-3 py-2 text-left font-medium">P/L %</th>
                   <th className="px-3 py-2 text-left font-medium">Outcome</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {predictionsData
                   .filter((pred) => historyFilter === "all" ? true : pred.outcome === historyFilter)
-                  .map((pred) => (
+                  .map((pred) => {
+                    const plPercent = pred.outcomePrice && pred.entryPrice 
+                      ? ((pred.outcomePrice - pred.entryPrice) / pred.entryPrice) * 100 
+                      : null;
+                    return (
                   <tr 
                     key={pred.id} 
                     className="hover:bg-muted/30 cursor-pointer"
@@ -1693,6 +1847,15 @@ export default function Home() {
                     <td className="px-3 py-2">${pred.entryPrice.toFixed(2)}</td>
                     <td className="px-3 py-2">
                       {pred.outcomePrice ? `$${pred.outcomePrice.toFixed(2)}` : "-"}
+                    </td>
+                    <td className="px-3 py-2">
+                      {plPercent !== null ? (
+                        <span className={`font-medium ${plPercent >= 0 ? "text-green-600" : "text-red-600"}`}>
+                          {plPercent >= 0 ? "+" : ""}{plPercent.toFixed(2)}%
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
@@ -1718,7 +1881,8 @@ export default function Home() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                    );
+                  })}
               </tbody>
             </table>
           </div>
