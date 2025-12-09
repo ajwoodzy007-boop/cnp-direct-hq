@@ -358,13 +358,28 @@ Provide a JSON response with exactly this structure:
   });
 
   // GET /api/go/:ticker - Affiliate redirect with click tracking
+  // Configure AFFILIATE_URL in environment to use your affiliate link
+  // Example eToro format: https://www.etoro.com/markets/{ticker}?affiliates=YOUR_AFFILIATE_ID
+  // Default: Yahoo Finance for research
   app.get("/api/go/:ticker", async (req, res) => {
     try {
       const { ticker } = req.params;
-      const destination = `https://finance.yahoo.com/quote/${ticker.toUpperCase()}`;
+      const tickerUpper = ticker.toUpperCase();
+      
+      // Build destination URL - use affiliate link if configured, otherwise Yahoo Finance
+      const affiliateBase = process.env.AFFILIATE_URL;
+      let destination: string;
+      
+      if (affiliateBase) {
+        // Replace {ticker} placeholder with actual ticker symbol
+        destination = affiliateBase.replace('{ticker}', tickerUpper);
+      } else {
+        // Default to Yahoo Finance for stock research
+        destination = `https://finance.yahoo.com/quote/${tickerUpper}`;
+      }
       
       await storage.logAffiliateClick({
-        ticker: ticker.toUpperCase(),
+        ticker: tickerUpper,
         destination,
         referrer: req.get('referer') || null,
         userAgent: req.get('user-agent') || null,
@@ -374,7 +389,10 @@ Provide a JSON response with exactly this structure:
     } catch (error) {
       console.error("Affiliate redirect error:", error);
       // Still redirect even if logging fails
-      res.redirect(`https://finance.yahoo.com/quote/${req.params.ticker.toUpperCase()}`);
+      const tickerUpper = req.params.ticker.toUpperCase();
+      const fallback = process.env.AFFILIATE_URL?.replace('{ticker}', tickerUpper) 
+        || `https://finance.yahoo.com/quote/${tickerUpper}`;
+      res.redirect(fallback);
     }
   });
 
