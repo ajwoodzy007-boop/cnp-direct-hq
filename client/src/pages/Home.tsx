@@ -572,23 +572,29 @@ export default function Home() {
     // Get pending predictions that were created today or earlier
     const pendingPredictions = predictionsData.filter(p => !p.outcome && !processedOutcomes.has(p.id));
     
+    // Collect IDs to process to avoid race conditions
+    const idsToProcess: string[] = [];
+    
     pendingPredictions.forEach((prediction) => {
       const currentStock = marketData.find(s => s.ticker === prediction.ticker);
       if (!currentStock) return;
+      
+      // Skip if already being processed
+      if (processedOutcomes.has(prediction.id)) return;
+      
+      idsToProcess.push(prediction.id);
       
       // Determine outcome based on price change
       const outcome = currentStock.price >= prediction.entryPrice ? "win" : "loss";
       const pctChange = ((currentStock.price - prediction.entryPrice) / prediction.entryPrice * 100).toFixed(2);
       
-      // Update outcome - only mark as processed on success
+      // Update outcome
       updateOutcomeMutation.mutate({
         id: prediction.id,
         outcome,
         outcomePrice: currentStock.price,
       }, {
         onSuccess: () => {
-          // Mark as processed only after successful update
-          setProcessedOutcomes(prev => new Set(Array.from(prev).concat(prediction.id)));
           const emoji = outcome === "win" ? "🎉" : "📉";
           toast.info(`${emoji} ${prediction.ticker} marked as ${outcome.toUpperCase()}`, {
             description: `Entry: $${prediction.entryPrice.toFixed(2)} → Close: $${currentStock.price.toFixed(2)} (${pctChange}%)`,
@@ -601,6 +607,15 @@ export default function Home() {
         }
       });
     });
+    
+    // Mark all as processed IMMEDIATELY to prevent re-runs
+    if (idsToProcess.length > 0) {
+      setProcessedOutcomes(prev => {
+        const next = new Set(prev);
+        idsToProcess.forEach(id => next.add(id));
+        return next;
+      });
+    }
   }, [marketData, predictionsData, processedOutcomes, updateOutcomeMutation]);
 
   // Format chart data for Recharts
