@@ -32,7 +32,7 @@ export interface NewsItem {
 // Popular market tickers
 const MARKET_TICKERS = [
   "NVDA", "TSLA", "AAPL", "AMD", "MSFT", "AMZN", "GOOGL", "META", "NFLX", "COIN",
-  "PLTR", "SOFI", "MARA", "RIOT", "DKNG", "UBER", "ABNB", "HOOD", "PYPL", "SQ"
+  "PLTR", "SOFI", "MARA", "RIOT", "DKNG", "UBER", "ABNB", "HOOD", "PYPL", "INTC"
 ];
 
 // Cache for market data
