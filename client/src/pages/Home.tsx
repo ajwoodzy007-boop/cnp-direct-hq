@@ -9,11 +9,12 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 
 // Types matching backend response
 interface StockData {
@@ -187,12 +188,24 @@ export default function Home() {
             <table className="w-full text-sm text-left">
               <thead className="bg-muted/50 text-muted-foreground font-mono uppercase text-xs">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Ticker</th>
-                  <th className="px-4 py-3 font-medium">Price</th>
-                  <th className="px-4 py-3 font-medium">Change %</th>
-                  <th className="px-4 py-3 font-medium">RVol (Hype)</th>
-                  <th className="px-4 py-3 font-medium">RSI (Risk)</th>
-                  <th className="px-4 py-3 font-medium">AI Verdict</th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">Ticker <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Stock symbol used to identify the company</TooltipContent></Tooltip>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">Price <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Current trading price in USD</TooltipContent></Tooltip>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">Change % <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Percentage change from previous close</TooltipContent></Tooltip>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">RVol <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Relative Volume: 1.0 is normal, 3.0+ indicates high interest</TooltipContent></Tooltip>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">RSI <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Relative Strength Index: below 30 = oversold, above 70 = overbought</TooltipContent></Tooltip>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">AI Verdict <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Sentiment analysis based on recent news headlines</TooltipContent></Tooltip>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border font-mono">
@@ -250,11 +263,21 @@ export default function Home() {
             <table className="w-full text-sm text-left">
               <thead className="bg-muted/50 text-muted-foreground font-mono uppercase text-xs">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Ticker</th>
-                  <th className="px-4 py-3 font-medium">Price</th>
-                  <th className="px-4 py-3 font-medium">Change %</th>
-                  <th className="px-4 py-3 font-medium">RVol (Hype)</th>
-                  <th className="px-4 py-3 font-medium">RSI (Risk)</th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">Ticker <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Stock symbol used to identify the company</TooltipContent></Tooltip>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">Price <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Current trading price in USD</TooltipContent></Tooltip>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">Change % <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Percentage change from previous close</TooltipContent></Tooltip>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">RVol <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Relative Volume: 1.0 is normal, 3.0+ indicates high interest</TooltipContent></Tooltip>
+                  </th>
+                  <th className="px-4 py-3 font-medium">
+                    <Tooltip><TooltipTrigger className="flex items-center gap-1 cursor-help">RSI <Info className="h-3 w-3" /></TooltipTrigger><TooltipContent>Relative Strength Index: below 30 = oversold, above 70 = overbought</TooltipContent></Tooltip>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border font-mono">
@@ -339,7 +362,7 @@ export default function Home() {
                         domain={["auto", "auto"]}
                         tickFormatter={(val) => `$${val.toFixed(0)}`}
                       />
-                      <Tooltip
+                      <RechartsTooltip
                         contentStyle={{
                           backgroundColor: "var(--popover)",
                           borderColor: "var(--border)",
