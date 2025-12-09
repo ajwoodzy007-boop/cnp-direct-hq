@@ -67,25 +67,37 @@ function getSentimentLabel(score: number): StockData["sentiment"] {
   return "⚪ NEUTRAL";
 }
 
+// Realistic baseline prices for popular tickers (approximate as of Dec 2024)
+const BASELINE_PRICES: Record<string, number> = {
+  NVDA: 138, TSLA: 352, AAPL: 242, AMD: 137, MSFT: 442,
+  AMZN: 218, GOOGL: 192, META: 617, NFLX: 905, COIN: 312,
+  PLTR: 71, SOFI: 15, MARA: 24, RIOT: 12, DKNG: 42,
+  UBER: 73, ABNB: 134, HOOD: 40, PYPL: 89, INTC: 20
+};
+
 // Mock data generator (fallback when API unavailable)
 function generateMockData(ticker: string): StockData {
+  const basePrice = BASELINE_PRICES[ticker] || 100;
+  const variation = basePrice * 0.02 * (Math.random() - 0.5);
+  const price = basePrice + variation;
+  
   const isGainer = Math.random() > 0.5;
-  const change = (Math.random() * 15) * (isGainer ? 1 : -1);
-  const rsi = Math.floor(Math.random() * 100);
-  const rvol = (Math.random() * 5) + 0.5;
+  const change = (Math.random() * 3) * (isGainer ? 1 : -1);
+  const rsi = 40 + Math.floor(Math.random() * 30);
+  const rvol = 0.8 + (Math.random() * 1.4);
   
   let sentiment: StockData["sentiment"] = "⚪ NEUTRAL";
-  if (change > 5 && rvol > 2) sentiment = "🟢 BULLISH";
-  else if (change < -5) sentiment = "🔴 BEARISH";
+  if (change > 1.5 && rvol > 1.5) sentiment = "🟢 BULLISH";
+  else if (change < -1.5) sentiment = "🔴 BEARISH";
   
   return {
     ticker,
-    price: Math.random() * 1000 + 50,
+    price: parseFloat(price.toFixed(2)),
     changePercent: parseFloat(change.toFixed(2)),
     rvol: parseFloat(rvol.toFixed(1)),
     rsi,
     sentiment,
-    sentimentScore: Math.random() * 2 - 1
+    sentimentScore: parseFloat((Math.random() * 0.6 - 0.3).toFixed(3))
   };
 }
 
