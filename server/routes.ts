@@ -418,6 +418,164 @@ Provide a JSON response with exactly this structure:
     }
   });
 
+  // GET /api/market/top10-today - Get top 10 stocks most likely to gain TODAY
+  // Pure gain prediction based on historical momentum and technical indicators
+  app.get("/api/market/top10-today", async (req, res) => {
+    try {
+      const marketData = await scanMarket();
+      
+      interface StockPrediction {
+        ticker: string;
+        price: number;
+        predictedGain: number;
+        confidence: number;
+        reasoning: string;
+        score: number;
+      }
+      
+      const predictions: StockPrediction[] = [];
+      
+      for (const stock of marketData) {
+        try {
+          const chartData = await getChartData(stock.ticker, "1m");
+          if (chartData.length < 10) continue;
+          
+          const prices = chartData.map(d => d.close);
+          const latestPrice = prices[prices.length - 1];
+          
+          // Calculate daily returns for past 20 days
+          const dailyReturns: number[] = [];
+          for (let i = 1; i < Math.min(prices.length, 21); i++) {
+            dailyReturns.push((prices[prices.length - i] - prices[prices.length - i - 1]) / prices[prices.length - i - 1] * 100);
+          }
+          
+          // Calculate average gain on up days
+          const upDays = dailyReturns.filter(r => r > 0);
+          const avgGain = upDays.length > 0 ? upDays.reduce((a, b) => a + b, 0) / upDays.length : 0;
+          const upDayRatio = upDays.length / Math.max(dailyReturns.length, 1);
+          
+          // RSI calculation
+          let rsi = 50;
+          if (prices.length >= 15) {
+            let gains = 0, losses = 0;
+            for (let i = prices.length - 14; i < prices.length; i++) {
+              const change = prices[i] - prices[i - 1];
+              if (change > 0) gains += change;
+              else losses -= change;
+            }
+            const avgGainRsi = gains / 14;
+            const avgLoss = losses / 14;
+            rsi = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGainRsi / avgLoss));
+          }
+          
+          // Momentum: compare last 3 days to previous 7 days
+          const recent3 = prices.slice(-3);
+          const prev7 = prices.slice(-10, -3);
+          const recentAvg = recent3.reduce((a, b) => a + b, 0) / recent3.length;
+          const prevAvg = prev7.length > 0 ? prev7.reduce((a, b) => a + b, 0) / prev7.length : recentAvg;
+          const momentum = ((recentAvg - prevAvg) / prevAvg) * 100;
+          
+          // Predict today's gain probability
+          // High score = more likely to gain today
+          let score = 0;
+          const reasons: string[] = [];
+          
+          // Oversold bounce potential (RSI < 35)
+          if (rsi < 35) {
+            score += (35 - rsi) * 2;
+            reasons.push(`RSI ${rsi.toFixed(0)} oversold`);
+          }
+          
+          // Positive momentum trend
+          if (momentum > 0) {
+            score += momentum * 3;
+            reasons.push(`+${momentum.toFixed(1)}% momentum`);
+          }
+          
+          // Good up-day ratio (>60% of recent days were up)
+          if (upDayRatio > 0.6) {
+            score += (upDayRatio - 0.5) * 30;
+            reasons.push(`${(upDayRatio * 100).toFixed(0)}% up days`);
+          }
+          
+          // Higher average gains on up days
+          if (avgGain > 1.5) {
+            score += avgGain * 2;
+            reasons.push(`+${avgGain.toFixed(1)}% avg gain`);
+          }
+          
+          // Bullish sentiment boost
+          if (stock.sentiment === "🟢 BULLISH") {
+            score += 15;
+            reasons.push("bullish news");
+          }
+          
+          // Volume spike indicates interest
+          if (stock.rvol > 2) {
+            score += (stock.rvol - 1) * 5;
+            reasons.push(`${stock.rvol.toFixed(1)}x volume`);
+          }
+          
+          // Penalize overbought
+          if (rsi > 70) {
+            score -= (rsi - 70) * 2;
+          }
+          
+          // Calculate predicted gain based on historical pattern
+          // Base prediction on: average up-day gain * probability of up day * momentum factor
+          const momentumFactor = momentum > 0 ? 1 + (momentum / 10) : Math.max(0.5, 1 + (momentum / 20));
+          const predictedGain = avgGain * upDayRatio * momentumFactor;
+          
+          // Only include if positive expected gain AND positive score
+          if (score > 10 && predictedGain > 0.1) {
+            // Normalize confidence: based on up-day ratio (40-95 range)
+            // Higher up-day ratio = higher confidence
+            const baseConfidence = Math.min(95, Math.max(40, upDayRatio * 100));
+            // Boost confidence for strong signals (momentum + volume + sentiment)
+            const signalBoost = Math.min(20, (momentum > 0 ? 5 : 0) + (stock.rvol > 2 ? 5 : 0) + (stock.sentiment === "🟢 BULLISH" ? 10 : 0));
+            const confidence = Math.min(95, baseConfidence + signalBoost);
+            
+            predictions.push({
+              ticker: stock.ticker,
+              price: stock.price,
+              predictedGain: parseFloat(Math.max(0.1, predictedGain).toFixed(2)),
+              confidence: Math.round(confidence),
+              reasoning: reasons.slice(0, 3).join(", "),
+              score
+            });
+          }
+        } catch (error) {
+          // Skip failed stocks
+        }
+        await new Promise(resolve => setTimeout(resolve, 30));
+      }
+      
+      // Sort by score and take top 10
+      const top10 = predictions
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10)
+        .map(({ ticker, price, predictedGain, confidence, reasoning }) => ({
+          ticker,
+          price,
+          predictedGain,
+          confidence,
+          reasoning
+        }));
+      
+      res.json({
+        success: true,
+        data: {
+          picks: top10,
+          generatedAt: new Date().toISOString(),
+          date: new Date().toISOString().split('T')[0]
+        }
+      });
+    } catch (error) {
+      console.error("Top 10 today error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate predictions", data: { picks: [] } });
+    }
+  });
+
   // GET /api/market/recommendations - Get weekly top 5 buy/sell recommendations
   // Uses historical chart data to calculate accurate RSI and trend analysis
   app.get("/api/market/recommendations", async (req, res) => {
@@ -688,7 +846,7 @@ Provide a JSON response with exactly this structure:
       // Check if we already have auto-generated predictions for today
       const existingPredictions = await storage.getPredictions();
       const todaysAutoPredictions = existingPredictions.filter(
-        p => p.predictionDate.startsWith(today) && p.signalType.startsWith("AUTO:")
+        p => new Date(p.predictionDate).toISOString().startsWith(today) && p.signalType.startsWith("AUTO:")
       );
       
       if (todaysAutoPredictions.length >= 5) {
@@ -757,7 +915,7 @@ Provide a JSON response with exactly this structure:
       for (const pick of topPicks) {
         // Check if already exists
         const exists = existingPredictions.some(
-          p => p.ticker === pick.ticker && p.predictionDate.startsWith(today)
+          p => p.ticker === pick.ticker && new Date(p.predictionDate).toISOString().startsWith(today)
         );
         if (!exists) {
           const prediction = await storage.createPrediction({

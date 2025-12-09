@@ -180,6 +180,27 @@ async function fetchRecommendations(): Promise<RecommendationsData> {
   return json.data;
 }
 
+interface Top10Pick {
+  ticker: string;
+  price: number;
+  predictedGain: number;
+  confidence: number;
+  reasoning: string;
+}
+
+interface Top10TodayData {
+  picks: Top10Pick[];
+  generatedAt: string;
+  date: string;
+}
+
+async function fetchTop10Today(): Promise<Top10TodayData> {
+  const res = await fetch("/api/market/top10-today");
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
 async function seedHistoricalPredictions(): Promise<{ message: string; data: Prediction[] }> {
   const res = await fetch("/api/predictions/seed-historical", {
     method: "POST",
@@ -370,6 +391,54 @@ export default function Home() {
     queryFn: fetchRecommendations,
     refetchInterval: 5 * 60 * 1000,
   });
+
+  // Fetch top 10 predictions for today
+  const { data: top10TodayData } = useQuery({
+    queryKey: ["top10-today"],
+    queryFn: fetchTop10Today,
+    refetchInterval: 5 * 60 * 1000,
+  });
+
+  // Calculate daily win/loss based on top 10 predictions vs current market prices
+  const dailyPredictionResults = useMemo(() => {
+    if (!top10TodayData?.picks || !top10TodayData.picks.length) {
+      return { predictions: [], wins: 0, losses: 0, pending: 0, date: top10TodayData?.date || "" };
+    }
+    
+    const results = top10TodayData.picks.map(pick => {
+      const currentStock = marketData.find(s => s.ticker === pick.ticker);
+      const hasLivePrice = !!currentStock;
+      const currentPrice = currentStock?.price || pick.price;
+      const pnl = hasLivePrice ? ((currentPrice - pick.price) / pick.price) * 100 : 0;
+      
+      let outcome: "win" | "loss" | "pending";
+      if (!hasLivePrice) {
+        outcome = "pending";
+      } else if (pnl > 0) {
+        outcome = "win";
+      } else {
+        outcome = "loss";
+      }
+      
+      return {
+        ...pick,
+        currentPrice,
+        pnl: parseFloat(pnl.toFixed(2)),
+        outcome
+      };
+    });
+    
+    // Only count wins/losses from items with live prices (not pending)
+    const resolvedResults = results.filter(r => r.outcome !== "pending");
+    
+    return {
+      predictions: results,
+      wins: resolvedResults.filter(r => r.outcome === "win").length,
+      losses: resolvedResults.filter(r => r.outcome === "loss").length,
+      pending: results.filter(r => r.outcome === "pending").length,
+      date: top10TodayData.date || ""
+    };
+  }, [top10TodayData, marketData]);
 
   // Handler to log a prediction from a stock row
   const handleLogPrediction = (stock: StockData, signalType: string) => {
@@ -629,102 +698,86 @@ export default function Home() {
   // Sidebar UI
   const SidebarContent = (
     <div className="space-y-6">
-      {/* Prediction History - Moved to top */}
+      {/* Today's Predictions & Daily Win/Loss */}
       <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-4">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
-          <History className="h-4 w-4" />
-          Prediction History
+          <TrendingUp className="h-4 w-4" />
+          Today's Top 10 Predictions
         </h4>
         
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-muted/50 rounded p-2 text-center">
-            <p className="text-lg font-bold">{predictionStats.total}</p>
-            <p className="text-[10px] text-muted-foreground">Total</p>
+        {/* Daily Win/Loss Stats */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-green-500/10 rounded p-2 text-center">
+            <p className="text-lg font-bold text-green-600">{dailyPredictionResults.wins}</p>
+            <p className="text-[10px] text-muted-foreground">Winning</p>
+          </div>
+          <div className="bg-red-500/10 rounded p-2 text-center">
+            <p className="text-lg font-bold text-red-600">{dailyPredictionResults.losses}</p>
+            <p className="text-[10px] text-muted-foreground">Losing</p>
           </div>
           <div className="bg-muted/50 rounded p-2 text-center">
-            <p className="text-lg font-bold">{predictionStats.winRate}%</p>
+            <p className="text-lg font-bold">
+              {dailyPredictionResults.predictions.length > 0 
+                ? `${((dailyPredictionResults.wins / dailyPredictionResults.predictions.length) * 100).toFixed(0)}%`
+                : "0%"}
+            </p>
             <p className="text-[10px] text-muted-foreground">Win Rate</p>
-          </div>
-          <div 
-            className="bg-green-500/10 rounded p-2 text-center cursor-pointer hover:bg-green-500/20 transition-colors"
-            onClick={() => { setHistoryFilter("win"); setShowFullHistory(true); }}
-            data-testid="button-view-wins"
-          >
-            <p className="text-lg font-bold text-green-600">{predictionStats.wins}</p>
-            <p className="text-[10px] text-muted-foreground">Wins</p>
-          </div>
-          <div 
-            className="bg-red-500/10 rounded p-2 text-center cursor-pointer hover:bg-red-500/20 transition-colors"
-            onClick={() => { setHistoryFilter("loss"); setShowFullHistory(true); }}
-            data-testid="button-view-losses"
-          >
-            <p className="text-lg font-bold text-red-600">{predictionStats.losses}</p>
-            <p className="text-[10px] text-muted-foreground">Losses</p>
           </div>
         </div>
 
-        {/* Your 5 Predictions - System Generated */}
+        {/* Top 5 Predictions Preview */}
         <div className="pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-2">Your 5 Predictions</p>
+          <p className="text-xs text-muted-foreground mb-2">Stocks most likely to gain today</p>
           <div className="space-y-2">
-            {(() => {
-              const allPicks = [
-                ...(recommendationsData?.buys?.map(r => ({ ...r, type: "BUY" as const })) || []),
-                ...(recommendationsData?.sells?.map(r => ({ ...r, type: "SELL" as const })) || []),
-              ];
-              const uniquePicks = allPicks.filter((pick, idx, arr) => 
-                arr.findIndex(p => p.ticker === pick.ticker) === idx
-              ).slice(0, 5);
-              
-              if (uniquePicks.length === 0) {
-                return (
-                  <p className="text-xs text-muted-foreground text-center py-4">
-                    Analyzing market data...
-                  </p>
-                );
-              }
-              
-              return uniquePicks.map((pick, idx) => (
+            {dailyPredictionResults.predictions.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                Analyzing market data...
+              </p>
+            ) : (
+              dailyPredictionResults.predictions.slice(0, 5).map((pick, idx) => (
                 <div 
                   key={`${pick.ticker}-${idx}`}
                   className={`flex items-center justify-between text-xs rounded p-2 cursor-pointer transition-colors ${
-                    pick.type === "BUY" 
+                    pick.outcome === "win" 
                       ? "bg-green-500/10 hover:bg-green-500/20 border border-green-500/20" 
-                      : "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20"
+                      : pick.outcome === "loss"
+                      ? "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20"
+                      : "bg-muted/30 hover:bg-muted/50 border border-border"
                   }`}
                   onClick={() => setSelectedTicker(pick.ticker)}
                   data-testid={`prediction-${pick.ticker}`}
                 >
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1">
-                      <span className={pick.type === "BUY" ? "text-green-600" : "text-red-600"}>
-                        {pick.type === "BUY" ? "📈" : "📉"}
-                      </span>
+                      <span className="font-bold text-foreground">#{idx + 1}</span>
                       <span className="font-bold">{pick.ticker}</span>
                       <Badge 
                         variant="outline" 
                         className={`text-[8px] px-1 py-0 ${
-                          pick.type === "BUY" ? "text-green-600 border-green-600" : "text-red-600 border-red-600"
+                          pick.outcome === "win" ? "text-green-600 border-green-600" : 
+                          pick.outcome === "loss" ? "text-red-600 border-red-600" : 
+                          "text-muted-foreground border-muted-foreground"
                         }`}
                       >
-                        {pick.type === "BUY" ? "Buy Low" : "Sell High"}
+                        {pick.confidence}% conf
                       </Badge>
                     </div>
                     <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
                       {pick.reasoning}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <span className="font-medium">${pick.price.toFixed(2)}</span>
-                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                  <div className="flex flex-col items-end">
+                    <span className={`font-bold ${pick.pnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {pick.pnl >= 0 ? "+" : ""}{pick.pnl}%
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">${pick.currentPrice.toFixed(2)}</span>
                   </div>
                 </div>
-              ));
-            })()}
+              ))
+            )}
           </div>
           
-          {/* View Top 10 Predictions Link */}
+          {/* View All Top 10 Predictions Link */}
           <Button
             variant="link"
             size="sm"
@@ -732,7 +785,7 @@ export default function Home() {
             onClick={() => { setHistoryFilter("all"); setShowFullHistory(true); }}
             data-testid="button-view-top-10"
           >
-            View Top 10 Predictions
+            View All 10 Predictions
           </Button>
         </div>
 
@@ -1548,69 +1601,107 @@ export default function Home() {
       <Dialog open={showFullHistory} onOpenChange={(open) => { setShowFullHistory(open); if (!open) setHistoryFilter("all"); }}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Top 10 Predictions</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Today's Top 10 Predictions
+              {top10TodayData?.date && (
+                <Badge variant="outline" className="text-xs font-normal">
+                  {new Date(top10TodayData.date).toLocaleDateString()}
+                </Badge>
+              )}
+            </DialogTitle>
           </DialogHeader>
+          
+          {/* Summary Stats */}
+          <div className="grid grid-cols-4 gap-3 py-3 border-b">
+            <div className="text-center">
+              <p className="text-2xl font-bold">{dailyPredictionResults.predictions.length}</p>
+              <p className="text-xs text-muted-foreground">Total Picks</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">{dailyPredictionResults.wins}</p>
+              <p className="text-xs text-muted-foreground">Winning</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-red-600">{dailyPredictionResults.losses}</p>
+              <p className="text-xs text-muted-foreground">Losing</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold">
+                {dailyPredictionResults.predictions.length > 0 
+                  ? `${((dailyPredictionResults.wins / dailyPredictionResults.predictions.length) * 100).toFixed(0)}%`
+                  : "0%"}
+              </p>
+              <p className="text-xs text-muted-foreground">Win Rate</p>
+            </div>
+          </div>
+          
           <div className="overflow-y-auto flex-1">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 sticky top-0">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">#</th>
                   <th className="px-3 py-2 text-left font-medium">Ticker</th>
-                  <th className="px-3 py-2 text-left font-medium">Signal</th>
-                  <th className="px-3 py-2 text-left font-medium">Price</th>
+                  <th className="px-3 py-2 text-left font-medium">Entry Price</th>
+                  <th className="px-3 py-2 text-left font-medium">Current</th>
+                  <th className="px-3 py-2 text-left font-medium">P/L</th>
+                  <th className="px-3 py-2 text-left font-medium">Status</th>
                   <th className="px-3 py-2 text-left font-medium">Reasoning</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {(() => {
-                  const allPicks = [
-                    ...(recommendationsData?.buys?.map(r => ({ ...r, type: "BUY" as const })) || []),
-                    ...(recommendationsData?.sells?.map(r => ({ ...r, type: "SELL" as const })) || []),
-                  ];
-                  const uniquePicks = allPicks.filter((pick, idx, arr) => 
-                    arr.findIndex(p => p.ticker === pick.ticker) === idx
-                  ).slice(0, 10);
-                  
-                  return uniquePicks.map((pick, idx) => (
-                    <tr 
-                      key={`${pick.ticker}-${idx}`}
-                      className={`hover:bg-muted/30 cursor-pointer ${
-                        pick.type === "BUY" ? "bg-green-500/5" : "bg-red-500/5"
-                      }`}
-                      onClick={() => {
-                        setShowFullHistory(false);
-                        setSelectedTicker(pick.ticker);
-                      }}
-                      data-testid={`top10-row-${pick.ticker}`}
-                    >
-                      <td className="px-3 py-2 text-muted-foreground font-medium">
-                        {idx + 1}
-                      </td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <span className={pick.type === "BUY" ? "text-green-600" : "text-red-600"}>
-                            {pick.type === "BUY" ? "📈" : "📉"}
-                          </span>
-                          <span className="font-bold">{pick.ticker}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-2">
-                        <Badge 
-                          variant="outline" 
-                          className={`text-xs ${
-                            pick.type === "BUY" ? "text-green-600 border-green-600" : "text-red-600 border-red-600"
-                          }`}
-                        >
-                          {pick.type === "BUY" ? "Buy Low" : "Sell High"}
-                        </Badge>
-                      </td>
-                      <td className="px-3 py-2 font-medium">${pick.price.toFixed(2)}</td>
-                      <td className="px-3 py-2 text-muted-foreground text-xs">
-                        {pick.reasoning}
-                      </td>
-                    </tr>
-                  ));
-                })()}
+                {dailyPredictionResults.predictions.map((pick, idx) => (
+                  <tr 
+                    key={`${pick.ticker}-${idx}`}
+                    className={`hover:bg-muted/30 cursor-pointer ${
+                      pick.outcome === "win" ? "bg-green-500/5" : 
+                      pick.outcome === "loss" ? "bg-red-500/5" : ""
+                    }`}
+                    onClick={() => {
+                      setShowFullHistory(false);
+                      setSelectedTicker(pick.ticker);
+                    }}
+                    data-testid={`top10-row-${pick.ticker}`}
+                  >
+                    <td className="px-3 py-2 text-muted-foreground font-medium">
+                      {idx + 1}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        <span className={pick.outcome === "win" ? "text-green-600" : pick.outcome === "loss" ? "text-red-600" : ""}>
+                          {pick.outcome === "win" ? "📈" : pick.outcome === "loss" ? "📉" : "⏳"}
+                        </span>
+                        <span className="font-bold">{pick.ticker}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">${pick.price.toFixed(2)}</td>
+                    <td className="px-3 py-2 font-medium">${pick.currentPrice.toFixed(2)}</td>
+                    <td className={`px-3 py-2 font-bold ${pick.pnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {pick.pnl >= 0 ? "+" : ""}{pick.pnl}%
+                    </td>
+                    <td className="px-3 py-2">
+                      <Badge 
+                        variant="outline" 
+                        className={`text-xs ${
+                          pick.outcome === "win" ? "text-green-600 border-green-600 bg-green-500/10" : 
+                          pick.outcome === "loss" ? "text-red-600 border-red-600 bg-red-500/10" : 
+                          "text-muted-foreground"
+                        }`}
+                      >
+                        {pick.outcome === "win" ? "WIN" : pick.outcome === "loss" ? "LOSS" : "PENDING"}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-muted-foreground text-xs max-w-[200px] truncate">
+                      {pick.reasoning}
+                    </td>
+                  </tr>
+                ))}
+                {dailyPredictionResults.predictions.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">
+                      Analyzing market data to generate predictions...
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
