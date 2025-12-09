@@ -116,6 +116,8 @@ export default function Home() {
   const [showFullHistory, setShowFullHistory] = useState(false);
   const [autoLoggedTickers, setAutoLoggedTickers] = useState<Set<string>>(new Set());
   const [historyFilter, setHistoryFilter] = useState<"all" | "win" | "loss">("all");
+  const [manualTicker, setManualTicker] = useState("");
+  const [manualSignal, setManualSignal] = useState("Manual");
 
   // Fetch market data with React Query
   const { data: marketData = [], isLoading, refetch } = useQuery({
@@ -199,6 +201,62 @@ export default function Home() {
   );
 
   const allTickers = useMemo(() => marketData.map((d) => d.ticker), [marketData]);
+
+  // Suggested stocks - rocket ships and diamonds not yet logged today
+  const suggestedStocks = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todaysPredictions = predictionsData.filter(p => p.predictionDate.startsWith(today));
+    const alreadyLoggedToday = new Set(todaysPredictions.map(p => `${p.ticker}-${p.signalType}`));
+    
+    const suggestions: { stock: StockData; signalType: string; icon: string }[] = [];
+    
+    marketData.forEach((stock) => {
+      const isRocketShip = stock.rvol > 3 && stock.sentiment === "🟢 BULLISH";
+      const isDiamond = stock.rsi < 30 && stock.sentiment === "🟢 BULLISH";
+      
+      if (isRocketShip && !alreadyLoggedToday.has(`${stock.ticker}-Rocket Ship`)) {
+        suggestions.push({ stock, signalType: "Rocket Ship", icon: "🚀" });
+      }
+      if (isDiamond && !alreadyLoggedToday.has(`${stock.ticker}-Diamond`)) {
+        suggestions.push({ stock, signalType: "Diamond", icon: "💎" });
+      }
+    });
+    
+    // Also add top 3 gainers with bullish sentiment as "Momentum" picks
+    const topGainers = [...marketData]
+      .filter(s => s.changePercent > 2 && s.sentiment === "🟢 BULLISH")
+      .sort((a, b) => b.changePercent - a.changePercent)
+      .slice(0, 3);
+    
+    topGainers.forEach((stock) => {
+      if (!alreadyLoggedToday.has(`${stock.ticker}-Momentum`) && !suggestions.find(s => s.stock.ticker === stock.ticker)) {
+        suggestions.push({ stock, signalType: "Momentum", icon: "📈" });
+      }
+    });
+    
+    return suggestions.slice(0, 5);
+  }, [marketData, predictionsData]);
+
+  // Handler to manually add a stock
+  const handleManualAdd = () => {
+    if (!manualTicker.trim()) return;
+    const stock = marketData.find(s => s.ticker.toUpperCase() === manualTicker.toUpperCase().trim());
+    if (stock) {
+      createPredictionMutation.mutate({
+        ticker: stock.ticker,
+        signalType: manualSignal,
+        entryPrice: stock.price,
+      });
+      toast.success(`Added ${stock.ticker}`, {
+        description: `${manualSignal} signal at $${stock.price.toFixed(2)}`,
+      });
+    } else {
+      toast.error(`Ticker not found`, {
+        description: `${manualTicker.toUpperCase()} is not in the scanner. Try refreshing.`,
+      });
+    }
+    setManualTicker("");
+  };
 
   // Update selected ticker when data loads
   useEffect(() => {
@@ -411,6 +469,67 @@ export default function Home() {
               View All {predictionsData.length} Predictions
             </Button>
           )}
+        </div>
+
+        {/* Suggested Stocks */}
+        {suggestedStocks.length > 0 && (
+          <div className="pt-3 border-t border-border">
+            <p className="text-xs text-muted-foreground mb-2">Suggested Stocks</p>
+            <div className="space-y-1">
+              {suggestedStocks.map((suggestion) => (
+                <div
+                  key={`${suggestion.stock.ticker}-${suggestion.signalType}`}
+                  className="flex items-center justify-between text-xs bg-primary/5 rounded p-2 cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => handleLogPrediction(suggestion.stock, suggestion.signalType)}
+                  data-testid={`suggested-${suggestion.stock.ticker}-${suggestion.signalType}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{suggestion.icon}</span>
+                    <span className="font-bold">{suggestion.stock.ticker}</span>
+                    <span className="text-muted-foreground">${suggestion.stock.price.toFixed(2)}</span>
+                  </div>
+                  <Badge variant="outline" className="text-[8px] px-1 py-0">{suggestion.signalType}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Manual Add */}
+        <div className="pt-3 border-t border-border">
+          <p className="text-xs text-muted-foreground mb-2">Add Stock Manually</p>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="AAPL"
+                value={manualTicker}
+                onChange={(e) => setManualTicker(e.target.value.toUpperCase())}
+                className="flex-1 h-8 text-xs"
+                onKeyDown={(e) => e.key === "Enter" && handleManualAdd()}
+                data-testid="input-manual-ticker"
+              />
+              <select
+                value={manualSignal}
+                onChange={(e) => setManualSignal(e.target.value)}
+                className="h-8 text-xs rounded border border-input bg-background px-2"
+                data-testid="select-manual-signal"
+              >
+                <option value="Manual">Manual</option>
+                <option value="Bullish">Bullish</option>
+                <option value="Bearish">Bearish</option>
+                <option value="Swing">Swing</option>
+              </select>
+            </div>
+            <Button
+              size="sm"
+              className="w-full h-8 text-xs"
+              onClick={handleManualAdd}
+              disabled={!manualTicker.trim() || createPredictionMutation.isPending}
+              data-testid="button-add-manual"
+            >
+              Add to Tracker
+            </Button>
+          </div>
         </div>
       </div>
     </div>
