@@ -419,38 +419,109 @@ Provide a JSON response with exactly this structure:
   });
 
   // GET /api/market/recommendations - Get weekly top 5 buy/sell recommendations
+  // Uses historical chart data to calculate accurate RSI and trend analysis
   app.get("/api/market/recommendations", async (req, res) => {
     try {
       const marketData = await scanMarket();
       
-      // Calculate recommendations based on technical indicators
+      // Calculate RSI from historical chart data for more accurate recommendations
+      const calculateRSI = (prices: number[], period: number = 14): number => {
+        if (prices.length < period + 1) return 50;
+        let gains = 0;
+        let losses = 0;
+        for (let i = prices.length - period; i < prices.length; i++) {
+          const change = prices[i] - prices[i - 1];
+          if (change > 0) gains += change;
+          else losses -= change;
+        }
+        const avgGain = gains / period;
+        const avgLoss = losses / period;
+        if (avgLoss === 0) return 100;
+        const rs = avgGain / avgLoss;
+        return 100 - (100 / (1 + rs));
+      };
+
+      // Calculate price trend from chart data
+      const calculateTrend = (prices: number[]): { trend: "up" | "down" | "sideways"; strength: number } => {
+        if (prices.length < 5) return { trend: "sideways", strength: 0 };
+        const recent = prices.slice(-5);
+        const older = prices.slice(-20, -5);
+        const recentAvg = recent.reduce((a, b) => a + b, 0) / recent.length;
+        const olderAvg = older.length > 0 ? older.reduce((a, b) => a + b, 0) / older.length : recentAvg;
+        const change = ((recentAvg - olderAvg) / olderAvg) * 100;
+        if (change > 3) return { trend: "up", strength: Math.min(change, 10) };
+        if (change < -3) return { trend: "down", strength: Math.min(Math.abs(change), 10) };
+        return { trend: "sideways", strength: Math.abs(change) };
+      };
+
       const buyPicks: Array<{ ticker: string; price: number; signal: string; reasoning: string; score: number }> = [];
       const sellPicks: Array<{ ticker: string; price: number; signal: string; reasoning: string; score: number }> = [];
       
+      // Analyze each stock using historical chart data
       for (const stock of marketData) {
-        // BUY criteria: RSI < 40, improving momentum, bullish or neutral sentiment
-        if (stock.rsi < 40 && stock.sentiment !== "🔴 BEARISH") {
-          const score = (40 - stock.rsi) + (stock.rvol > 1.5 ? 10 : 0) + (stock.sentiment === "🟢 BULLISH" ? 15 : 0);
-          buyPicks.push({
-            ticker: stock.ticker,
-            price: stock.price,
-            signal: "BUY",
-            reasoning: `RSI ${stock.rsi.toFixed(0)} (oversold)${stock.rvol > 1.5 ? ", high volume" : ""}${stock.sentiment === "🟢 BULLISH" ? ", bullish sentiment" : ""}`,
-            score
-          });
+        try {
+          const chartData = await getChartData(stock.ticker, "1m");
+          const prices = chartData.map(d => d.close);
+          
+          if (prices.length >= 15) {
+            const rsi = calculateRSI(prices);
+            const { trend, strength } = calculateTrend(prices);
+            const priceChange = prices.length >= 2 
+              ? ((prices[prices.length - 1] - prices[prices.length - 2]) / prices[prices.length - 2]) * 100 
+              : 0;
+            
+            // BUY: RSI < 40 (oversold) with upward trend or neutral
+            if (rsi < 40 && trend !== "down") {
+              const score = (40 - rsi) + strength + (stock.sentiment === "🟢 BULLISH" ? 15 : 0) + (stock.rvol > 1.5 ? 5 : 0);
+              buyPicks.push({
+                ticker: stock.ticker,
+                price: stock.price,
+                signal: "BUY",
+                reasoning: `RSI ${rsi.toFixed(0)} (oversold), ${trend === "up" ? "uptrend" : "consolidating"}${stock.sentiment === "🟢 BULLISH" ? ", bullish news" : ""}`,
+                score
+              });
+            }
+            // Also consider stocks with strong uptrend and bullish sentiment
+            else if (trend === "up" && strength > 5 && stock.sentiment === "🟢 BULLISH" && rsi < 65) {
+              const score = strength + 10 + (stock.rvol > 2 ? 10 : 0);
+              buyPicks.push({
+                ticker: stock.ticker,
+                price: stock.price,
+                signal: "BUY",
+                reasoning: `Strong uptrend (+${strength.toFixed(1)}%), bullish sentiment, RSI ${rsi.toFixed(0)}`,
+                score
+              });
+            }
+            
+            // SELL: RSI > 70 (overbought) or downtrend with bearish sentiment
+            if (rsi > 70) {
+              const score = (rsi - 70) + (stock.sentiment === "🔴 BEARISH" ? 15 : 0) + (trend === "down" ? strength : 0);
+              sellPicks.push({
+                ticker: stock.ticker,
+                price: stock.price,
+                signal: "SELL",
+                reasoning: `RSI ${rsi.toFixed(0)} (overbought)${stock.sentiment === "🔴 BEARISH" ? ", bearish news" : ""}${trend === "down" ? ", downtrend" : ""}`,
+                score
+              });
+            }
+            else if (trend === "down" && strength > 5 && stock.sentiment === "🔴 BEARISH") {
+              const score = strength + 10;
+              sellPicks.push({
+                ticker: stock.ticker,
+                price: stock.price,
+                signal: "SELL",
+                reasoning: `Downtrend (-${strength.toFixed(1)}%), bearish sentiment, RSI ${rsi.toFixed(0)}`,
+                score
+              });
+            }
+          }
+        } catch (error) {
+          // Skip stocks that fail chart data fetch
+          console.error(`Chart analysis failed for ${stock.ticker}:`, error);
         }
         
-        // SELL criteria: RSI > 70, bearish sentiment or overbought
-        if (stock.rsi > 70 || (stock.rsi > 60 && stock.sentiment === "🔴 BEARISH")) {
-          const score = (stock.rsi - 60) + (stock.sentiment === "🔴 BEARISH" ? 15 : 0);
-          sellPicks.push({
-            ticker: stock.ticker,
-            price: stock.price,
-            signal: "SELL",
-            reasoning: `RSI ${stock.rsi.toFixed(0)} (overbought)${stock.sentiment === "🔴 BEARISH" ? ", bearish sentiment" : ""}`,
-            score
-          });
-        }
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
       
       // Sort by score and take top 5
