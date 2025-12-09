@@ -690,7 +690,20 @@ export default function Home() {
                       ? "bg-green-500/10 hover:bg-green-500/20 border border-green-500/20" 
                       : "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20"
                   }`}
-                  onClick={() => setSelectedTicker(pick.ticker)}
+                  onClick={() => {
+                    createPredictionMutation.mutate({
+                      ticker: pick.ticker,
+                      signalType: pick.type === "BUY" ? "Buy Low" : "Sell High",
+                      entryPrice: pick.price,
+                    }, {
+                      onSuccess: () => {
+                        toast.success(`Added ${pick.ticker}`, {
+                          description: `${pick.type === "BUY" ? "Buy Low" : "Sell High"} at $${pick.price.toFixed(2)}`,
+                        });
+                        setSelectedTicker(pick.ticker);
+                      }
+                    });
+                  }}
                   data-testid={`top-pick-${pick.ticker}`}
                 >
                   <div className="flex flex-col">
