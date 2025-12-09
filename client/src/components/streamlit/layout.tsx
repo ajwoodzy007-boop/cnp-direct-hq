@@ -115,16 +115,47 @@ export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
             </Button>
           )}
           <div className="flex-1" />
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="text-muted-foreground"
-            onClick={() => setSettingsOpen(true)}
-            data-testid="button-settings"
-          >
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
-          </Button>
+          <div className="flex items-center gap-1">
+            {/* Quick Alert Toggles */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${settings.notificationsEnabled ? 'text-primary' : 'text-muted-foreground'}`}
+              onClick={() => {
+                if (settings.notificationsEnabled) {
+                  updateSetting("notificationsEnabled", false);
+                } else if ("Notification" in window) {
+                  Notification.requestPermission().then((permission) => {
+                    updateSetting("notificationsEnabled", permission === "granted");
+                  });
+                }
+              }}
+              title={settings.notificationsEnabled ? "Notifications On" : "Notifications Off"}
+              data-testid="button-header-notifications"
+            >
+              {settings.notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${settings.soundEnabled ? 'text-primary' : 'text-muted-foreground'}`}
+              onClick={() => updateSetting("soundEnabled", !settings.soundEnabled)}
+              title={settings.soundEnabled ? "Sound On" : "Sound Off"}
+              data-testid="button-header-sound"
+            >
+              {settings.soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-muted-foreground ml-1"
+              onClick={() => setSettingsOpen(true)}
+              data-testid="button-settings"
+            >
+              <Settings className="h-4 w-4 mr-2" />
+              Settings
+            </Button>
+          </div>
         </header>
 
         {/* Content Container */}
