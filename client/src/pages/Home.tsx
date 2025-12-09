@@ -20,7 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Area, AreaChart, Line, LineChart, Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid, ReferenceLine } from "recharts";
+import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 
 // Types matching backend response
 interface StockData {
@@ -401,43 +401,6 @@ export default function Home() {
     return { total: predictionsData.length, completed: completed.length, wins, losses, winRate };
   }, [predictionsData]);
 
-  // Calculate performance data over time for charts
-  const performanceData = useMemo(() => {
-    const completedPredictions = predictionsData
-      .filter((p) => p.outcome && p.outcomeDate)
-      .sort((a, b) => new Date(a.outcomeDate!).getTime() - new Date(b.outcomeDate!).getTime());
-    
-    if (completedPredictions.length === 0) return [];
-
-    let cumulativeWins = 0;
-    let cumulativeLosses = 0;
-    let cumulativePL = 0;
-
-    return completedPredictions.map((pred, index) => {
-      if (pred.outcome === "win") cumulativeWins++;
-      else cumulativeLosses++;
-      
-      const plPercent = pred.outcomePrice && pred.entryPrice 
-        ? ((pred.outcomePrice - pred.entryPrice) / pred.entryPrice) * 100 
-        : 0;
-      cumulativePL += plPercent;
-      
-      const total = cumulativeWins + cumulativeLosses;
-      const winRate = total > 0 ? (cumulativeWins / total) * 100 : 0;
-      
-      const date = new Date(pred.outcomeDate!);
-      const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
-      
-      return {
-        date: dateStr,
-        trade: index + 1,
-        winRate: parseFloat(winRate.toFixed(1)),
-        cumulativePL: parseFloat(cumulativePL.toFixed(2)),
-        ticker: pred.ticker,
-        outcome: pred.outcome,
-      };
-    });
-  }, [predictionsData]);
 
   // Derived state for tables - always show top 10 by change percent
   const gainers = useMemo(
@@ -1240,148 +1203,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* --- PERFORMANCE CHARTS SECTION --- */}
-      <div className="mt-12 border-t border-border pt-8">
-        <StHeader>📊 Performance Charts</StHeader>
-        <p className="text-muted-foreground text-sm mb-6">Track your trading performance over time</p>
-        
-        {performanceData.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No completed trades yet.</p>
-              <p className="text-sm text-muted-foreground mt-1">Performance charts will appear once you have trades with recorded outcomes.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Win Rate Over Time */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Win Rate Over Time
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={performanceData}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                      <XAxis
-                        dataKey="trade"
-                        stroke="var(--muted-foreground)"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(val) => `#${val}`}
-                      />
-                      <YAxis
-                        stroke="var(--muted-foreground)"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        domain={[0, 100]}
-                        tickFormatter={(val) => `${val}%`}
-                      />
-                      <ReferenceLine y={50} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
-                      <RechartsTooltip
-                        contentStyle={{
-                          backgroundColor: "var(--popover)",
-                          borderColor: "var(--border)",
-                          borderRadius: "var(--radius)",
-                          color: "var(--popover-foreground)",
-                        }}
-                        formatter={(val: number, name: string) => [`${val.toFixed(1)}%`, "Win Rate"]}
-                        labelFormatter={(label) => `Trade #${label}`}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="winRate"
-                        stroke="#22c55e"
-                        strokeWidth={2}
-                        dot={{ fill: "#22c55e", strokeWidth: 0, r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                  Current: {predictionStats.winRate}% ({predictionStats.wins}W / {predictionStats.losses}L)
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Cumulative P/L */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Cumulative P/L %
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[250px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={performanceData}>
-                      <defs>
-                        <linearGradient id="colorPL" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={performanceData[performanceData.length - 1]?.cumulativePL >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0.3} />
-                          <stop offset="95%" stopColor={performanceData[performanceData.length - 1]?.cumulativePL >= 0 ? "#22c55e" : "#ef4444"} stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                      <XAxis
-                        dataKey="trade"
-                        stroke="var(--muted-foreground)"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(val) => `#${val}`}
-                      />
-                      <YAxis
-                        stroke="var(--muted-foreground)"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        domain={["auto", "auto"]}
-                        tickFormatter={(val) => `${val > 0 ? "+" : ""}${val.toFixed(1)}%`}
-                      />
-                      <ReferenceLine y={0} stroke="var(--muted-foreground)" strokeDasharray="3 3" />
-                      <RechartsTooltip
-                        contentStyle={{
-                          backgroundColor: "var(--popover)",
-                          borderColor: "var(--border)",
-                          borderRadius: "var(--radius)",
-                          color: "var(--popover-foreground)",
-                        }}
-                        formatter={(val: number) => [
-                          <span className={val >= 0 ? "text-green-600" : "text-red-600"}>
-                            {val >= 0 ? "+" : ""}{val.toFixed(2)}%
-                          </span>,
-                          "Cumulative P/L"
-                        ]}
-                        labelFormatter={(label) => `Trade #${label}`}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="cumulativePL"
-                        stroke={performanceData[performanceData.length - 1]?.cumulativePL >= 0 ? "#22c55e" : "#ef4444"}
-                        strokeWidth={2}
-                        fillOpacity={1}
-                        fill="url(#colorPL)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className={`text-xs text-center mt-2 ${performanceData[performanceData.length - 1]?.cumulativePL >= 0 ? "text-green-600" : "text-red-600"}`}>
-                  Total: {performanceData[performanceData.length - 1]?.cumulativePL >= 0 ? "+" : ""}{performanceData[performanceData.length - 1]?.cumulativePL.toFixed(2)}%
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      </div>
 
       {/* --- WEEKLY TOP 5 PICKS SECTION --- */}
       <div className="mt-12 border-t border-border pt-8">
