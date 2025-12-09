@@ -9,7 +9,7 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2 } from "lucide-react";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -536,6 +536,23 @@ export default function Home() {
     return `${diffMins}m ago`;
   };
 
+  // Share winning trade on social media
+  const handleShareWin = (pred: Prediction, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    
+    const gainPercent = pred.outcomePrice && pred.entryPrice 
+      ? ((pred.outcomePrice - pred.entryPrice) / pred.entryPrice * 100).toFixed(1)
+      : "0";
+    const gainSign = parseFloat(gainPercent) >= 0 ? "+" : "";
+    
+    const tweetText = `🚀 Just called $${pred.ticker} correctly! ${gainSign}${gainPercent}% gain\n\nEntry: $${pred.entryPrice.toFixed(2)} → Exit: $${pred.outcomePrice?.toFixed(2)}\n\nTrack your trades with Pro Trader Dashboard 📈`;
+    
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+    window.open(twitterUrl, '_blank', 'width=550,height=420');
+    
+    toast.success("Share your win!", { description: "Twitter opened in new window" });
+  };
+
   // Sidebar UI
   const SidebarContent = (
     <div className="space-y-6">
@@ -787,9 +804,21 @@ export default function Home() {
                 </div>
                 <div className="flex items-center gap-1">
                   {pred.outcome ? (
-                    <Badge className={`text-[10px] ${pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}`}>
-                      {pred.outcome.toUpperCase()}
-                    </Badge>
+                    <>
+                      <Badge className={`text-[10px] ${pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}`}>
+                        {pred.outcome.toUpperCase()}
+                      </Badge>
+                      {pred.outcome === "win" && (
+                        <button
+                          onClick={(e) => handleShareWin(pred, e)}
+                          className="p-1 rounded hover:bg-green-500/20 text-green-600 transition-colors"
+                          title="Share your win on Twitter"
+                          data-testid={`button-share-${pred.id}`}
+                        >
+                          <Share2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <Badge variant="outline" className="text-[10px]">Pending</Badge>
                   )}
@@ -1356,13 +1385,28 @@ export default function Home() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Outcome</p>
-                  {selectedPrediction.outcome ? (
-                    <Badge className={selectedPrediction.outcome === "win" ? "bg-green-600" : "bg-red-600"}>
-                      {selectedPrediction.outcome.toUpperCase()}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">Pending</Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {selectedPrediction.outcome ? (
+                      <>
+                        <Badge className={selectedPrediction.outcome === "win" ? "bg-green-600" : "bg-red-600"}>
+                          {selectedPrediction.outcome.toUpperCase()}
+                        </Badge>
+                        {selectedPrediction.outcome === "win" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-green-600 border-green-600 hover:bg-green-500/10"
+                            onClick={() => handleShareWin(selectedPrediction)}
+                            data-testid="button-share-dialog"
+                          >
+                            <Share2 className="h-3 w-3 mr-1" /> Share Win
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      <Badge variant="outline">Pending</Badge>
+                    )}
+                  </div>
                 </div>
                 {selectedPrediction.outcomePrice && (
                   <div>
@@ -1472,13 +1516,27 @@ export default function Home() {
                       {pred.outcomePrice ? `$${pred.outcomePrice.toFixed(2)}` : "-"}
                     </td>
                     <td className="px-3 py-2">
-                      {pred.outcome ? (
-                        <Badge className={pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}>
-                          {pred.outcome.toUpperCase()}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Pending</Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {pred.outcome ? (
+                          <>
+                            <Badge className={pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}>
+                              {pred.outcome.toUpperCase()}
+                            </Badge>
+                            {pred.outcome === "win" && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleShareWin(pred); }}
+                                className="p-1 rounded hover:bg-green-500/20 text-green-600 transition-colors"
+                                title="Share your win on Twitter"
+                                data-testid={`button-share-history-${pred.id}`}
+                              >
+                                <Share2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <Badge variant="outline">Pending</Badge>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
