@@ -664,69 +664,65 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Recent Predictions - Last 5 */}
+        {/* Today's Top 5 Picks - Buy Low Sell High */}
         <div className="pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-2">Recent Predictions</p>
+          <p className="text-xs text-muted-foreground mb-2">Today's Top 5 Picks</p>
           <div className="space-y-2">
-            {predictionsData.slice(0, 5).map((pred) => {
-              const plPercent = pred.outcomePrice && pred.entryPrice 
-                ? ((pred.outcomePrice - pred.entryPrice) / pred.entryPrice) * 100 
-                : null;
-              return (
-              <div 
-                key={pred.id} 
-                className="flex items-center justify-between text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50 transition-colors" 
-                onClick={() => setSelectedPrediction(pred)}
-                data-testid={`sidebar-prediction-${pred.id}`}
-              >
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1">
-                    <span className="font-bold">{pred.ticker}</span>
-                    <Badge variant="outline" className="text-[8px] px-1 py-0">{pred.signalType}</Badge>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(pred.predictionDate).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {pred.outcome ? (
-                    <>
-                      {plPercent !== null && (
-                        <span className={`text-[10px] font-medium ${plPercent >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          {plPercent >= 0 ? "+" : ""}{plPercent.toFixed(1)}%
-                        </span>
-                      )}
-                      <Badge className={`text-[10px] ${pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}`}>
-                        {pred.outcome.toUpperCase()}
+            {(() => {
+              const topPicks = [
+                ...(recommendationsData?.buys?.slice(0, 3).map(r => ({ ...r, type: "BUY" as const })) || []),
+                ...(recommendationsData?.sells?.slice(0, 2).map(r => ({ ...r, type: "SELL" as const })) || []),
+              ].slice(0, 5);
+              
+              if (topPicks.length === 0) {
+                return (
+                  <p className="text-xs text-muted-foreground text-center py-4">
+                    Loading today's picks...
+                  </p>
+                );
+              }
+              
+              return topPicks.map((pick, idx) => (
+                <div 
+                  key={`${pick.ticker}-${pick.type}-${idx}`}
+                  className={`flex items-center justify-between text-xs rounded p-2 cursor-pointer transition-colors ${
+                    pick.type === "BUY" 
+                      ? "bg-green-500/10 hover:bg-green-500/20 border border-green-500/20" 
+                      : "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20"
+                  }`}
+                  onClick={() => setSelectedTicker(pick.ticker)}
+                  data-testid={`top-pick-${pick.ticker}`}
+                >
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1">
+                      <span className={pick.type === "BUY" ? "text-green-600" : "text-red-600"}>
+                        {pick.type === "BUY" ? "📈" : "📉"}
+                      </span>
+                      <span className="font-bold">{pick.ticker}</span>
+                      <Badge 
+                        variant="outline" 
+                        className={`text-[8px] px-1 py-0 ${
+                          pick.type === "BUY" ? "text-green-600 border-green-600" : "text-red-600 border-red-600"
+                        }`}
+                      >
+                        {pick.type}
                       </Badge>
-                      {pred.outcome === "win" && (
-                        <button
-                          onClick={(e) => handleShareWin(pred, e)}
-                          className="p-1 rounded hover:bg-green-500/20 text-green-600 transition-colors"
-                          title="Share your win on Twitter"
-                          data-testid={`button-share-${pred.id}`}
-                        >
-                          <Share2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px]">Pending</Badge>
-                  )}
-                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                    </div>
+                    <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
+                      {pick.reasoning}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">${pick.price.toFixed(2)}</span>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                  </div>
                 </div>
-              </div>
-              );
-            })}
-            {predictionsData.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                No predictions yet. Buy signals are auto-logged!
-              </p>
-            )}
+              ));
+            })()}
           </div>
           
           {/* View All Link */}
-          {predictionsData.length > 5 && (
+          {predictionsData.length > 0 && (
             <Button
               variant="link"
               size="sm"
@@ -734,7 +730,7 @@ export default function Home() {
               onClick={() => { setHistoryFilter("all"); setShowFullHistory(true); }}
               data-testid="button-view-all-history"
             >
-              View All {predictionsData.length} Predictions
+              View All {predictionsData.length} Logged Predictions
             </Button>
           )}
         </div>
