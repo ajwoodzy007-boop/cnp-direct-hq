@@ -10,6 +10,7 @@ import {
   StSelect,
 } from "@/components/streamlit/widgets";
 import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -226,6 +227,10 @@ export default function Home() {
             signalType: "Rocket Ship",
             entryPrice: stock.price,
           });
+          toast.success(`🚀 Rocket Ship Detected!`, {
+            description: `${stock.ticker} at $${stock.price.toFixed(2)} - High volume + bullish sentiment`,
+            duration: 5000,
+          });
         }
       }
       
@@ -237,6 +242,10 @@ export default function Home() {
             ticker: stock.ticker,
             signalType: "Diamond",
             entryPrice: stock.price,
+          });
+          toast.success(`💎 Diamond in the Rough!`, {
+            description: `${stock.ticker} at $${stock.price.toFixed(2)} - Oversold + bullish sentiment`,
+            duration: 5000,
           });
         }
       }
