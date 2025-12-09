@@ -1760,28 +1760,31 @@ export default function Home() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-4 bg-muted/30 rounded-lg">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 p-4 bg-muted/30 rounded-lg">
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Entry Price (Open)</p>
                           <p className="text-2xl font-bold">${pick.entryPrice.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {top10TodayData?.date ? new Date(top10TodayData.date).toLocaleDateString() : ""} 9:30 AM ET
+                          </p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Close Price</p>
                           <p className="text-2xl font-bold">${pick.closePrice.toFixed(2)}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {top10TodayData?.date ? new Date(top10TodayData.date).toLocaleDateString() : ""} 4:00 PM ET
+                          </p>
                         </div>
                         <div>
-                          <p className="text-sm text-muted-foreground mb-1">Previous Close</p>
-                          <p className="text-2xl font-bold">${pick.prevClose?.toFixed(2) || "N/A"}</p>
+                          <p className="text-sm text-muted-foreground mb-1">Current Price</p>
+                          <p className="text-2xl font-bold">
+                            ${pick.currentPrice.toFixed(2)}
+                            {pick.hasAfterHours && <span className="text-sm text-yellow-600 ml-1">AH</span>}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date().toLocaleDateString()} {new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "America/New_York" })} ET
+                          </p>
                         </div>
-                        {dailyPredictionResults.isAfterHours && (
-                          <div>
-                            <p className="text-sm text-muted-foreground mb-1">Current Price</p>
-                            <p className="text-2xl font-bold">
-                              ${pick.currentPrice.toFixed(2)}
-                              {pick.hasAfterHours && <span className="text-sm text-yellow-600 ml-1">AH</span>}
-                            </p>
-                          </div>
-                        )}
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Close P/L</p>
                           <p className={`text-2xl font-bold ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
