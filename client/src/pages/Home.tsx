@@ -115,6 +115,7 @@ export default function Home() {
   const [selectedPrediction, setSelectedPrediction] = useState<Prediction | null>(null);
   const [showFullHistory, setShowFullHistory] = useState(false);
   const [autoLoggedTickers, setAutoLoggedTickers] = useState<Set<string>>(new Set());
+  const [historyFilter, setHistoryFilter] = useState<"all" | "win" | "loss">("all");
 
   // Fetch market data with React Query
   const { data: marketData = [], isLoading, refetch } = useQuery({
@@ -341,11 +342,19 @@ export default function Home() {
             <p className="text-lg font-bold">{predictionStats.winRate}%</p>
             <p className="text-[10px] text-muted-foreground">Win Rate</p>
           </div>
-          <div className="bg-green-500/10 rounded p-2 text-center">
+          <div 
+            className="bg-green-500/10 rounded p-2 text-center cursor-pointer hover:bg-green-500/20 transition-colors"
+            onClick={() => { setHistoryFilter("win"); setShowFullHistory(true); }}
+            data-testid="button-view-wins"
+          >
             <p className="text-lg font-bold text-green-600">{predictionStats.wins}</p>
             <p className="text-[10px] text-muted-foreground">Wins</p>
           </div>
-          <div className="bg-red-500/10 rounded p-2 text-center">
+          <div 
+            className="bg-red-500/10 rounded p-2 text-center cursor-pointer hover:bg-red-500/20 transition-colors"
+            onClick={() => { setHistoryFilter("loss"); setShowFullHistory(true); }}
+            data-testid="button-view-losses"
+          >
             <p className="text-lg font-bold text-red-600">{predictionStats.losses}</p>
             <p className="text-[10px] text-muted-foreground">Losses</p>
           </div>
@@ -396,7 +405,7 @@ export default function Home() {
               variant="link"
               size="sm"
               className="w-full mt-2 text-xs"
-              onClick={() => setShowFullHistory(true)}
+              onClick={() => { setHistoryFilter("all"); setShowFullHistory(true); }}
               data-testid="button-view-all-history"
             >
               View All {predictionsData.length} Predictions
@@ -750,10 +759,12 @@ export default function Home() {
       </Dialog>
 
       {/* Full History Dialog */}
-      <Dialog open={showFullHistory} onOpenChange={setShowFullHistory}>
+      <Dialog open={showFullHistory} onOpenChange={(open) => { setShowFullHistory(open); if (!open) setHistoryFilter("all"); }}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>All Prediction History</DialogTitle>
+            <DialogTitle>
+              {historyFilter === "win" ? "Winning Predictions" : historyFilter === "loss" ? "Losing Predictions" : "All Prediction History"}
+            </DialogTitle>
           </DialogHeader>
           <div className="overflow-y-auto flex-1">
             <table className="w-full text-sm">
@@ -768,7 +779,9 @@ export default function Home() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {predictionsData.map((pred) => (
+                {predictionsData
+                  .filter((pred) => historyFilter === "all" ? true : pred.outcome === historyFilter)
+                  .map((pred) => (
                   <tr 
                     key={pred.id} 
                     className="hover:bg-muted/30 cursor-pointer"
