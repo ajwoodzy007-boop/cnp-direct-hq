@@ -1162,6 +1162,114 @@ Provide a JSON response with exactly this structure:
     }
   });
 
+  // GET /api/top10/history - Get historical prediction runs with entries
+  app.get("/api/top10/history", async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 30;
+      const history = await storage.getDailyPredictionHistory(limit);
+      res.json({ success: true, data: history });
+    } catch (error) {
+      console.error("Get history error:", error);
+      res.status(500).json({ success: false, error: "Failed to get prediction history" });
+    }
+  });
+
+  // GET /api/top10/stats - Get overall accuracy statistics
+  app.get("/api/top10/stats", async (req, res) => {
+    try {
+      const stats = await storage.getDailyPredictionStats();
+      res.json({ success: true, data: stats });
+    } catch (error) {
+      console.error("Get stats error:", error);
+      res.status(500).json({ success: false, error: "Failed to get prediction stats" });
+    }
+  });
+
+  // POST /api/top10/save-run - Save today's predictions to history (called by scheduler)
+  app.post("/api/top10/save-run", async (req, res) => {
+    try {
+      // Validate input with Zod
+      const saveRunSchema = z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD format"),
+        picks: z.array(z.object({
+          ticker: z.string().min(1),
+          price: z.number(),
+          openPrice: z.number().optional(),
+          confidence: z.number().optional(),
+          reasoning: z.string().optional(),
+        })).min(1),
+      });
+      
+      const parsed = saveRunSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ success: false, error: "Invalid input: " + parsed.error.message });
+      }
+      
+      const { date, picks } = parsed.data;
+      
+      // Create the run
+      const run = await storage.createDailyPredictionRun(date);
+      
+      // Check if entries already exist for this run
+      const existingHistory = await storage.getDailyPredictionHistory(1);
+      const existingRun = existingHistory.find(r => r.runDate === date);
+      if (existingRun && existingRun.entries.length > 0) {
+        return res.json({ success: true, data: { run: existingRun, message: "Run already exists" } });
+      }
+      
+      // Save entries
+      const entries = picks.map((pick: any) => ({
+        ticker: pick.ticker,
+        confidence: pick.confidence || 0,
+        reasoning: pick.reasoning || "",
+        entryPrice: pick.openPrice || pick.price,
+        closePrice: null,
+        currentPrice: pick.price,
+        closePnl: null,
+        totalPnl: null,
+        outcome: "pending",
+      }));
+      
+      await storage.saveDailyPredictionEntries(run.id, entries);
+      
+      res.json({ success: true, data: { runId: run.id, entriesCount: entries.length } });
+    } catch (error) {
+      console.error("Save run error:", error);
+      res.status(500).json({ success: false, error: "Failed to save prediction run" });
+    }
+  });
+
+  // POST /api/top10/finalize-run - Finalize today's predictions with close prices
+  app.post("/api/top10/finalize-run", async (req, res) => {
+    try {
+      // Validate input with Zod
+      const finalizeRunSchema = z.object({
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be YYYY-MM-DD format"),
+        entries: z.array(z.object({
+          ticker: z.string().min(1),
+          closePrice: z.number(),
+          currentPrice: z.number(),
+          closePnl: z.number(),
+          totalPnl: z.number(),
+          outcome: z.enum(["win", "loss", "pending"]),
+        })).min(1),
+      });
+      
+      const parsed = finalizeRunSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ success: false, error: "Invalid input: " + parsed.error.message });
+      }
+      
+      const { date, entries } = parsed.data;
+      
+      await storage.finalizeDailyPredictionRun(date, entries);
+      res.json({ success: true, message: "Run finalized" });
+    } catch (error) {
+      console.error("Finalize run error:", error);
+      res.status(500).json({ success: false, error: "Failed to finalize prediction run" });
+    }
+  });
+
   // Training affiliate redirects - Configure these environment variables with your affiliate IDs:
   // AFFILIATE_WARRIOR_TRADING - Warrior Trading affiliate ID
   // AFFILIATE_TRADINGVIEW - TradingView affiliate ID  

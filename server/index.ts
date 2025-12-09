@@ -148,6 +148,14 @@ app.use((req, res, next) => {
 
 // Scheduler for daily predictions at 7:30 AM Eastern time
 function startPredictionScheduler() {
+  const port = process.env.PORT || 5000;
+  
+  const getETDateString = () => {
+    const now = new Date();
+    const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    return etTime.toISOString().split("T")[0];
+  };
+  
   const checkAndTriggerPredictions = async () => {
     const now = new Date();
     const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
@@ -155,18 +163,33 @@ function startPredictionScheduler() {
     const minute = etTime.getMinutes();
     const day = etTime.getDay();
     
-    // Check if it's 7:30 AM ET on a weekday (Mon-Fri)
+    // Check if it's a weekday (Mon-Fri)
     const isWeekday = day >= 1 && day <= 5;
-    const isTargetTime = hour === 7 && minute === 30;
     
-    if (isWeekday && isTargetTime) {
+    // 7:30 AM ET - Generate and save predictions
+    if (isWeekday && hour === 7 && minute === 30) {
       log("Triggering daily prediction generation at 7:30 AM ET", "scheduler");
       try {
         // Force regenerate predictions for the new day
-        const response = await fetch(`http://localhost:${process.env.PORT || 5000}/api/market/top10-today?refresh=true`);
+        const response = await fetch(`http://localhost:${port}/api/market/top10-today?refresh=true`);
         if (response.ok) {
           const data = await response.json();
-          log(`Daily predictions generated successfully - ${data.data?.picks?.length || 0} picks`, "scheduler");
+          const picks = data.data?.picks || [];
+          log(`Daily predictions generated successfully - ${picks.length} picks`, "scheduler");
+          
+          // Save to historical database
+          if (picks.length > 0) {
+            const saveResponse = await fetch(`http://localhost:${port}/api/top10/save-run`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ date: getETDateString(), picks }),
+            });
+            if (saveResponse.ok) {
+              log("Predictions saved to historical database", "scheduler");
+            } else {
+              log("Failed to save predictions to history", "scheduler");
+            }
+          }
         } else {
           log("Failed to generate daily predictions", "scheduler");
         }
@@ -174,11 +197,55 @@ function startPredictionScheduler() {
         log(`Error generating predictions: ${error}`, "scheduler");
       }
     }
+    
+    // 4:15 PM ET - Finalize predictions with close prices
+    if (isWeekday && hour === 16 && minute === 15) {
+      log("Finalizing daily predictions at 4:15 PM ET", "scheduler");
+      try {
+        // Get today's predictions with live prices
+        const response = await fetch(`http://localhost:${port}/api/market/top10-today`);
+        if (response.ok) {
+          const data = await response.json();
+          const picks = data.data?.picks || [];
+          
+          if (picks.length > 0) {
+            // Build entries with close data
+            const entries = picks.map((pick: any) => {
+              const entryPrice = pick.openPrice || pick.price;
+              const closePrice = pick.price; // Current price is close price at 4:15 PM
+              const closePnl = ((closePrice - entryPrice) / entryPrice) * 100;
+              return {
+                ticker: pick.ticker,
+                closePrice,
+                currentPrice: closePrice,
+                closePnl: parseFloat(closePnl.toFixed(2)),
+                totalPnl: parseFloat(closePnl.toFixed(2)),
+                outcome: closePnl > 0 ? "win" : "loss",
+              };
+            });
+            
+            // Finalize the run
+            const finalizeResponse = await fetch(`http://localhost:${port}/api/top10/finalize-run`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ date: getETDateString(), entries }),
+            });
+            if (finalizeResponse.ok) {
+              log(`Finalized ${entries.length} predictions`, "scheduler");
+            } else {
+              log("Failed to finalize predictions", "scheduler");
+            }
+          }
+        }
+      } catch (error) {
+        log(`Error finalizing predictions: ${error}`, "scheduler");
+      }
+    }
   };
   
   // Check every minute
   setInterval(checkAndTriggerPredictions, 60 * 1000);
-  log("Prediction scheduler started - predictions will be generated at 7:30 AM ET", "scheduler");
+  log("Prediction scheduler started - predictions generated at 7:30 AM ET, finalized at 4:15 PM ET", "scheduler");
 }
 
 (async () => {

@@ -89,3 +89,42 @@ export const insertWeeklyRecommendationSchema = createInsertSchema(weeklyRecomme
 
 export type InsertWeeklyRecommendation = z.infer<typeof insertWeeklyRecommendationSchema>;
 export type WeeklyRecommendation = typeof weeklyRecommendations.$inferSelect;
+
+// Historical prediction tracking - stores each day's Top 10 picks with outcomes
+export const dailyPredictionRuns = pgTable("daily_prediction_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  runDate: text("run_date").notNull().unique(), // YYYY-MM-DD format in ET
+  generatedAt: timestamp("generated_at").notNull().defaultNow(),
+  finalizedAt: timestamp("finalized_at"),
+  marketOpen: text("market_open").default("true"),
+});
+
+export const insertDailyPredictionRunSchema = createInsertSchema(dailyPredictionRuns).omit({
+  id: true,
+  generatedAt: true,
+  finalizedAt: true,
+});
+
+export type InsertDailyPredictionRun = z.infer<typeof insertDailyPredictionRunSchema>;
+export type DailyPredictionRun = typeof dailyPredictionRuns.$inferSelect;
+
+export const dailyPredictionEntries = pgTable("daily_prediction_entries", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  runId: varchar("run_id").notNull().references(() => dailyPredictionRuns.id),
+  ticker: text("ticker").notNull(),
+  confidence: real("confidence").notNull(),
+  reasoning: text("reasoning"),
+  entryPrice: real("entry_price").notNull(),
+  closePrice: real("close_price"),
+  currentPrice: real("current_price"),
+  closePnl: real("close_pnl"),
+  totalPnl: real("total_pnl"),
+  outcome: text("outcome"), // 'win' | 'loss' | 'pending'
+});
+
+export const insertDailyPredictionEntrySchema = createInsertSchema(dailyPredictionEntries).omit({
+  id: true,
+});
+
+export type InsertDailyPredictionEntry = z.infer<typeof insertDailyPredictionEntrySchema>;
+export type DailyPredictionEntry = typeof dailyPredictionEntries.$inferSelect;

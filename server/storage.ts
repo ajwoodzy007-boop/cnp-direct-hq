@@ -1,7 +1,7 @@
-import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick, type WeeklyRecommendation, type InsertWeeklyRecommendation, predictions } from "@shared/schema";
+import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick, type WeeklyRecommendation, type InsertWeeklyRecommendation, type DailyPredictionRun, type InsertDailyPredictionRun, type DailyPredictionEntry, type InsertDailyPredictionEntry, predictions, dailyPredictionRuns, dailyPredictionEntries } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { sql, eq } from "drizzle-orm";
+import { sql, eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -22,6 +22,13 @@ export interface IStorage {
   getAffiliateClickStats(): Promise<{ ticker: string; count: number }[]>;
   getWeeklyRecommendations(): Promise<WeeklyRecommendation[]>;
   saveWeeklyRecommendations(recommendations: InsertWeeklyRecommendation[]): Promise<WeeklyRecommendation[]>;
+  // Historical prediction tracking
+  createDailyPredictionRun(runDate: string): Promise<DailyPredictionRun>;
+  getDailyPredictionRun(runDate: string): Promise<DailyPredictionRun | undefined>;
+  saveDailyPredictionEntries(runId: string, entries: Omit<InsertDailyPredictionEntry, 'runId'>[]): Promise<DailyPredictionEntry[]>;
+  finalizeDailyPredictionRun(runDate: string, entries: { ticker: string; closePrice: number; currentPrice: number; closePnl: number; totalPnl: number; outcome: string }[]): Promise<void>;
+  getDailyPredictionHistory(limit?: number): Promise<(DailyPredictionRun & { entries: DailyPredictionEntry[] })[]>;
+  getDailyPredictionStats(): Promise<{ totalRuns: number; totalPicks: number; wins: number; losses: number; pending: number; winRate: number; avgPnl: number }>;
 }
 
 export class MemStorage implements IStorage {
@@ -262,6 +269,107 @@ export class MemStorage implements IStorage {
     const weekStart = new Date(now.setDate(diff));
     weekStart.setHours(0, 0, 0, 0);
     return weekStart;
+  }
+
+  async createDailyPredictionRun(runDate: string): Promise<DailyPredictionRun> {
+    const existing = await this.getDailyPredictionRun(runDate);
+    if (existing) return existing;
+    
+    const result = await db.insert(dailyPredictionRuns).values({
+      runDate,
+      marketOpen: "true",
+    }).returning();
+    return result[0];
+  }
+
+  async getDailyPredictionRun(runDate: string): Promise<DailyPredictionRun | undefined> {
+    const result = await db.select().from(dailyPredictionRuns).where(eq(dailyPredictionRuns.runDate, runDate));
+    return result[0];
+  }
+
+  async saveDailyPredictionEntries(runId: string, entries: Omit<InsertDailyPredictionEntry, 'runId'>[]): Promise<DailyPredictionEntry[]> {
+    if (entries.length === 0) return [];
+    
+    const values = entries.map(entry => ({
+      runId,
+      ticker: entry.ticker,
+      confidence: entry.confidence,
+      reasoning: entry.reasoning,
+      entryPrice: entry.entryPrice,
+      closePrice: entry.closePrice,
+      currentPrice: entry.currentPrice,
+      closePnl: entry.closePnl,
+      totalPnl: entry.totalPnl,
+      outcome: entry.outcome,
+    }));
+    
+    const result = await db.insert(dailyPredictionEntries).values(values).returning();
+    return result;
+  }
+
+  async finalizeDailyPredictionRun(runDate: string, entries: { ticker: string; closePrice: number; currentPrice: number; closePnl: number; totalPnl: number; outcome: string }[]): Promise<void> {
+    const run = await this.getDailyPredictionRun(runDate);
+    if (!run) return;
+    
+    // Update each entry
+    for (const entry of entries) {
+      await db.update(dailyPredictionEntries)
+        .set({
+          closePrice: entry.closePrice,
+          currentPrice: entry.currentPrice,
+          closePnl: entry.closePnl,
+          totalPnl: entry.totalPnl,
+          outcome: entry.outcome,
+        })
+        .where(sql`${dailyPredictionEntries.runId} = ${run.id} AND ${dailyPredictionEntries.ticker} = ${entry.ticker}`);
+    }
+    
+    // Mark run as finalized
+    await db.update(dailyPredictionRuns)
+      .set({ finalizedAt: new Date() })
+      .where(eq(dailyPredictionRuns.id, run.id));
+  }
+
+  async getDailyPredictionHistory(limit: number = 30): Promise<(DailyPredictionRun & { entries: DailyPredictionEntry[] })[]> {
+    const runs = await db.select()
+      .from(dailyPredictionRuns)
+      .orderBy(desc(dailyPredictionRuns.runDate))
+      .limit(limit);
+    
+    const result: (DailyPredictionRun & { entries: DailyPredictionEntry[] })[] = [];
+    
+    for (const run of runs) {
+      const entries = await db.select()
+        .from(dailyPredictionEntries)
+        .where(eq(dailyPredictionEntries.runId, run.id));
+      result.push({ ...run, entries });
+    }
+    
+    return result;
+  }
+
+  async getDailyPredictionStats(): Promise<{ totalRuns: number; totalPicks: number; wins: number; losses: number; pending: number; winRate: number; avgPnl: number }> {
+    const runs = await db.select().from(dailyPredictionRuns);
+    const allEntries = await db.select().from(dailyPredictionEntries);
+    
+    const wins = allEntries.filter(e => e.outcome === 'win').length;
+    const losses = allEntries.filter(e => e.outcome === 'loss').length;
+    const pending = allEntries.filter(e => !e.outcome || e.outcome === 'pending').length;
+    const resolved = wins + losses;
+    const winRate = resolved > 0 ? (wins / resolved) * 100 : 0;
+    
+    const pnls = allEntries.filter(e => e.closePnl !== null).map(e => e.closePnl!);
+    const avgPnl = pnls.length > 0 ? pnls.reduce((a, b) => a + b, 0) / pnls.length : 0;
+    
+    return {
+      totalRuns: runs.length,
+      totalPicks: allEntries.length,
+      wins,
+      losses,
+      pending,
+      winRate: parseFloat(winRate.toFixed(1)),
+      avgPnl: parseFloat(avgPnl.toFixed(2)),
+    };
   }
 }
 
