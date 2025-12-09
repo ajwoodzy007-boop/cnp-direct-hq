@@ -69,3 +69,23 @@ export const insertAffiliateClickSchema = createInsertSchema(affiliateClicks).om
 
 export type InsertAffiliateClick = z.infer<typeof insertAffiliateClickSchema>;
 export type AffiliateClick = typeof affiliateClicks.$inferSelect;
+
+export const weeklyRecommendations = pgTable("weekly_recommendations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticker: text("ticker").notNull(),
+  weekStart: timestamp("week_start").notNull(),
+  signalType: text("signal_type").notNull(),
+  entryPrice: real("entry_price").notNull(),
+  currentPrice: real("current_price"),
+  gainPercent: real("gain_percent"),
+  reasoning: text("reasoning"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertWeeklyRecommendationSchema = createInsertSchema(weeklyRecommendations).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertWeeklyRecommendation = z.infer<typeof insertWeeklyRecommendationSchema>;
+export type WeeklyRecommendation = typeof weeklyRecommendations.$inferSelect;

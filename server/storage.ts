@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick } from "@shared/schema";
+import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick, type WeeklyRecommendation, type InsertWeeklyRecommendation } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
@@ -9,6 +9,7 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   createPrediction(prediction: InsertPrediction): Promise<Prediction>;
   getPredictions(): Promise<Prediction[]>;
+  getPredictionsWithPerformance(): Promise<(Prediction & { percentChange?: number })[]>;
   updatePredictionOutcome(id: string, outcome: string, outcomePrice: number): Promise<Prediction | undefined>;
   getWatchlist(): Promise<WatchlistItem[]>;
   addToWatchlist(item: InsertWatchlist): Promise<WatchlistItem>;
@@ -19,6 +20,8 @@ export interface IStorage {
   logAffiliateClick(click: InsertAffiliateClick): Promise<AffiliateClick>;
   getAffiliateClicks(): Promise<AffiliateClick[]>;
   getAffiliateClickStats(): Promise<{ ticker: string; count: number }[]>;
+  getWeeklyRecommendations(): Promise<WeeklyRecommendation[]>;
+  saveWeeklyRecommendations(recommendations: InsertWeeklyRecommendation[]): Promise<WeeklyRecommendation[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -26,12 +29,14 @@ export class MemStorage implements IStorage {
   private predictions: Map<string, Prediction>;
   private watchlistItems: Map<string, WatchlistItem>;
   private affiliateClicksList: AffiliateClick[];
+  private weeklyRecommendationsList: WeeklyRecommendation[];
 
   constructor() {
     this.users = new Map();
     this.predictions = new Map();
     this.watchlistItems = new Map();
     this.affiliateClicksList = [];
+    this.weeklyRecommendationsList = [];
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -193,6 +198,57 @@ export class MemStorage implements IStorage {
     return Object.entries(counts)
       .map(([ticker, count]) => ({ ticker, count }))
       .sort((a, b) => b.count - a.count);
+  }
+
+  async getPredictionsWithPerformance(): Promise<(Prediction & { percentChange?: number })[]> {
+    const predictions = await this.getPredictions();
+    return predictions.map(p => ({
+      ...p,
+      percentChange: p.outcomePrice && p.entryPrice 
+        ? parseFloat((((p.outcomePrice - p.entryPrice) / p.entryPrice) * 100).toFixed(2))
+        : undefined
+    }));
+  }
+
+  async getWeeklyRecommendations(): Promise<WeeklyRecommendation[]> {
+    const weekStart = this.getWeekStart();
+    return this.weeklyRecommendationsList
+      .filter(r => new Date(r.weekStart).getTime() === weekStart.getTime())
+      .sort((a, b) => (b.gainPercent || 0) - (a.gainPercent || 0));
+  }
+
+  async saveWeeklyRecommendations(recommendations: InsertWeeklyRecommendation[]): Promise<WeeklyRecommendation[]> {
+    const weekStart = this.getWeekStart();
+    this.weeklyRecommendationsList = this.weeklyRecommendationsList.filter(
+      r => new Date(r.weekStart).getTime() !== weekStart.getTime()
+    );
+    
+    const saved: WeeklyRecommendation[] = [];
+    for (const rec of recommendations) {
+      const item: WeeklyRecommendation = {
+        id: randomUUID(),
+        ticker: rec.ticker,
+        weekStart: rec.weekStart,
+        signalType: rec.signalType,
+        entryPrice: rec.entryPrice,
+        currentPrice: rec.currentPrice || null,
+        gainPercent: rec.gainPercent || null,
+        reasoning: rec.reasoning || null,
+        createdAt: new Date(),
+      };
+      this.weeklyRecommendationsList.push(item);
+      saved.push(item);
+    }
+    return saved;
+  }
+
+  private getWeekStart(): Date {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    const weekStart = new Date(now.setDate(diff));
+    weekStart.setHours(0, 0, 0, 0);
+    return weekStart;
   }
 }
 
