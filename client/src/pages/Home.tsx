@@ -10,6 +10,7 @@ import {
   StSelect,
 } from "@/components/streamlit/widgets";
 import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX, GraduationCap } from "lucide-react";
+import { useSettings } from "@/contexts/SettingsContext";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -612,6 +613,107 @@ export default function Home() {
   // Sidebar UI
   const SidebarContent = (
     <div className="space-y-6">
+      {/* Prediction History - Moved to top */}
+      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-4">
+        <h4 className="font-semibold text-foreground flex items-center gap-2">
+          <History className="h-4 w-4" />
+          Prediction History
+        </h4>
+        
+        {/* Stats */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-muted/50 rounded p-2 text-center">
+            <p className="text-lg font-bold">{predictionStats.total}</p>
+            <p className="text-[10px] text-muted-foreground">Total</p>
+          </div>
+          <div className="bg-muted/50 rounded p-2 text-center">
+            <p className="text-lg font-bold">{predictionStats.winRate}%</p>
+            <p className="text-[10px] text-muted-foreground">Win Rate</p>
+          </div>
+          <div 
+            className="bg-green-500/10 rounded p-2 text-center cursor-pointer hover:bg-green-500/20 transition-colors"
+            onClick={() => { setHistoryFilter("win"); setShowFullHistory(true); }}
+            data-testid="button-view-wins"
+          >
+            <p className="text-lg font-bold text-green-600">{predictionStats.wins}</p>
+            <p className="text-[10px] text-muted-foreground">Wins</p>
+          </div>
+          <div 
+            className="bg-red-500/10 rounded p-2 text-center cursor-pointer hover:bg-red-500/20 transition-colors"
+            onClick={() => { setHistoryFilter("loss"); setShowFullHistory(true); }}
+            data-testid="button-view-losses"
+          >
+            <p className="text-lg font-bold text-red-600">{predictionStats.losses}</p>
+            <p className="text-[10px] text-muted-foreground">Losses</p>
+          </div>
+        </div>
+
+        {/* Recent Predictions - Last 5 */}
+        <div className="pt-2 border-t border-border">
+          <p className="text-xs text-muted-foreground mb-2">Recent Predictions</p>
+          <div className="space-y-2">
+            {predictionsData.slice(0, 5).map((pred) => (
+              <div 
+                key={pred.id} 
+                className="flex items-center justify-between text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50 transition-colors" 
+                onClick={() => setSelectedPrediction(pred)}
+                data-testid={`sidebar-prediction-${pred.id}`}
+              >
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-1">
+                    <span className="font-bold">{pred.ticker}</span>
+                    <Badge variant="outline" className="text-[8px] px-1 py-0">{pred.signalType}</Badge>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">
+                    {new Date(pred.predictionDate).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  {pred.outcome ? (
+                    <>
+                      <Badge className={`text-[10px] ${pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}`}>
+                        {pred.outcome.toUpperCase()}
+                      </Badge>
+                      {pred.outcome === "win" && (
+                        <button
+                          onClick={(e) => handleShareWin(pred, e)}
+                          className="p-1 rounded hover:bg-green-500/20 text-green-600 transition-colors"
+                          title="Share your win on Twitter"
+                          data-testid={`button-share-${pred.id}`}
+                        >
+                          <Share2 className="h-3 w-3" />
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px]">Pending</Badge>
+                  )}
+                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                </div>
+              </div>
+            ))}
+            {predictionsData.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-4">
+                No predictions yet. Rocket ships and diamonds are auto-logged!
+              </p>
+            )}
+          </div>
+          
+          {/* View All Link */}
+          {predictionsData.length > 5 && (
+            <Button
+              variant="link"
+              size="sm"
+              className="w-full mt-2 text-xs"
+              onClick={() => { setHistoryFilter("all"); setShowFullHistory(true); }}
+              data-testid="button-view-all-history"
+            >
+              View All {predictionsData.length} Predictions
+            </Button>
+          )}
+        </div>
+      </div>
+
       {/* Watchlist */}
       <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
