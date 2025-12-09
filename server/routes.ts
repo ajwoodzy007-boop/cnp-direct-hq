@@ -407,6 +407,70 @@ Provide a JSON response with exactly this structure:
     }
   });
 
+  // GET /api/predictions/performance - Get predictions with performance data
+  app.get("/api/predictions/performance", async (req, res) => {
+    try {
+      const data = await storage.getPredictionsWithPerformance();
+      res.json({ success: true, data });
+    } catch (error) {
+      console.error("Get predictions performance error:", error);
+      res.status(500).json({ success: false, error: "Failed to get predictions performance", data: [] });
+    }
+  });
+
+  // GET /api/market/recommendations - Get weekly top 5 buy/sell recommendations
+  app.get("/api/market/recommendations", async (req, res) => {
+    try {
+      const marketData = await scanMarket();
+      
+      // Calculate recommendations based on technical indicators
+      const buyPicks: Array<{ ticker: string; price: number; signal: string; reasoning: string; score: number }> = [];
+      const sellPicks: Array<{ ticker: string; price: number; signal: string; reasoning: string; score: number }> = [];
+      
+      for (const stock of marketData) {
+        // BUY criteria: RSI < 40, improving momentum, bullish or neutral sentiment
+        if (stock.rsi < 40 && stock.sentiment !== "🔴 BEARISH") {
+          const score = (40 - stock.rsi) + (stock.rvol > 1.5 ? 10 : 0) + (stock.sentiment === "🟢 BULLISH" ? 15 : 0);
+          buyPicks.push({
+            ticker: stock.ticker,
+            price: stock.price,
+            signal: "BUY",
+            reasoning: `RSI ${stock.rsi.toFixed(0)} (oversold)${stock.rvol > 1.5 ? ", high volume" : ""}${stock.sentiment === "🟢 BULLISH" ? ", bullish sentiment" : ""}`,
+            score
+          });
+        }
+        
+        // SELL criteria: RSI > 70, bearish sentiment or overbought
+        if (stock.rsi > 70 || (stock.rsi > 60 && stock.sentiment === "🔴 BEARISH")) {
+          const score = (stock.rsi - 60) + (stock.sentiment === "🔴 BEARISH" ? 15 : 0);
+          sellPicks.push({
+            ticker: stock.ticker,
+            price: stock.price,
+            signal: "SELL",
+            reasoning: `RSI ${stock.rsi.toFixed(0)} (overbought)${stock.sentiment === "🔴 BEARISH" ? ", bearish sentiment" : ""}`,
+            score
+          });
+        }
+      }
+      
+      // Sort by score and take top 5
+      const topBuys = buyPicks.sort((a, b) => b.score - a.score).slice(0, 5);
+      const topSells = sellPicks.sort((a, b) => b.score - a.score).slice(0, 5);
+      
+      res.json({ 
+        success: true, 
+        data: {
+          buys: topBuys.map(({ ticker, price, signal, reasoning }) => ({ ticker, price, signal, reasoning })),
+          sells: topSells.map(({ ticker, price, signal, reasoning }) => ({ ticker, price, signal, reasoning })),
+          generatedAt: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      console.error("Get recommendations error:", error);
+      res.status(500).json({ success: false, error: "Failed to get recommendations", data: { buys: [], sells: [] } });
+    }
+  });
+
   // Training affiliate redirects - Configure these environment variables with your affiliate IDs:
   // AFFILIATE_WARRIOR_TRADING - Warrior Trading affiliate ID
   // AFFILIATE_TRADINGVIEW - TradingView affiliate ID  
