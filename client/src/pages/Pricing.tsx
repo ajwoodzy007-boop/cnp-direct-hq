@@ -125,7 +125,7 @@ export default function Pricing() {
             >
               Yearly
               <Badge variant="secondary" className="ml-2 text-xs">
-                Save 35%
+                Save 17%
               </Badge>
             </button>
           </div>
@@ -187,7 +187,7 @@ export default function Pricing() {
                 ) : (
                   <>
                     <span className="text-4xl font-bold">
-                      {billingInterval === "month" ? "$19" : "$149"}
+                      {billingInterval === "month" ? "$9.99" : "$99"}
                     </span>
                     <span className="text-muted-foreground">
                       /{billingInterval === "month" ? "month" : "year"}

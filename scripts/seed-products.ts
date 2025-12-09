@@ -26,21 +26,21 @@ async function seedProducts() {
 
   const monthlyPrice = await stripe.prices.create({
     product: proProduct.id,
-    unit_amount: 1900,
+    unit_amount: 999,
     currency: 'usd',
     recurring: { interval: 'month' },
     metadata: { billing: 'monthly' }
   });
-  console.log('Created monthly price:', monthlyPrice.id, '- $19/month');
+  console.log('Created monthly price:', monthlyPrice.id, '- $9.99/month');
 
   const yearlyPrice = await stripe.prices.create({
     product: proProduct.id,
-    unit_amount: 14900,
+    unit_amount: 9900,
     currency: 'usd',
     recurring: { interval: 'year' },
     metadata: { billing: 'yearly' }
   });
-  console.log('Created yearly price:', yearlyPrice.id, '- $149/year (save 35%)');
+  console.log('Created yearly price:', yearlyPrice.id, '- $99/year (save 17%)');
 
   console.log('\nProducts created successfully!');
   console.log('Webhooks will sync them to your database automatically.');
