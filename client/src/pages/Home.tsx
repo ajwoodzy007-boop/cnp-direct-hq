@@ -712,6 +712,104 @@ export default function Home() {
             </Button>
           )}
         </div>
+
+        {/* Suggested Stocks */}
+        {suggestedStocks.length > 0 && (
+          <div className="pt-3 border-t border-border">
+            <p className="text-xs text-muted-foreground mb-2">Hot Picks (Click to Add)</p>
+            <div className="space-y-1">
+              {suggestedStocks.map((suggestion) => (
+                <div
+                  key={`${suggestion.stock.ticker}-${suggestion.signalType}`}
+                  className="flex items-center justify-between text-xs bg-primary/5 rounded p-2 cursor-pointer hover:bg-primary/10 transition-colors"
+                  onClick={() => {
+                    handleLogPrediction(suggestion.stock, suggestion.signalType);
+                    toast.success(`Added ${suggestion.stock.ticker}`, {
+                      description: `${suggestion.signalType} at $${suggestion.stock.price.toFixed(2)}`,
+                    });
+                  }}
+                  data-testid={`suggested-top-${suggestion.stock.ticker}-${suggestion.signalType}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span>{suggestion.icon}</span>
+                    <span className="font-bold">{suggestion.stock.ticker}</span>
+                    <span className="text-muted-foreground">${suggestion.stock.price.toFixed(2)}</span>
+                  </div>
+                  <Badge variant="outline" className="text-[8px] px-1 py-0">{suggestion.signalType}</Badge>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Top Performers Quick Add */}
+        <div className="pt-3 border-t border-border">
+          <p className="text-xs text-muted-foreground mb-2">Top Performers (Quick Add)</p>
+          <div className="flex flex-wrap gap-1">
+            {gainers.slice(0, 6).map((stock) => (
+              <Button
+                key={stock.ticker}
+                variant="outline"
+                size="sm"
+                className="h-7 text-[10px] px-2"
+                onClick={() => {
+                  createPredictionMutation.mutate({
+                    ticker: stock.ticker,
+                    signalType: "Top Gainer",
+                    entryPrice: stock.price,
+                  }, {
+                    onSuccess: () => {
+                      toast.success(`Added ${stock.ticker}`, {
+                        description: `Top Gainer at $${stock.price.toFixed(2)} (+${stock.changePercent.toFixed(1)}%)`,
+                      });
+                    }
+                  });
+                }}
+                disabled={createPredictionMutation.isPending}
+                data-testid={`quick-add-top-${stock.ticker}`}
+              >
+                {stock.ticker} <span className="text-green-600 ml-1">+{stock.changePercent.toFixed(1)}%</span>
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Manual Add */}
+        <div className="pt-3 border-t border-border">
+          <p className="text-xs text-muted-foreground mb-2">Add Stock Manually</p>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                placeholder="AAPL"
+                value={manualTicker}
+                onChange={(e) => setManualTicker(e.target.value.toUpperCase())}
+                className="flex-1 h-8 text-xs"
+                onKeyDown={(e) => e.key === "Enter" && handleManualAdd()}
+                data-testid="input-manual-ticker-top"
+              />
+              <select
+                value={manualSignal}
+                onChange={(e) => setManualSignal(e.target.value)}
+                className="h-8 text-xs rounded border border-input bg-background px-2"
+                data-testid="select-manual-signal-top"
+              >
+                <option value="Manual">Manual</option>
+                <option value="Bullish">Bullish</option>
+                <option value="Bearish">Bearish</option>
+                <option value="Swing">Swing</option>
+              </select>
+            </div>
+            <Button
+              size="sm"
+              className="w-full h-8 text-xs"
+              onClick={handleManualAdd}
+              disabled={!manualTicker.trim() || createPredictionMutation.isPending}
+              data-testid="button-add-manual-top"
+            >
+              Add to Tracker
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Watchlist */}
@@ -853,205 +951,6 @@ export default function Home() {
             Click above to get AI-powered trading insights based on your performance.
           </p>
         )}
-      </div>
-
-      {/* Prediction History */}
-      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-4">
-        <h4 className="font-semibold text-foreground flex items-center gap-2">
-          <History className="h-4 w-4" />
-          Prediction History
-        </h4>
-        
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-muted/50 rounded p-2 text-center">
-            <p className="text-lg font-bold">{predictionStats.total}</p>
-            <p className="text-[10px] text-muted-foreground">Total</p>
-          </div>
-          <div className="bg-muted/50 rounded p-2 text-center">
-            <p className="text-lg font-bold">{predictionStats.winRate}%</p>
-            <p className="text-[10px] text-muted-foreground">Win Rate</p>
-          </div>
-          <div 
-            className="bg-green-500/10 rounded p-2 text-center cursor-pointer hover:bg-green-500/20 transition-colors"
-            onClick={() => { setHistoryFilter("win"); setShowFullHistory(true); }}
-            data-testid="button-view-wins"
-          >
-            <p className="text-lg font-bold text-green-600">{predictionStats.wins}</p>
-            <p className="text-[10px] text-muted-foreground">Wins</p>
-          </div>
-          <div 
-            className="bg-red-500/10 rounded p-2 text-center cursor-pointer hover:bg-red-500/20 transition-colors"
-            onClick={() => { setHistoryFilter("loss"); setShowFullHistory(true); }}
-            data-testid="button-view-losses"
-          >
-            <p className="text-lg font-bold text-red-600">{predictionStats.losses}</p>
-            <p className="text-[10px] text-muted-foreground">Losses</p>
-          </div>
-        </div>
-
-        {/* Recent Predictions - Last 5 */}
-        <div className="pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-2">Recent Predictions</p>
-          <div className="space-y-2">
-            {predictionsData.slice(0, 5).map((pred) => (
-              <div 
-                key={pred.id} 
-                className="flex items-center justify-between text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50 transition-colors" 
-                onClick={() => setSelectedPrediction(pred)}
-                data-testid={`sidebar-prediction-${pred.id}`}
-              >
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1">
-                    <span className="font-bold">{pred.ticker}</span>
-                    <Badge variant="outline" className="text-[8px] px-1 py-0">{pred.signalType}</Badge>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(pred.predictionDate).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  {pred.outcome ? (
-                    <>
-                      <Badge className={`text-[10px] ${pred.outcome === "win" ? "bg-green-600" : "bg-red-600"}`}>
-                        {pred.outcome.toUpperCase()}
-                      </Badge>
-                      {pred.outcome === "win" && (
-                        <button
-                          onClick={(e) => handleShareWin(pred, e)}
-                          className="p-1 rounded hover:bg-green-500/20 text-green-600 transition-colors"
-                          title="Share your win on Twitter"
-                          data-testid={`button-share-${pred.id}`}
-                        >
-                          <Share2 className="h-3 w-3" />
-                        </button>
-                      )}
-                    </>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px]">Pending</Badge>
-                  )}
-                  <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                </div>
-              </div>
-            ))}
-            {predictionsData.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                No predictions yet. Rocket ships and diamonds are auto-logged!
-              </p>
-            )}
-          </div>
-          
-          {/* View All Link */}
-          {predictionsData.length > 5 && (
-            <Button
-              variant="link"
-              size="sm"
-              className="w-full mt-2 text-xs"
-              onClick={() => { setHistoryFilter("all"); setShowFullHistory(true); }}
-              data-testid="button-view-all-history"
-            >
-              View All {predictionsData.length} Predictions
-            </Button>
-          )}
-        </div>
-
-        {/* Suggested Stocks */}
-        {suggestedStocks.length > 0 && (
-          <div className="pt-3 border-t border-border">
-            <p className="text-xs text-muted-foreground mb-2">Hot Picks (Click to Add)</p>
-            <div className="space-y-1">
-              {suggestedStocks.map((suggestion) => (
-                <div
-                  key={`${suggestion.stock.ticker}-${suggestion.signalType}`}
-                  className="flex items-center justify-between text-xs bg-primary/5 rounded p-2 cursor-pointer hover:bg-primary/10 transition-colors"
-                  onClick={() => {
-                    handleLogPrediction(suggestion.stock, suggestion.signalType);
-                    toast.success(`Added ${suggestion.stock.ticker}`, {
-                      description: `${suggestion.signalType} at $${suggestion.stock.price.toFixed(2)}`,
-                    });
-                  }}
-                  data-testid={`suggested-${suggestion.stock.ticker}-${suggestion.signalType}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <span>{suggestion.icon}</span>
-                    <span className="font-bold">{suggestion.stock.ticker}</span>
-                    <span className="text-muted-foreground">${suggestion.stock.price.toFixed(2)}</span>
-                  </div>
-                  <Badge variant="outline" className="text-[8px] px-1 py-0">{suggestion.signalType}</Badge>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Top Performers Quick Add */}
-        <div className="pt-3 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-2">Top Performers (Quick Add)</p>
-          <div className="flex flex-wrap gap-1">
-            {gainers.slice(0, 6).map((stock) => (
-              <Button
-                key={stock.ticker}
-                variant="outline"
-                size="sm"
-                className="h-7 text-[10px] px-2"
-                onClick={() => {
-                  createPredictionMutation.mutate({
-                    ticker: stock.ticker,
-                    signalType: "Top Gainer",
-                    entryPrice: stock.price,
-                  }, {
-                    onSuccess: () => {
-                      toast.success(`Added ${stock.ticker}`, {
-                        description: `Top Gainer at $${stock.price.toFixed(2)} (+${stock.changePercent.toFixed(1)}%)`,
-                      });
-                    }
-                  });
-                }}
-                disabled={createPredictionMutation.isPending}
-                data-testid={`quick-add-${stock.ticker}`}
-              >
-                {stock.ticker} <span className="text-green-600 ml-1">+{stock.changePercent.toFixed(1)}%</span>
-              </Button>
-            ))}
-          </div>
-        </div>
-
-        {/* Manual Add */}
-        <div className="pt-3 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-2">Add Stock Manually</p>
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Input
-                placeholder="AAPL"
-                value={manualTicker}
-                onChange={(e) => setManualTicker(e.target.value.toUpperCase())}
-                className="flex-1 h-8 text-xs"
-                onKeyDown={(e) => e.key === "Enter" && handleManualAdd()}
-                data-testid="input-manual-ticker"
-              />
-              <select
-                value={manualSignal}
-                onChange={(e) => setManualSignal(e.target.value)}
-                className="h-8 text-xs rounded border border-input bg-background px-2"
-                data-testid="select-manual-signal"
-              >
-                <option value="Manual">Manual</option>
-                <option value="Bullish">Bullish</option>
-                <option value="Bearish">Bearish</option>
-                <option value="Swing">Swing</option>
-              </select>
-            </div>
-            <Button
-              size="sm"
-              className="w-full h-8 text-xs"
-              onClick={handleManualAdd}
-              disabled={!manualTicker.trim() || createPredictionMutation.isPending}
-              data-testid="button-add-manual"
-            >
-              Add to Tracker
-            </Button>
-          </div>
-        </div>
       </div>
 
       {/* Upgrade Banner */}
