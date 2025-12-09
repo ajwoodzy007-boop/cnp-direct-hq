@@ -1,7 +1,7 @@
 // Market Data Utilities
 // Uses Finnhub API for real data, with mock fallback
 
-import { getQuote, getCandles, getCompanyNews, getNewsSentiment } from "./finnhub";
+import { getQuote, getCandles, getCompanyNews } from "./finnhub";
 
 export interface StockData {
   ticker: string;
@@ -89,19 +89,60 @@ function generateMockData(ticker: string): StockData {
   };
 }
 
+// Calculate sentiment from news headlines
+async function getNewsSentimentFromHeadlines(ticker: string): Promise<{ sentiment: StockData["sentiment"]; score: number }> {
+  try {
+    const today = new Date();
+    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    
+    const news = await getCompanyNews(ticker, formatDate(weekAgo), formatDate(today));
+    
+    if (!news || news.length === 0) {
+      return { sentiment: "⚪ NO NEWS", score: 0 };
+    }
+    
+    // Analyze sentiment from headlines
+    let positiveCount = 0;
+    let negativeCount = 0;
+    
+    const positiveWords = ["surge", "soar", "gain", "rise", "up", "high", "record", "beat", "growth", "profit", "rally", "jump", "boost", "strong", "bullish", "outperform", "upgrade"];
+    const negativeWords = ["fall", "drop", "sink", "plunge", "down", "low", "miss", "loss", "decline", "cut", "crash", "tumble", "weak", "bearish", "downgrade", "concern", "risk"];
+    
+    for (const article of news.slice(0, 10)) {
+      const lower = article.headline.toLowerCase();
+      const posMatches = positiveWords.filter(w => lower.includes(w)).length;
+      const negMatches = negativeWords.filter(w => lower.includes(w)).length;
+      
+      if (posMatches > negMatches) positiveCount++;
+      else if (negMatches > posMatches) negativeCount++;
+    }
+    
+    const totalAnalyzed = Math.max(1, positiveCount + negativeCount);
+    const bullishPercent = positiveCount / totalAnalyzed;
+    
+    let sentiment: StockData["sentiment"];
+    if (bullishPercent >= 0.6) sentiment = "🟢 BULLISH";
+    else if (bullishPercent <= 0.4) sentiment = "🔴 BEARISH";
+    else sentiment = "⚪ NEUTRAL";
+    
+    const score = parseFloat((bullishPercent * 2 - 1).toFixed(3));
+    
+    return { sentiment, score };
+  } catch (error) {
+    console.error(`Error getting news sentiment for ${ticker}:`, error);
+    return { sentiment: "⚪ NEUTRAL", score: 0 };
+  }
+}
+
 // Get real stock data from Finnhub
 async function getRealStockData(ticker: string): Promise<StockData | null> {
   try {
     const quote = await getQuote(ticker);
     if (!quote || quote.c === 0) return null;
 
-    // Get sentiment data
-    const sentimentData = await getNewsSentiment(ticker);
-    let sentimentScore = 0.5; // neutral default
-    
-    if (sentimentData?.sentiment) {
-      sentimentScore = sentimentData.sentiment.bullishPercent / 100;
-    }
+    // Get sentiment from news headlines (works on free tier)
+    const { sentiment, score } = await getNewsSentimentFromHeadlines(ticker);
 
     // Estimate RSI and RVOL (would need historical data for accurate calculation)
     // For now, use approximate values based on price movement
@@ -114,8 +155,8 @@ async function getRealStockData(ticker: string): Promise<StockData | null> {
       changePercent: parseFloat(quote.dp.toFixed(2)),
       rvol: parseFloat(Math.max(0.5, Math.min(5, rvol)).toFixed(1)),
       rsi: Math.max(0, Math.min(100, Math.round(rsi))),
-      sentiment: getSentimentLabel(sentimentScore),
-      sentimentScore: parseFloat((sentimentScore * 2 - 1).toFixed(3))
+      sentiment,
+      sentimentScore: score
     };
   } catch (error) {
     console.error(`Error fetching data for ${ticker}:`, error);
