@@ -5,6 +5,8 @@ import { storage } from "./storage";
 import { insertPredictionSchema, insertWatchlistSchema } from "@shared/schema";
 import OpenAI from "openai";
 import { z } from "zod";
+import { stripeService } from "./stripeService";
+import { getStripePublishableKey } from "./stripeClient";
 
 const aiPlaybookResponseSchema = z.object({
   summary: z.string().default("Unable to generate summary"),
@@ -258,6 +260,100 @@ Provide a JSON response with exactly this structure:
           recommendation: "Keep tracking your trades to build up data for analysis."
         }
       });
+    }
+  });
+
+  // GET /api/stripe/config - Get Stripe publishable key
+  app.get("/api/stripe/config", async (req, res) => {
+    try {
+      const publishableKey = await getStripePublishableKey();
+      res.json({ success: true, publishableKey });
+    } catch (error) {
+      console.error("Stripe config error:", error);
+      res.status(500).json({ success: false, error: "Failed to get Stripe config" });
+    }
+  });
+
+  // GET /api/stripe/products - Get all subscription products with prices
+  app.get("/api/stripe/products", async (req, res) => {
+    try {
+      const rows = await storage.getStripeProductsWithPrices();
+      
+      const productsMap = new Map();
+      for (const row of rows) {
+        if (!productsMap.has(row.product_id)) {
+          productsMap.set(row.product_id, {
+            id: row.product_id,
+            name: row.product_name,
+            description: row.product_description,
+            active: row.product_active,
+            metadata: row.product_metadata,
+            prices: []
+          });
+        }
+        if (row.price_id) {
+          productsMap.get(row.product_id).prices.push({
+            id: row.price_id,
+            unit_amount: row.unit_amount,
+            currency: row.currency,
+            recurring: row.recurring,
+            active: row.price_active,
+          });
+        }
+      }
+
+      res.json({ success: true, data: Array.from(productsMap.values()) });
+    } catch (error) {
+      console.error("Get products error:", error);
+      res.status(500).json({ success: false, error: "Failed to get products", data: [] });
+    }
+  });
+
+  // POST /api/stripe/checkout - Create checkout session
+  app.post("/api/stripe/checkout", async (req, res) => {
+    try {
+      const { priceId, email } = req.body;
+      if (!priceId) {
+        return res.status(400).json({ success: false, error: "Missing priceId" });
+      }
+
+      const customer = await stripeService.createCustomer(email || "customer@example.com", {
+        source: "pro-trader-dashboard"
+      });
+
+      const baseUrl = `https://${req.get('host')}`;
+      const session = await stripeService.createCheckoutSession(
+        customer.id,
+        priceId,
+        `${baseUrl}/checkout/success`,
+        `${baseUrl}/checkout/cancel`
+      );
+
+      res.json({ success: true, url: session.url });
+    } catch (error) {
+      console.error("Checkout error:", error);
+      res.status(500).json({ success: false, error: "Failed to create checkout session" });
+    }
+  });
+
+  // POST /api/stripe/portal - Create customer portal session
+  app.post("/api/stripe/portal", async (req, res) => {
+    try {
+      const { customerId } = req.body;
+      if (!customerId) {
+        return res.status(400).json({ success: false, error: "Missing customerId" });
+      }
+
+      const baseUrl = `https://${req.get('host')}`;
+      const session = await stripeService.createCustomerPortalSession(
+        customerId,
+        `${baseUrl}/`
+      );
+
+      res.json({ success: true, url: session.url });
+    } catch (error) {
+      console.error("Portal error:", error);
+      res.status(500).json({ success: false, error: "Failed to create portal session" });
     }
   });
 

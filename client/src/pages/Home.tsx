@@ -9,7 +9,8 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown } from "lucide-react";
+import { Link } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -679,7 +680,7 @@ export default function Home() {
         <Button
           size="sm"
           className="w-full"
-          onClick={() => aiPlaybookMutation.mutate()}
+          onClick={() => aiPlaybookMutation.mutate(undefined)}
           disabled={aiPlaybookMutation.isPending}
           data-testid="button-generate-insights"
         >
@@ -913,6 +914,21 @@ export default function Home() {
             </Button>
           </div>
         </div>
+      </div>
+
+      {/* Upgrade Banner */}
+      <div className="rounded-lg bg-gradient-to-r from-yellow-500/10 via-primary/10 to-purple-500/10 border border-primary/20 p-4 text-center">
+        <Crown className="h-6 w-6 mx-auto mb-2 text-yellow-500" />
+        <h4 className="font-semibold text-sm mb-1">Upgrade to Pro</h4>
+        <p className="text-xs text-muted-foreground mb-3">
+          Unlock unlimited AI insights & predictions
+        </p>
+        <Link href="/pricing">
+          <Button size="sm" className="w-full" data-testid="button-upgrade-sidebar">
+            <Crown className="mr-2 h-3 w-3" />
+            View Plans
+          </Button>
+        </Link>
       </div>
     </div>
   );

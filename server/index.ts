@@ -2,6 +2,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
+import { runMigrations } from "stripe-replit-sync";
+import { getStripeSync } from "./stripeClient";
+import { WebhookHandlers } from "./webhookHandlers";
 
 const app = express();
 const httpServer = createServer(app);
@@ -11,6 +14,90 @@ declare module "http" {
     rawBody: unknown;
   }
 }
+
+let stripeInitialized = false;
+
+async function checkStripeSchemaExists(): Promise<boolean> {
+  try {
+    const { db } = await import("./db");
+    const { sql } = await import("drizzle-orm");
+    const result = await db.execute(
+      sql`SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'stripe')`
+    );
+    return result.rows[0]?.exists === true;
+  } catch {
+    return false;
+  }
+}
+
+async function initStripe() {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    console.log("DATABASE_URL not set, skipping Stripe initialization");
+    return;
+  }
+
+  try {
+    const schemaExists = await checkStripeSchemaExists();
+    
+    if (!schemaExists) {
+      console.log("Initializing Stripe schema...");
+      try {
+        await runMigrations({ databaseUrl });
+        console.log("Stripe schema created");
+      } catch (migrationError: any) {
+        console.error("Stripe migration error:", migrationError.message);
+        console.log("Continuing without Stripe schema - payments may not work");
+        return;
+      }
+    } else {
+      console.log("Stripe schema already exists, skipping migrations");
+    }
+
+    const stripeSync = await getStripeSync();
+
+    console.log("Setting up managed webhook...");
+    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
+    const { webhook } = await stripeSync.findOrCreateManagedWebhook(
+      `${webhookBaseUrl}/api/stripe/webhook`,
+      { enabled_events: ["*"], description: "Pro Trader Dashboard webhook" }
+    );
+    console.log(`Webhook configured: ${webhook.url}`);
+
+    stripeSync.syncBackfill()
+      .then(() => console.log("Stripe data synced"))
+      .catch((err: any) => console.error("Error syncing Stripe data:", err));
+    
+    stripeInitialized = true;
+  } catch (error: any) {
+    console.error("Failed to initialize Stripe:", error.message);
+    console.log("Payments will be unavailable until Stripe is configured");
+  }
+}
+
+// Run Stripe init in background - don't block server startup
+setTimeout(() => initStripe().catch(console.error), 2000);
+
+app.post(
+  "/api/stripe/webhook/:uuid",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const signature = req.headers["stripe-signature"];
+    if (!signature) {
+      return res.status(400).json({ error: "Missing stripe-signature" });
+    }
+
+    try {
+      const sig = Array.isArray(signature) ? signature[0] : signature;
+      const { uuid } = req.params;
+      await WebhookHandlers.processWebhook(req.body as Buffer, sig, uuid);
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("Webhook error:", error.message);
+      res.status(400).json({ error: "Webhook processing error" });
+    }
+  }
+);
 
 app.use(
   express.json({
