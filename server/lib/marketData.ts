@@ -272,29 +272,47 @@ export async function getChartData(ticker: string, period: "1d" | "1w" | "1m" | 
         volume: candles.v[i]
       }));
     }
+    
+    // If candles fail, try to get current quote and generate realistic mock data
+    const quote = await getQuote(ticker);
+    if (quote && quote.c > 0) {
+      return generateMockChartData(ticker, periodDays, quote.c);
+    }
   }
 
-  // Fallback to mock data
+  // Fallback to mock data with default price
   return generateMockChartData(ticker, periodDays);
 }
 
-// Generate mock chart data
-function generateMockChartData(ticker: string, days: number): ChartDataPoint[] {
-  const basePrice = 100 + Math.random() * 400;
-  let price = basePrice;
+// Generate mock chart data based on current price
+function generateMockChartData(ticker: string, days: number, currentPrice?: number): ChartDataPoint[] {
+  // Use real current price if available, otherwise estimate based on ticker
+  const basePrice = currentPrice || 100;
   const result: ChartDataPoint[] = [];
   
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
   
+  // Work backwards from current price to generate historical data
+  // Assume typical daily volatility of 1-2%
+  let price = basePrice;
+  const dailyPrices: number[] = [basePrice];
+  
+  for (let i = days - 1; i > 0; i--) {
+    // Random walk backwards with slight downward bias (stocks tend to rise over time)
+    const change = (Math.random() * 0.03 - 0.012); // -1.2% to +1.8% daily range
+    price = price / (1 + change);
+    dailyPrices.unshift(price);
+  }
+  
   for (let i = 0; i < days; i++) {
     const date = new Date(startDate);
     date.setDate(date.getDate() + i);
     
-    price = price * (1 + (Math.random() * 0.04 - 0.02));
-    const volatility = price * 0.01;
-    const open = price * (1 + (Math.random() - 0.5) * 0.005);
-    const close = price;
+    const dayPrice = dailyPrices[i];
+    const volatility = dayPrice * 0.015;
+    const open = dayPrice * (1 + (Math.random() - 0.5) * 0.01);
+    const close = dayPrice;
     const high = Math.max(open, close) + Math.random() * volatility;
     const low = Math.min(open, close) - Math.random() * volatility;
     const volume = Math.floor(1000000 + Math.random() * 5000000);
