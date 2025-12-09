@@ -156,14 +156,26 @@ export default function Home() {
         <div className="flex items-start gap-2">
           <span className="text-xl">🚀</span>
           <div>
-            <span className="font-medium text-foreground">Rocket Ship</span>
+            <span className="font-medium text-foreground flex items-center gap-1">
+              Rocket Ship
+              <Popover>
+                <PopoverTrigger className="cursor-pointer"><Info className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
+                <PopoverContent className="text-sm">Stocks with unusually high trading volume (3x+ normal) combined with positive news sentiment. These often indicate strong momentum and potential breakout opportunities.</PopoverContent>
+              </Popover>
+            </span>
             <p className="text-xs text-muted-foreground">High RVol ({">"}3x) + Bullish News</p>
           </div>
         </div>
         <div className="flex items-start gap-2">
           <span className="text-xl">💎</span>
           <div>
-            <span className="font-medium text-foreground">Diamond in Rough</span>
+            <span className="font-medium text-foreground flex items-center gap-1">
+              Diamond in Rough
+              <Popover>
+                <PopoverTrigger className="cursor-pointer"><Info className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
+                <PopoverContent className="text-sm">Oversold stocks (RSI below 30) with positive news sentiment. These may represent undervalued buying opportunities where the market hasn't yet priced in the good news.</PopoverContent>
+              </Popover>
+            </span>
             <p className="text-xs text-muted-foreground">Low RSI ({'<'}30) + Bullish News</p>
           </div>
         </div>
