@@ -612,26 +612,6 @@ export default function Home() {
   // Sidebar UI
   const SidebarContent = (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Scanner Settings</h3>
-        <Button
-          onClick={() => refetch()}
-          disabled={isLoading}
-          className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-          data-testid="button-refresh"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4" /> Refresh Data
-            </>
-          )}
-        </Button>
-      </div>
-
       {/* Watchlist */}
       <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
@@ -994,7 +974,26 @@ export default function Home() {
 
   return (
     <StreamlitLayout sidebar={SidebarContent}>
-      <StTitle>⚡ Dashboard</StTitle>
+      <div className="flex items-center justify-between gap-4">
+        <StTitle>⚡ Dashboard</StTitle>
+        <Button
+          onClick={() => refetch()}
+          disabled={isLoading}
+          size="sm"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+          data-testid="button-refresh"
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" /> Refresh Data
+            </>
+          )}
+        </Button>
+      </div>
 
       <StText>
         Real-time market scanner powered by AI sentiment analysis. Identify breakout candidates and oversold
