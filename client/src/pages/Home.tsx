@@ -200,14 +200,14 @@ export default function Home() {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
       setNotificationsEnabled(true);
-      toast.success("Alerts enabled!", { description: "You'll get notified when Rocket Ships are detected" });
+      toast.success("Alerts enabled!", { description: "You'll get notified when Buy signals are detected" });
     } else {
       toast.error("Notifications blocked", { description: "Enable notifications in your browser settings" });
     }
   }, []);
 
   // Function to send alert (browser notification + sound)
-  const sendRocketShipAlert = useCallback((stock: StockData, signalType: string) => {
+  const sendSignalAlert = useCallback((stock: StockData, signalType: string) => {
     // Play sound if enabled
     if (soundEnabled && audioRef.current) {
       audioRef.current.currentTime = 0;
@@ -216,9 +216,14 @@ export default function Home() {
     
     // Send browser notification if enabled and supported
     if (notificationsEnabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
-      const icon = signalType === "Rocket Ship" ? "🚀" : "💎";
+      const icon = signalType === "MOMENTUM BUY" ? "🚀" : signalType === "VALUE BUY" ? "💎" : "⚠️";
+      const description = signalType === "MOMENTUM BUY" 
+        ? "High volume + bullish confluence" 
+        : signalType === "VALUE BUY" 
+        ? "Oversold + sentiment not bearish" 
+        : "Overbought + bearish sentiment";
       new Notification(`${icon} ${signalType} Alert!`, {
-        body: `${stock.ticker} at $${stock.price.toFixed(2)} - ${signalType === "Rocket Ship" ? "High volume + bullish" : "Oversold + bullish"}`,
+        body: `${stock.ticker} at $${stock.price.toFixed(2)} - ${description}`,
         icon: "/favicon.ico",
         tag: `${stock.ticker}-${signalType}`,
         requireInteraction: true,
@@ -411,7 +416,7 @@ export default function Home() {
 
   const allTickers = useMemo(() => marketData.map((d) => d.ticker), [marketData]);
 
-  // Suggested stocks - rocket ships and diamonds not yet logged today
+  // Suggested stocks - momentum buys, value buys, and sell warnings
   const suggestedStocks = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     const todaysPredictions = predictionsData.filter(p => p.predictionDate.startsWith(today));
@@ -420,26 +425,21 @@ export default function Home() {
     const suggestions: { stock: StockData; signalType: string; icon: string }[] = [];
     
     marketData.forEach((stock) => {
-      const isRocketShip = stock.rvol > 3 && stock.sentiment === "🟢 BULLISH";
-      const isDiamond = stock.rsi < 30 && stock.sentiment === "🟢 BULLISH";
+      // MOMENTUM BUY: rvol > 3.0 and bullish sentiment and rsi < 85
+      const isMomentumBuy = stock.rvol > 3 && stock.sentiment === "🟢 BULLISH" && stock.rsi < 85;
+      // VALUE BUY: rsi < 35 and sentiment not bearish
+      const isValueBuy = stock.rsi < 35 && stock.sentiment !== "🔴 BEARISH";
+      // SELL WARNING: rsi > 80 and bearish sentiment
+      const isSellWarning = stock.rsi > 80 && stock.sentiment === "🔴 BEARISH";
       
-      if (isRocketShip && !alreadyLoggedToday.has(`${stock.ticker}-Rocket Ship`)) {
-        suggestions.push({ stock, signalType: "Rocket Ship", icon: "🚀" });
+      if (isMomentumBuy && !alreadyLoggedToday.has(`${stock.ticker}-MOMENTUM BUY`)) {
+        suggestions.push({ stock, signalType: "MOMENTUM BUY", icon: "🚀" });
       }
-      if (isDiamond && !alreadyLoggedToday.has(`${stock.ticker}-Diamond`)) {
-        suggestions.push({ stock, signalType: "Diamond", icon: "💎" });
+      if (isValueBuy && !alreadyLoggedToday.has(`${stock.ticker}-VALUE BUY`)) {
+        suggestions.push({ stock, signalType: "VALUE BUY", icon: "💎" });
       }
-    });
-    
-    // Also add top 3 gainers with bullish sentiment as "Momentum" picks
-    const topGainers = [...marketData]
-      .filter(s => s.changePercent > 2 && s.sentiment === "🟢 BULLISH")
-      .sort((a, b) => b.changePercent - a.changePercent)
-      .slice(0, 3);
-    
-    topGainers.forEach((stock) => {
-      if (!alreadyLoggedToday.has(`${stock.ticker}-Momentum`) && !suggestions.find(s => s.stock.ticker === stock.ticker)) {
-        suggestions.push({ stock, signalType: "Momentum", icon: "📈" });
+      if (isSellWarning && !alreadyLoggedToday.has(`${stock.ticker}-SELL WARNING`)) {
+        suggestions.push({ stock, signalType: "SELL WARNING", icon: "⚠️" });
       }
     });
     
@@ -474,7 +474,7 @@ export default function Home() {
     }
   }, [allTickers, selectedTicker]);
 
-  // Auto-log rocket ships and diamonds
+  // Auto-log high-confidence signals (Momentum Buy, Value Buy)
   useEffect(() => {
     if (marketData.length === 0 || predictionsData === undefined) return;
     
@@ -483,44 +483,46 @@ export default function Home() {
     const alreadyLoggedToday = new Set(todaysPredictions.map(p => `${p.ticker}-${p.signalType}`));
     
     marketData.forEach((stock) => {
-      const isRocketShip = stock.rvol > 3 && stock.sentiment === "🟢 BULLISH";
-      const isDiamond = stock.rsi < 30 && stock.sentiment === "🟢 BULLISH";
+      // MOMENTUM BUY: rvol > 3.0 and bullish sentiment and rsi < 85
+      const isMomentumBuy = stock.rvol > 3 && stock.sentiment === "🟢 BULLISH" && stock.rsi < 85;
+      // VALUE BUY: rsi < 35 and sentiment not bearish
+      const isValueBuy = stock.rsi < 35 && stock.sentiment !== "🔴 BEARISH";
       
-      if (isRocketShip) {
-        const key = `${stock.ticker}-Rocket Ship`;
+      if (isMomentumBuy) {
+        const key = `${stock.ticker}-MOMENTUM BUY`;
         if (!alreadyLoggedToday.has(key) && !autoLoggedTickers.has(key)) {
           setAutoLoggedTickers(prev => new Set(Array.from(prev).concat(key)));
           createPredictionMutation.mutate({
             ticker: stock.ticker,
-            signalType: "Rocket Ship",
+            signalType: "MOMENTUM BUY",
             entryPrice: stock.price,
           });
-          sendRocketShipAlert(stock, "Rocket Ship");
-          toast.success(`🚀 Rocket Ship Detected!`, {
-            description: `${stock.ticker} at $${stock.price.toFixed(2)} - High volume + bullish sentiment`,
+          sendSignalAlert(stock, "MOMENTUM BUY");
+          toast.success(`🚀 MOMENTUM BUY Detected!`, {
+            description: `${stock.ticker} at $${stock.price.toFixed(2)} - High volume + bullish confluence`,
             duration: 5000,
           });
         }
       }
       
-      if (isDiamond) {
-        const key = `${stock.ticker}-Diamond`;
+      if (isValueBuy) {
+        const key = `${stock.ticker}-VALUE BUY`;
         if (!alreadyLoggedToday.has(key) && !autoLoggedTickers.has(key)) {
           setAutoLoggedTickers(prev => new Set(Array.from(prev).concat(key)));
           createPredictionMutation.mutate({
             ticker: stock.ticker,
-            signalType: "Diamond",
+            signalType: "VALUE BUY",
             entryPrice: stock.price,
           });
-          sendRocketShipAlert(stock, "Diamond");
-          toast.success(`💎 Diamond in the Rough!`, {
-            description: `${stock.ticker} at $${stock.price.toFixed(2)} - Oversold + bullish sentiment`,
+          sendSignalAlert(stock, "VALUE BUY");
+          toast.success(`💎 VALUE BUY Detected!`, {
+            description: `${stock.ticker} at $${stock.price.toFixed(2)} - Oversold + sentiment not bearish`,
             duration: 5000,
           });
         }
       }
     });
-  }, [marketData, predictionsData, autoLoggedTickers, createPredictionMutation, sendRocketShipAlert]);
+  }, [marketData, predictionsData, autoLoggedTickers, createPredictionMutation, sendSignalAlert]);
 
   // Auto-update outcomes at market close (or when market data updates after close)
   // For simplicity, we'll check on each market data update if current price differs from entry
@@ -602,7 +604,7 @@ export default function Home() {
       : "0";
     const gainSign = parseFloat(gainPercent) >= 0 ? "+" : "";
     
-    const tweetText = `🚀 Just called $${pred.ticker} correctly! ${gainSign}${gainPercent}% gain\n\nEntry: $${pred.entryPrice.toFixed(2)} → Exit: $${pred.outcomePrice?.toFixed(2)}\n\nTrack your trades with CNPdirect 📈`;
+    const tweetText = `🚀 Just called $${pred.ticker} correctly! ${gainSign}${gainPercent}% gain\n\nEntry: $${pred.entryPrice.toFixed(2)} → Exit: $${pred.outcomePrice?.toFixed(2)}\n\nTrack your trades with CNP Direct 📈`;
     
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(twitterUrl, '_blank', 'width=550,height=420');
@@ -694,7 +696,7 @@ export default function Home() {
             ))}
             {predictionsData.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-4">
-                No predictions yet. Rocket ships and diamonds are auto-logged!
+                No predictions yet. Buy signals are auto-logged!
               </p>
             )}
           </div>
@@ -1008,21 +1010,30 @@ export default function Home() {
           <span className="font-medium text-muted-foreground">Signal Types:</span>
           <div className="flex items-center gap-2">
             <span className="text-lg">🚀</span>
-            <span className="font-medium">Rocket Ship</span>
+            <span className="font-medium">MOMENTUM BUY</span>
             <Popover>
               <PopoverTrigger className="cursor-pointer"><Info className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
-              <PopoverContent className="text-sm">Stocks with unusually high trading volume (3x+ normal) combined with positive news sentiment. These often indicate strong momentum and potential breakout opportunities.</PopoverContent>
+              <PopoverContent className="text-sm">Stocks with unusually high trading volume (3x+ normal) combined with bullish sentiment and RSI below 85. These indicate strong momentum and potential breakout opportunities.</PopoverContent>
             </Popover>
-            <span className="text-xs text-muted-foreground">(RVol {">"}3x + Bullish)</span>
+            <span className="text-xs text-muted-foreground">(RVol {">"}3x + Bullish + RSI {"<"}85)</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-lg">💎</span>
-            <span className="font-medium">Diamond</span>
+            <span className="font-medium">VALUE BUY</span>
             <Popover>
               <PopoverTrigger className="cursor-pointer"><Info className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
-              <PopoverContent className="text-sm">Oversold stocks (RSI below 30) with positive news sentiment. These may represent undervalued buying opportunities where the market hasn't yet priced in the good news.</PopoverContent>
+              <PopoverContent className="text-sm">Oversold stocks (RSI below 35) with sentiment not bearish. These may represent undervalued buying opportunities.</PopoverContent>
             </Popover>
-            <span className="text-xs text-muted-foreground">(RSI {"<"}30 + Bullish)</span>
+            <span className="text-xs text-muted-foreground">(RSI {"<"}35 + Not Bearish)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg">⚠️</span>
+            <span className="font-medium">SELL WARNING</span>
+            <Popover>
+              <PopoverTrigger className="cursor-pointer"><Info className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
+              <PopoverContent className="text-sm">Overbought stocks (RSI above 80) with bearish sentiment. These may indicate a potential pullback.</PopoverContent>
+            </Popover>
+            <span className="text-xs text-muted-foreground">(RSI {">"}80 + Bearish)</span>
           </div>
         </div>
 

@@ -63,7 +63,7 @@ export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
                   <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                 </svg>
               </div>
-              <span>CNPdirect</span>
+              <span>CNP Direct | Market Sentinel</span>
             </div>
             <Button
               variant="ghost"
@@ -187,7 +187,7 @@ export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
                   {settings.notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4 text-muted-foreground" />}
                   <Label htmlFor="notifications" className="cursor-pointer">
                     <div>Browser Notifications</div>
-                    <p className="text-xs text-muted-foreground font-normal">Get alerts for rocket ships</p>
+                    <p className="text-xs text-muted-foreground font-normal">Get alerts for buy signals</p>
                   </Label>
                 </div>
                 <Switch
