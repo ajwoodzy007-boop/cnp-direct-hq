@@ -11,6 +11,10 @@ export interface StockData {
   rsi: number;
   sentiment: "🟢 BULLISH" | "🔴 BEARISH" | "⚪ NEUTRAL" | "⚪ NO NEWS";
   sentimentScore: number;
+  openPrice: number;
+  prevClose: number;
+  dayHigh: number;
+  dayLow: number;
 }
 
 export interface ChartDataPoint {
@@ -90,6 +94,9 @@ function generateMockData(ticker: string): StockData {
   if (change > 1.5 && rvol > 1.5) sentiment = "🟢 BULLISH";
   else if (change < -1.5) sentiment = "🔴 BEARISH";
   
+  const prevClose = parseFloat((price / (1 + change / 100)).toFixed(2));
+  const openPrice = parseFloat((prevClose * (1 + (Math.random() - 0.5) * 0.005)).toFixed(2));
+  
   return {
     ticker,
     price: parseFloat(price.toFixed(2)),
@@ -97,7 +104,11 @@ function generateMockData(ticker: string): StockData {
     rvol: parseFloat(rvol.toFixed(1)),
     rsi,
     sentiment,
-    sentimentScore: parseFloat((Math.random() * 0.6 - 0.3).toFixed(3))
+    sentimentScore: parseFloat((Math.random() * 0.6 - 0.3).toFixed(3)),
+    openPrice,
+    prevClose,
+    dayHigh: parseFloat((Math.max(openPrice, price) * 1.01).toFixed(2)),
+    dayLow: parseFloat((Math.min(openPrice, price) * 0.99).toFixed(2))
   };
 }
 
@@ -156,19 +167,29 @@ async function getRealStockData(ticker: string): Promise<StockData | null> {
     // Get sentiment from news headlines (works on free tier)
     const { sentiment, score } = await getNewsSentimentFromHeadlines(ticker);
 
+    // Calculate 24-hour change from previous close (includes after-hours)
+    const prevClose = quote.pc > 0 ? quote.pc : quote.c;
+    const changeFromPrevClose = ((quote.c - prevClose) / prevClose) * 100;
+    
+    // Use current price as fallback for open if not available
+    const openPrice = quote.o > 0 ? quote.o : quote.c;
+    
     // Estimate RSI and RVOL (would need historical data for accurate calculation)
-    // For now, use approximate values based on price movement
-    const rsi = 50 + (quote.dp * 2); // Rough approximation
-    const rvol = 1 + Math.abs(quote.dp) / 5; // Rough approximation
+    const rsi = 50 + (changeFromPrevClose * 2); // Rough approximation
+    const rvol = 1 + Math.abs(changeFromPrevClose) / 5; // Rough approximation
 
     return {
       ticker,
       price: parseFloat(quote.c.toFixed(2)),
-      changePercent: parseFloat(quote.dp.toFixed(2)),
+      changePercent: parseFloat(changeFromPrevClose.toFixed(2)),
       rvol: parseFloat(Math.max(0.5, Math.min(5, rvol)).toFixed(1)),
       rsi: Math.max(0, Math.min(100, Math.round(rsi))),
       sentiment,
-      sentimentScore: score
+      sentimentScore: score,
+      openPrice: parseFloat(openPrice.toFixed(2)),
+      prevClose: parseFloat(prevClose.toFixed(2)),
+      dayHigh: parseFloat((quote.h > 0 ? quote.h : Math.max(openPrice, quote.c)).toFixed(2)),
+      dayLow: parseFloat((quote.l > 0 ? quote.l : Math.min(openPrice, quote.c)).toFixed(2))
     };
   } catch (error) {
     console.error(`Error fetching data for ${ticker}:`, error);
@@ -187,10 +208,27 @@ async function getStockDataFromChart(ticker: string): Promise<StockData | null> 
       return null;
     }
     
+    const lastIdx = candles.c.length - 1;
     const prices = candles.c;
-    const lastPrice = prices[prices.length - 1];
-    const prevPrice = prices[prices.length - 2];
-    const changePercent = ((lastPrice - prevPrice) / prevPrice) * 100;
+    const lastPrice = prices[lastIdx];
+    
+    // Ensure we have valid prices - if last price is 0, return null
+    if (!lastPrice || lastPrice <= 0) {
+      return null;
+    }
+    
+    const prevClose = prices[lastIdx - 1] > 0 ? prices[lastIdx - 1] : lastPrice;
+    const changePercent = ((lastPrice - prevClose) / prevClose) * 100;
+    
+    // Get today's open, high, low from last candle with fallbacks
+    const rawOpen = candles.o[lastIdx];
+    const rawHigh = candles.h[lastIdx];
+    const rawLow = candles.l[lastIdx];
+    
+    // Use valid values or fallback to lastPrice
+    const openPrice = rawOpen > 0 ? rawOpen : lastPrice;
+    const dayHigh = rawHigh > 0 ? rawHigh : Math.max(openPrice, lastPrice);
+    const dayLow = rawLow > 0 ? rawLow : Math.min(openPrice, lastPrice);
     
     // Calculate RSI from chart data
     const rsi = calculateRSI(prices);
@@ -198,7 +236,7 @@ async function getStockDataFromChart(ticker: string): Promise<StockData | null> 
     // Calculate relative volume
     const volumes = candles.v;
     const avgVolume = volumes.slice(0, -1).reduce((a, b) => a + b, 0) / (volumes.length - 1);
-    const lastVolume = volumes[volumes.length - 1];
+    const lastVolume = volumes[lastIdx];
     const rvol = avgVolume > 0 ? lastVolume / avgVolume : 1;
     
     // Get sentiment from news
@@ -211,7 +249,11 @@ async function getStockDataFromChart(ticker: string): Promise<StockData | null> 
       rvol: parseFloat(Math.max(0.5, Math.min(5, rvol)).toFixed(1)),
       rsi: Math.max(0, Math.min(100, Math.round(rsi))),
       sentiment,
-      sentimentScore: score
+      sentimentScore: score,
+      openPrice: parseFloat(openPrice.toFixed(2)),
+      prevClose: parseFloat(prevClose.toFixed(2)),
+      dayHigh: parseFloat(dayHigh.toFixed(2)),
+      dayLow: parseFloat(dayLow.toFixed(2))
     };
   } catch (error) {
     console.error(`Error getting chart data for ${ticker}:`, error);

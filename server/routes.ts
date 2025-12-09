@@ -440,6 +440,8 @@ Provide a JSON response with exactly this structure:
       interface StockPrediction {
         ticker: string;
         price: number;
+        openPrice: number;
+        prevClose: number;
         predictedGain: number;
         confidence: number;
         reasoning: string;
@@ -550,9 +552,15 @@ Provide a JSON response with exactly this structure:
             const signalBoost = Math.min(20, (momentum > 0 ? 5 : 0) + (stock.rvol > 2 ? 5 : 0) + (stock.sentiment === "🟢 BULLISH" ? 10 : 0));
             const confidence = Math.min(95, baseConfidence + signalBoost);
             
+            // Use calendar day open/close prices (now guaranteed from StockData)
+            const todayOpen = stock.openPrice;
+            const yesterdayClose = stock.prevClose;
+            
             predictions.push({
               ticker: stock.ticker,
               price: priceToUse,
+              openPrice: todayOpen,
+              prevClose: yesterdayClose,
               predictedGain: parseFloat(Math.max(0.1, predictedGain).toFixed(2)),
               confidence: Math.round(confidence),
               reasoning: reasons.slice(0, 3).join(", "),
@@ -569,9 +577,11 @@ Provide a JSON response with exactly this structure:
       const top10 = predictions
         .sort((a, b) => b.score - a.score)
         .slice(0, 10)
-        .map(({ ticker, price, predictedGain, confidence, reasoning }) => ({
+        .map(({ ticker, price, openPrice, prevClose, predictedGain, confidence, reasoning }) => ({
           ticker,
           price,
+          openPrice,
+          prevClose,
           predictedGain,
           confidence,
           reasoning
@@ -885,9 +895,11 @@ Provide a JSON response with exactly this structure:
       }
       
       // Analyze stocks for best picks
+      // Use today's open price as entry price for calendar day tracking
       const analyzedStocks: Array<{
         ticker: string;
-        price: number;
+        openPrice: number;
+        currentPrice: number;
         signal: string;
         score: number;
       }> = [];
@@ -901,6 +913,9 @@ Provide a JSON response with exactly this structure:
           const latestPrice = prices[prices.length - 1];
           const price5dAgo = prices[prices.length - 6] || prices[0];
           const change5d = ((latestPrice - price5dAgo) / price5dAgo) * 100;
+          
+          // Get today's open price from market data (now guaranteed from StockData)
+          const todayOpen = stock.openPrice;
           
           // RSI calculation
           let rsi = 50;
@@ -919,12 +934,12 @@ Provide a JSON response with exactly this structure:
           // Score for BUY: oversold + positive trend
           if (rsi < 40) {
             const score = (40 - rsi) + (change5d > 0 ? change5d : 0) + (stock.sentiment === "🟢 BULLISH" ? 15 : 0);
-            analyzedStocks.push({ ticker: stock.ticker, price: stock.price, signal: "AUTO:BUY", score });
+            analyzedStocks.push({ ticker: stock.ticker, openPrice: todayOpen, currentPrice: stock.price, signal: "AUTO:BUY", score });
           }
           // Score for SELL: overbought
           else if (rsi > 65) {
             const score = (rsi - 65) + (stock.sentiment === "🔴 BEARISH" ? 15 : 0);
-            analyzedStocks.push({ ticker: stock.ticker, price: stock.price, signal: "AUTO:SELL", score });
+            analyzedStocks.push({ ticker: stock.ticker, openPrice: todayOpen, currentPrice: stock.price, signal: "AUTO:SELL", score });
           }
         } catch (error) {
           // Skip failed stocks
@@ -937,7 +952,7 @@ Provide a JSON response with exactly this structure:
       const topSells = analyzedStocks.filter(s => s.signal === "AUTO:SELL").sort((a, b) => b.score - a.score).slice(0, 2);
       const topPicks = [...topBuys, ...topSells];
       
-      // Create predictions for each pick
+      // Create predictions for each pick using open price as entry (calendar day tracking)
       const createdPredictions = [];
       for (const pick of topPicks) {
         // Check if already exists
@@ -948,7 +963,7 @@ Provide a JSON response with exactly this structure:
           const prediction = await storage.createPrediction({
             ticker: pick.ticker,
             signalType: pick.signal,
-            entryPrice: pick.price
+            entryPrice: pick.openPrice
           });
           createdPredictions.push(prediction);
         }
