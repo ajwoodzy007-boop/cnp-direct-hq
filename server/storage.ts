@@ -1,7 +1,5 @@
-import { type User, type InsertUser, type Prediction, type InsertPrediction, predictions } from "@shared/schema";
+import { type User, type InsertUser, type Prediction, type InsertPrediction } from "@shared/schema";
 import { randomUUID } from "crypto";
-import { db } from "./db";
-import { desc, eq } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -14,9 +12,11 @@ export interface IStorage {
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
+  private predictions: Map<string, Prediction>;
 
   constructor() {
     this.users = new Map();
+    this.predictions = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -37,20 +37,36 @@ export class MemStorage implements IStorage {
   }
 
   async createPrediction(insertPrediction: InsertPrediction): Promise<Prediction> {
-    const [prediction] = await db.insert(predictions).values(insertPrediction).returning();
+    const id = randomUUID();
+    const prediction: Prediction = {
+      ...insertPrediction,
+      id,
+      predictionDate: new Date(),
+      outcome: null,
+      outcomePrice: null,
+      outcomeDate: null,
+    };
+    this.predictions.set(id, prediction);
     return prediction;
   }
 
   async getPredictions(): Promise<Prediction[]> {
-    return await db.select().from(predictions).orderBy(desc(predictions.predictionDate));
+    return Array.from(this.predictions.values()).sort(
+      (a, b) => new Date(b.predictionDate).getTime() - new Date(a.predictionDate).getTime()
+    );
   }
 
   async updatePredictionOutcome(id: string, outcome: string, outcomePrice: number): Promise<Prediction | undefined> {
-    const [updated] = await db
-      .update(predictions)
-      .set({ outcome, outcomePrice, outcomeDate: new Date() })
-      .where(eq(predictions.id, id))
-      .returning();
+    const prediction = this.predictions.get(id);
+    if (!prediction) return undefined;
+    
+    const updated: Prediction = {
+      ...prediction,
+      outcome,
+      outcomePrice,
+      outcomeDate: new Date(),
+    };
+    this.predictions.set(id, updated);
     return updated;
   }
 }
