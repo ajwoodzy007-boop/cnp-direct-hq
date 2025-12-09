@@ -1,0 +1,177 @@
+import streamlit as st
+import pandas as pd
+import yfinance as yf
+import pandas_ta as ta
+import requests
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import plotly.graph_objects as go
+
+# --- PAGE CONFIG ---
+st.set_page_config(page_title="Pro Trader Dashboard", page_icon="📈", layout="wide")
+
+# --- INITIALIZE AI ---
+try:
+    analyzer = SentimentIntensityAnalyzer()
+except:
+    st.error("Please install vaderSentiment: pip install vaderSentiment")
+    st.stop()
+
+# --- CACHED FUNCTIONS (Speed Boost) ---
+@st.cache_data(ttl=300) # Cache for 5 minutes
+def get_market_list(url_type="gainers"):
+    try:
+        url = f"https://finance.yahoo.com/{url_type}"
+        header = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=header)
+        dfs = pd.read_html(r.text)
+        return dfs[0]['Symbol'].head(10).tolist()
+    except:
+        return []
+
+def get_sentiment(ticker):
+    stock = yf.Ticker(ticker)
+    news = stock.news
+    if not news: return 0, "⚪ NO NEWS"
+    
+    scores = []
+    valid = 0
+    for n in news:
+        title = n.get('content', {}).get('title', n.get('title', ''))
+        if title:
+            scores.append(analyzer.polarity_scores(title)['compound'])
+            valid += 1
+    
+    if valid == 0: return 0, "⚪ NO NEWS"
+    avg = sum(scores) / valid
+    
+    if avg >= 0.05: return avg, "🟢 BULLISH"
+    if avg <= -0.05: return avg, "🔴 BEARISH"
+    return avg, "⚪ NEUTRAL"
+
+def analyze_stock_data(ticker):
+    try:
+        stock = yf.Ticker(ticker)
+        # Get History for Tech Analysis
+        hist = stock.history(period="1mo")
+        if hist.empty: return None
+
+        # 1. Calculate RSI
+        rsi = ta.rsi(hist['Close'], length=14).iloc[-1]
+        
+        # 2. Calculate Relative Volume (RVOL)
+        vol = hist['Volume'].iloc[-1]
+        avg_vol = hist['Volume'].mean()
+        rvol = vol / avg_vol if avg_vol > 0 else 1.0
+        
+        # 3. Get Price Data
+        price = hist['Close'].iloc[-1]
+        prev_close = hist['Close'].iloc[-2]
+        change_pct = ((price - prev_close) / prev_close) * 100
+
+        # 4. Get AI Sentiment
+        sent_score, sent_verdict = get_sentiment(ticker)
+
+        return {
+            "Ticker": ticker,
+            "Price": price,
+            "Change %": change_pct / 100, # Format as decimal for Streamlit
+            "RVol": rvol,
+            "RSI": rsi,
+            "AI Verdict": sent_verdict,
+            "Raw Score": sent_score
+        }
+    except:
+        return None
+
+# --- MAIN APP UI ---
+st.title("⚡ Pro Trader's Dashboard")
+st.markdown("""
+**How to read this board:**
+* **🚀 Rocket Ship:** High `RVol` (>3x) + `Bullish` News.
+* **💎 Diamond in Rough:** Low `RSI` (<30) + `Bullish` News (Oversold but good company).
+""")
+
+# SIDEBAR CONTROLS
+st.sidebar.header("Scanner Settings")
+refresh = st.sidebar.button("🔄 Refresh Data")
+
+# RUN SCANNER
+if refresh or True:
+    with st.spinner("Scanning Market... (This takes 15s)"):
+        # 1. Scan Gainers
+        gainers = get_market_list("gainers")
+        losers = get_market_list("losers")
+        
+        all_data = []
+        for t in gainers + losers:
+            data = analyze_stock_data(t)
+            if data: all_data.append(data)
+            
+        df = pd.DataFrame(all_data)
+
+    # --- DISPLAY GAINERS ---
+    st.subheader("📈 Top Gainers")
+    df_gainers = df[df['Change %'] > 0].sort_values("Change %", ascending=False)
+    
+    st.dataframe(
+        df_gainers,
+        column_config={
+            "Price": st.column_config.NumberColumn(format="$%.2f"),
+            "Change %": st.column_config.NumberColumn(format="%.2f%%"),
+            "RVol": st.column_config.NumberColumn(
+                "RVol (Hype)", 
+                help="Relative Volume. 1.0 is normal. 5.0 is HUGE interest.",
+                format="%.1fx"
+            ),
+            "RSI": st.column_config.NumberColumn(
+                "RSI (Risk)",
+                help="<30 is Oversold (Buy?), >70 is Overbought (Sell?)",
+                format="%.0f"
+            ),
+            "AI Verdict": st.column_config.TextColumn("News Sentiment"),
+            "Raw Score": None # Hide this column
+        },
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- DISPLAY LOSERS ---
+    st.subheader("📉 Top Losers (Dip Watch)")
+    df_losers = df[df['Change %'] < 0].sort_values("Change %", ascending=True)
+    
+    st.dataframe(
+        df_losers,
+        column_config={
+            "Price": st.column_config.NumberColumn(format="$%.2f"),
+            "Change %": st.column_config.NumberColumn(format="%.2f%%"),
+            "RVol": st.column_config.NumberColumn("RVol (Hype)", format="%.1fx"),
+            "RSI": st.column_config.NumberColumn("RSI (Risk)", format="%.0f"),
+        },
+        use_container_width=True,
+        hide_index=True
+    )
+
+    # --- DEEP DIVE SECTION ---
+    st.divider()
+    st.header("🔍 Deep Dive")
+    selected_ticker = st.selectbox("Select a Stock to Chart:", df['Ticker'].unique())
+    
+    if selected_ticker:
+        # Mini Chart
+        stock = yf.Ticker(selected_ticker)
+        hist = stock.history(period="3mo")
+        
+        # Create a Candle Chart
+        fig = go.Figure(data=[go.Candlestick(x=hist.index,
+                        open=hist['Open'], high=hist['High'],
+                        low=hist['Low'], close=hist['Close'])])
+        fig.update_layout(title=f"{selected_ticker} - 3 Month Chart", height=400)
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Show News
+        st.subheader(f"Latest News for {selected_ticker}")
+        news = stock.news
+        for n in news[:3]:
+            title = n.get('content', {}).get('title', n.get('title', 'Headline'))
+            link = n.get('content', {}).get('canonicalUrl', {}).get('url', n.get('link', '#'))
+            st.write(f"• [{title}]({link})")
