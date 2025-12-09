@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { StreamlitLayout } from "@/components/streamlit/layout";
 import {
   StTitle,
@@ -6,9 +7,7 @@ import {
   StSubheader,
   StText,
   StMetric,
-  StDataFrame,
   StSelect,
-  StLineChart,
 } from "@/components/streamlit/widgets";
 import { Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,125 +15,139 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
-// --- MOCK LOGIC & DATA GENERATION ---
-
-// Mock market tickers
-const MARKET_TICKERS = [
-  "NVDA", "TSLA", "AAPL", "AMD", "MSFT", "AMZN", "GOOGL", "META", "NFLX", "COIN",
-  "PLTR", "SOFI", "MARA", "RIOT", "DKNG", "UBER", "ABNB", "HOOD", "PYPL", "SQ"
-];
-
-// Types
+// Types matching backend response
 interface StockData {
-  Ticker: string;
-  Price: number;
-  "Change %": number;
-  RVol: number;
-  RSI: number;
-  "AI Verdict": "🟢 BULLISH" | "🔴 BEARISH" | "⚪ NEUTRAL" | "⚪ NO NEWS";
-  "Raw Score": number;
+  ticker: string;
+  price: number;
+  changePercent: number;
+  rvol: number;
+  rsi: number;
+  sentiment: "🟢 BULLISH" | "🔴 BEARISH" | "⚪ NEUTRAL" | "⚪ NO NEWS";
+  sentimentScore: number;
 }
 
-// Mock analysis function (replacing python analyze_stock_data)
-const generateMockData = (ticker: string): StockData => {
-  const isGainer = Math.random() > 0.5;
-  const change = (Math.random() * 15) * (isGainer ? 1 : -1);
-  const rsi = Math.floor(Math.random() * 100);
-  const rvol = (Math.random() * 5) + 0.5; // 0.5 to 5.5
-  
-  let sentiment: StockData["AI Verdict"] = "⚪ NEUTRAL";
-  if (change > 5 && rvol > 2) sentiment = "🟢 BULLISH";
-  else if (change < -5) sentiment = "🔴 BEARISH";
-  
-  return {
-    Ticker: ticker,
-    Price: Math.random() * 1000 + 50,
-    "Change %": change,
-    RVol: parseFloat(rvol.toFixed(1)),
-    RSI: rsi,
-    "AI Verdict": sentiment,
-    "Raw Score": Math.random() * 2 - 1
-  };
-};
+interface ChartDataPoint {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
 
-// Mock chart data generator
-const generateChartData = (ticker: string) => {
-  let price = 150;
-  return Array.from({ length: 90 }, (_, i) => {
-    price = price * (1 + (Math.random() * 0.04 - 0.02));
-    return {
-      date: new Date(Date.now() - (90 - i) * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      price: price
-    };
-  });
-};
+interface NewsItem {
+  title: string;
+  url: string;
+  sentiment: "positive" | "neutral" | "negative";
+  publishedAt: string;
+}
 
-// Mock news generator
-const generateNews = (ticker: string) => [
-  { title: `${ticker} Announces Breakthrough in AI Technology`, url: "#", sentiment: "positive" },
-  { title: `Analysts Update Price Target for ${ticker}`, url: "#", sentiment: "neutral" },
-  { title: `Market Volatility Affects ${ticker} Sector`, url: "#", sentiment: "negative" }
-];
+// API calls
+async function fetchMarketScan(): Promise<StockData[]> {
+  const res = await fetch("/api/market/scan");
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchChartData(ticker: string, period: string = "3m"): Promise<ChartDataPoint[]> {
+  const res = await fetch(`/api/market/chart/${ticker}?period=${period}`);
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchNews(ticker: string): Promise<NewsItem[]> {
+  const res = await fetch(`/api/market/news/${ticker}`);
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
 
 export default function Home() {
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState<StockData[]>([]);
-  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
-  const [selectedTicker, setSelectedTicker] = useState<string>(MARKET_TICKERS[0]);
+  const [selectedTicker, setSelectedTicker] = useState<string>("NVDA");
 
-  // "Scan Market" Logic
-  const scanMarket = async () => {
-    setLoading(true);
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const scannedData = MARKET_TICKERS.map(t => generateMockData(t));
-    setData(scannedData);
-    setLastRefreshed(new Date());
-    setLoading(false);
-  };
+  // Fetch market data with React Query
+  const { data: marketData = [], isLoading, refetch } = useQuery({
+    queryKey: ["market-scan"],
+    queryFn: fetchMarketScan,
+    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
+  });
 
-  // Initial load
-  useEffect(() => {
-    scanMarket();
-  }, []);
+  // Fetch chart data for selected ticker
+  const { data: chartData = [] } = useQuery({
+    queryKey: ["chart", selectedTicker],
+    queryFn: () => fetchChartData(selectedTicker),
+    enabled: !!selectedTicker,
+  });
+
+  // Fetch news for selected ticker
+  const { data: newsData = [] } = useQuery({
+    queryKey: ["news", selectedTicker],
+    queryFn: () => fetchNews(selectedTicker),
+    enabled: !!selectedTicker,
+  });
 
   // Derived state for tables
-  const gainers = useMemo(() => 
-    [...data].filter(d => d["Change %"] > 0).sort((a, b) => b["Change %"] - a["Change %"]), 
-    [data]
-  );
-  
-  const losers = useMemo(() => 
-    [...data].filter(d => d["Change %"] < 0).sort((a, b) => a["Change %"] - b["Change %"]), 
-    [data]
+  const gainers = useMemo(
+    () => [...marketData].filter((d) => d.changePercent > 0).sort((a, b) => b.changePercent - a.changePercent),
+    [marketData]
   );
 
-  // Chart data for selected ticker
-  const chartData = useMemo(() => generateChartData(selectedTicker), [selectedTicker]);
-  const newsData = useMemo(() => generateNews(selectedTicker), [selectedTicker]);
+  const losers = useMemo(
+    () => [...marketData].filter((d) => d.changePercent < 0).sort((a, b) => a.changePercent - b.changePercent),
+    [marketData]
+  );
+
+  const allTickers = useMemo(() => marketData.map((d) => d.ticker), [marketData]);
+
+  // Update selected ticker when data loads
+  useEffect(() => {
+    if (allTickers.length > 0 && !allTickers.includes(selectedTicker)) {
+      setSelectedTicker(allTickers[0]);
+    }
+  }, [allTickers, selectedTicker]);
+
+  // Format chart data for Recharts
+  const formattedChartData = useMemo(
+    () => chartData.map((d) => ({ date: d.date, price: d.close })),
+    [chartData]
+  );
+
+  // Time ago formatter
+  const timeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+
+    if (diffHours > 24) return `${Math.floor(diffHours / 24)}d ago`;
+    if (diffHours > 0) return `${diffHours}h ago`;
+    return `${diffMins}m ago`;
+  };
 
   // Sidebar UI
   const SidebarContent = (
     <div className="space-y-6">
       <div>
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Scanner Settings</h3>
-        <Button 
-          onClick={scanMarket} 
-          disabled={loading}
+        <Button
+          onClick={() => refetch()}
+          disabled={isLoading}
           className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+          data-testid="button-refresh"
         >
-          {loading ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning...</>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning...
+            </>
           ) : (
-            <><RefreshCw className="mr-2 h-4 w-4" /> Refresh Data</>
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" /> Refresh Data
+            </>
           )}
         </Button>
-        {lastRefreshed && (
-          <p className="text-xs text-muted-foreground mt-2 text-center">
-            Last updated: {lastRefreshed.toLocaleTimeString()}
-          </p>
-        )}
       </div>
 
       <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
@@ -143,7 +156,7 @@ export default function Home() {
           <span className="text-xl">🚀</span>
           <div>
             <span className="font-medium text-foreground">Rocket Ship</span>
-            <p className="text-xs text-muted-foreground">High RVol ({'>'}3x) + Bullish News</p>
+            <p className="text-xs text-muted-foreground">High RVol ({">"}3x) + Bullish News</p>
           </div>
         </div>
         <div className="flex items-start gap-2">
@@ -160,10 +173,10 @@ export default function Home() {
   return (
     <StreamlitLayout sidebar={SidebarContent}>
       <StTitle>⚡ Pro Trader's Dashboard</StTitle>
-      
+
       <StText>
-        Real-time market scanner powered by AI sentiment analysis. 
-        Identify breakout candidates and oversold opportunities instantly.
+        Real-time market scanner powered by AI sentiment analysis. Identify breakout candidates and oversold
+        opportunities instantly.
       </StText>
 
       {/* --- GAINERS SECTION --- */}
@@ -184,26 +197,35 @@ export default function Home() {
               </thead>
               <tbody className="divide-y divide-border font-mono">
                 {gainers.map((row) => (
-                  <tr key={row.Ticker} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-2 font-bold">{row.Ticker}</td>
-                    <td className="px-4 py-2">${row.Price.toFixed(2)}</td>
-                    <td className="px-4 py-2 text-green-600 dark:text-green-400">
-                      +{row["Change %"].toFixed(2)}%
+                  <tr key={row.ticker} className="hover:bg-muted/30 transition-colors" data-testid={`row-gainer-${row.ticker}`}>
+                    <td className="px-4 py-2 font-bold">{row.ticker}</td>
+                    <td className="px-4 py-2" data-testid={`text-price-${row.ticker}`}>${row.price.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-green-600 dark:text-green-400">+{row.changePercent.toFixed(2)}%</td>
+                    <td className="px-4 py-2">
+                      {row.rvol.toFixed(1)}x
+                      {row.rvol > 3 && <span className="ml-1">🚀</span>}
                     </td>
                     <td className="px-4 py-2">
-                      {row.RVol.toFixed(1)}x
-                      {row.RVol > 3 && <span className="ml-1">🚀</span>}
+                      {row.rsi}
+                      {row.rsi < 30 && row.sentiment === "🟢 BULLISH" && <span className="ml-1">💎</span>}
+                      {row.rsi > 70 && <span className="ml-1">⚠️</span>}
                     </td>
-                    <td className="px-4 py-2">
-                      {row.RSI}
-                      {row.RSI < 30 && <span className="ml-1">💎</span>}
-                      {row.RSI > 70 && <span className="ml-1">⚠️</span>}
-                    </td>
-                    <td className="px-4 py-2">{row["AI Verdict"]}</td>
+                    <td className="px-4 py-2">{row.sentiment}</td>
                   </tr>
                 ))}
-                {gainers.length === 0 && !loading && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No gainers found.</td></tr>
+                {gainers.length === 0 && !isLoading && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                      No gainers found.
+                    </td>
+                  </tr>
+                )}
+                {isLoading && (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -228,21 +250,23 @@ export default function Home() {
               </thead>
               <tbody className="divide-y divide-border font-mono">
                 {losers.map((row) => (
-                  <tr key={row.Ticker} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-2 font-bold">{row.Ticker}</td>
-                    <td className="px-4 py-2">${row.Price.toFixed(2)}</td>
-                    <td className="px-4 py-2 text-red-600 dark:text-red-400">
-                      {row["Change %"].toFixed(2)}%
-                    </td>
-                    <td className="px-4 py-2">{row.RVol.toFixed(1)}x</td>
+                  <tr key={row.ticker} className="hover:bg-muted/30 transition-colors" data-testid={`row-loser-${row.ticker}`}>
+                    <td className="px-4 py-2 font-bold">{row.ticker}</td>
+                    <td className="px-4 py-2">${row.price.toFixed(2)}</td>
+                    <td className="px-4 py-2 text-red-600 dark:text-red-400">{row.changePercent.toFixed(2)}%</td>
+                    <td className="px-4 py-2">{row.rvol.toFixed(1)}x</td>
                     <td className="px-4 py-2">
-                      {row.RSI}
-                      {row.RSI < 30 && <span className="ml-1">💎</span>}
+                      {row.rsi}
+                      {row.rsi < 30 && <span className="ml-1">💎</span>}
                     </td>
                   </tr>
                 ))}
-                {losers.length === 0 && !loading && (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No losers found.</td></tr>
+                {losers.length === 0 && !isLoading && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                      No losers found.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>
@@ -253,12 +277,12 @@ export default function Home() {
       {/* --- DEEP DIVE SECTION --- */}
       <div className="mt-12 border-t border-border pt-8">
         <StHeader>🔍 Deep Dive</StHeader>
-        
+
         <div className="mb-6">
-          <StSelect 
-            label="Select a Stock to Chart:" 
-            options={MARKET_TICKERS} 
-            value={selectedTicker} 
+          <StSelect
+            label="Select a Stock to Chart:"
+            options={allTickers}
+            value={selectedTicker}
             onChange={setSelectedTicker}
           />
         </div>
@@ -273,46 +297,46 @@ export default function Home() {
               <CardContent>
                 <div className="h-[400px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartData}>
+                    <AreaChart data={formattedChartData}>
                       <defs>
                         <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                      <XAxis 
-                        dataKey="date" 
-                        stroke="var(--muted-foreground)" 
-                        fontSize={12} 
-                        tickLine={false} 
+                      <XAxis
+                        dataKey="date"
+                        stroke="var(--muted-foreground)"
+                        fontSize={12}
+                        tickLine={false}
                         axisLine={false}
                         minTickGap={30}
                       />
-                      <YAxis 
-                        stroke="var(--muted-foreground)" 
-                        fontSize={12} 
-                        tickLine={false} 
+                      <YAxis
+                        stroke="var(--muted-foreground)"
+                        fontSize={12}
+                        tickLine={false}
                         axisLine={false}
-                        domain={['auto', 'auto']}
+                        domain={["auto", "auto"]}
                         tickFormatter={(val) => `$${val.toFixed(0)}`}
                       />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'var(--popover)', 
-                          borderColor: 'var(--border)',
-                          borderRadius: 'var(--radius)',
-                          color: 'var(--popover-foreground)'
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "var(--popover)",
+                          borderColor: "var(--border)",
+                          borderRadius: "var(--radius)",
+                          color: "var(--popover-foreground)",
                         }}
                         formatter={(val: number) => [`$${val.toFixed(2)}`, "Price"]}
                       />
-                      <Area 
-                        type="monotone" 
-                        dataKey="price" 
-                        stroke="var(--primary)" 
+                      <Area
+                        type="monotone"
+                        dataKey="price"
+                        stroke="var(--primary)"
                         strokeWidth={2}
-                        fillOpacity={1} 
-                        fill="url(#colorPrice)" 
+                        fillOpacity={1}
+                        fill="url(#colorPrice)"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -326,7 +350,11 @@ export default function Home() {
             <StSubheader>Latest News for {selectedTicker}</StSubheader>
             <div className="space-y-4 mt-4">
               {newsData.map((news, idx) => (
-                <div key={idx} className="group relative rounded-lg border border-border bg-card p-4 hover:bg-muted/50 transition-colors">
+                <div
+                  key={idx}
+                  className="group relative rounded-lg border border-border bg-card p-4 hover:bg-muted/50 transition-colors"
+                  data-testid={`card-news-${idx}`}
+                >
                   <div className="flex items-start justify-between gap-2">
                     <h5 className="font-medium text-sm leading-tight group-hover:underline decoration-primary/50 underline-offset-4">
                       {news.title}
@@ -337,7 +365,7 @@ export default function Home() {
                     <Badge variant="outline" className="text-[10px] font-mono uppercase">
                       {news.sentiment}
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground">2h ago</span>
+                    <span className="text-[10px] text-muted-foreground">{timeAgo(news.publishedAt)}</span>
                   </div>
                   <a href={news.url} className="absolute inset-0" aria-label={`Read ${news.title}`}></a>
                 </div>
