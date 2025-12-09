@@ -14,6 +14,7 @@ import { useSettings } from "@/contexts/SettingsContext";
 import { Link } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AdBanner, AdSidebar } from "@/components/AdBanner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
@@ -1654,11 +1655,11 @@ export default function Home() {
         </DialogContent>
       </Dialog>
 
-      {/* Top 10 Predictions Dialog */}
+      {/* Top 10 Predictions Dialog - Full Screen */}
       <Dialog open={showFullHistory} onOpenChange={(open) => { setShowFullHistory(open); if (!open) setHistoryFilter("all"); }}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+        <DialogContent className="w-screen h-screen max-w-none max-h-none m-0 rounded-none flex flex-col">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="flex items-center gap-2 text-xl">
               Today's Top 10 Predictions
               {top10TodayData?.date && (
                 <Badge variant="outline" className="text-xs font-normal">
@@ -1677,115 +1678,169 @@ export default function Home() {
           </DialogHeader>
           
           {/* Summary Stats */}
-          <div className="grid grid-cols-4 gap-3 py-3 border-b">
+          <div className="grid grid-cols-4 gap-4 py-4 border-b">
             <div className="text-center">
-              <p className="text-2xl font-bold">{dailyPredictionResults.predictions.length}</p>
-              <p className="text-xs text-muted-foreground">Total Picks</p>
+              <p className="text-3xl font-bold">{dailyPredictionResults.predictions.length}</p>
+              <p className="text-sm text-muted-foreground">Total Picks</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">{dailyPredictionResults.wins}</p>
-              <p className="text-xs text-muted-foreground">Winning</p>
+              <p className="text-3xl font-bold text-green-600">{dailyPredictionResults.wins}</p>
+              <p className="text-sm text-muted-foreground">Winning</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-red-600">{dailyPredictionResults.losses}</p>
-              <p className="text-xs text-muted-foreground">Losing</p>
+              <p className="text-3xl font-bold text-red-600">{dailyPredictionResults.losses}</p>
+              <p className="text-sm text-muted-foreground">Losing</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold">
+              <p className="text-3xl font-bold">
                 {dailyPredictionResults.predictions.length > 0 
                   ? `${((dailyPredictionResults.wins / dailyPredictionResults.predictions.length) * 100).toFixed(0)}%`
                   : "0%"}
               </p>
-              <p className="text-xs text-muted-foreground">Win Rate</p>
+              <p className="text-sm text-muted-foreground">Win Rate</p>
             </div>
           </div>
           
-          <div className="overflow-y-auto flex-1">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50 sticky top-0">
-                <tr>
-                  <th className="px-2 py-2 text-left font-medium">#</th>
-                  <th className="px-2 py-2 text-left font-medium">Ticker</th>
-                  <th className="px-2 py-2 text-left font-medium">Entry (Open)</th>
-                  <th className="px-2 py-2 text-left font-medium">Close</th>
-                  <th className="px-2 py-2 text-left font-medium">Close P/L</th>
-                  {dailyPredictionResults.isAfterHours && (
-                    <>
-                      <th className="px-2 py-2 text-left font-medium">Current</th>
-                      <th className="px-2 py-2 text-left font-medium">Total P/L</th>
-                    </>
-                  )}
-                  <th className="px-2 py-2 text-left font-medium">Status</th>
-                  <th className="px-2 py-2 text-left font-medium">Reasoning</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+          {/* Accordion for each pick */}
+          <div className="overflow-y-auto flex-1 px-2">
+            {dailyPredictionResults.predictions.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                Analyzing market data to generate predictions...
+              </div>
+            ) : (
+              <Accordion type="single" collapsible className="w-full">
                 {dailyPredictionResults.predictions.map((pick, idx) => (
-                  <tr 
-                    key={`${pick.ticker}-${idx}`}
-                    className={`hover:bg-muted/30 cursor-pointer ${
+                  <AccordionItem 
+                    key={`${pick.ticker}-${idx}`} 
+                    value={`pick-${idx}`}
+                    className={`${
                       pick.outcome === "win" ? "bg-green-500/5" : 
                       pick.outcome === "loss" ? "bg-red-500/5" : ""
                     }`}
-                    onClick={() => {
-                      setShowFullHistory(false);
-                      setSelectedTicker(pick.ticker);
-                    }}
-                    data-testid={`top10-row-${pick.ticker}`}
+                    data-testid={`top10-accordion-${pick.ticker}`}
                   >
-                    <td className="px-2 py-2 text-muted-foreground font-medium">
-                      {idx + 1}
-                    </td>
-                    <td className="px-2 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className={pick.outcome === "win" ? "text-green-600" : pick.outcome === "loss" ? "text-red-600" : ""}>
-                          {pick.outcome === "win" ? "📈" : pick.outcome === "loss" ? "📉" : "⏳"}
-                        </span>
-                        <span className="font-bold">{pick.ticker}</span>
+                    <AccordionTrigger className="hover:no-underline px-4 py-3">
+                      <div className="flex items-center justify-between w-full pr-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-lg font-bold text-muted-foreground w-8">#{idx + 1}</span>
+                          <span className={`text-2xl ${pick.outcome === "win" ? "text-green-600" : pick.outcome === "loss" ? "text-red-600" : ""}`}>
+                            {pick.outcome === "win" ? "📈" : pick.outcome === "loss" ? "📉" : "⏳"}
+                          </span>
+                          <span className="text-xl font-bold">{pick.ticker}</span>
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs ${
+                              pick.outcome === "win" ? "text-green-600 border-green-600 bg-green-500/10" : 
+                              pick.outcome === "loss" ? "text-red-600 border-red-600 bg-red-500/10" : 
+                              "text-muted-foreground"
+                            }`}
+                          >
+                            {pick.outcome === "win" ? "WIN" : pick.outcome === "loss" ? "LOSS" : "PENDING"}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {pick.confidence}% confidence
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-right">
+                            <p className={`text-xl font-bold ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                              {pick.closePnl >= 0 ? "+" : ""}{pick.closePnl}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">Close P/L</p>
+                          </div>
+                          {dailyPredictionResults.isAfterHours && pick.hasAfterHours && (
+                            <div className="text-right">
+                              <p className={`text-xl font-bold ${pick.totalPnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                {pick.totalPnl >= 0 ? "+" : ""}{pick.totalPnl}%
+                              </p>
+                              <p className="text-xs text-yellow-600">Total (AH)</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </td>
-                    <td className="px-2 py-2">${pick.entryPrice.toFixed(2)}</td>
-                    <td className="px-2 py-2 font-medium">${pick.closePrice.toFixed(2)}</td>
-                    <td className={`px-2 py-2 font-bold ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {pick.closePnl >= 0 ? "+" : ""}{pick.closePnl}%
-                    </td>
-                    {dailyPredictionResults.isAfterHours && (
-                      <>
-                        <td className="px-2 py-2 font-medium">
-                          ${pick.currentPrice.toFixed(2)}
-                          {pick.hasAfterHours && <span className="text-xs text-yellow-600 ml-1">AH</span>}
-                        </td>
-                        <td className={`px-2 py-2 font-bold ${pick.totalPnl >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          {pick.totalPnl >= 0 ? "+" : ""}{pick.totalPnl}%
-                        </td>
-                      </>
-                    )}
-                    <td className="px-2 py-2">
-                      <Badge 
-                        variant="outline" 
-                        className={`text-xs ${
-                          pick.outcome === "win" ? "text-green-600 border-green-600 bg-green-500/10" : 
-                          pick.outcome === "loss" ? "text-red-600 border-red-600 bg-red-500/10" : 
-                          "text-muted-foreground"
-                        }`}
-                      >
-                        {pick.outcome === "win" ? "WIN" : pick.outcome === "loss" ? "LOSS" : "PENDING"}
-                      </Badge>
-                    </td>
-                    <td className="px-2 py-2 text-muted-foreground text-xs max-w-[150px] truncate">
-                      {pick.reasoning}
-                    </td>
-                  </tr>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 p-4 bg-muted/30 rounded-lg">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Entry Price (Open)</p>
+                          <p className="text-2xl font-bold">${pick.entryPrice.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Close Price</p>
+                          <p className="text-2xl font-bold">${pick.closePrice.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Previous Close</p>
+                          <p className="text-2xl font-bold">${pick.prevClose?.toFixed(2) || "N/A"}</p>
+                        </div>
+                        {dailyPredictionResults.isAfterHours && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Current Price</p>
+                            <p className="text-2xl font-bold">
+                              ${pick.currentPrice.toFixed(2)}
+                              {pick.hasAfterHours && <span className="text-sm text-yellow-600 ml-1">AH</span>}
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Close P/L</p>
+                          <p className={`text-2xl font-bold ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                            {pick.closePnl >= 0 ? "+" : ""}{pick.closePnl}%
+                          </p>
+                        </div>
+                        {dailyPredictionResults.isAfterHours && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Total P/L (incl. AH)</p>
+                            <p className={`text-2xl font-bold ${pick.totalPnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                              {pick.totalPnl >= 0 ? "+" : ""}{pick.totalPnl}%
+                            </p>
+                          </div>
+                        )}
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Predicted Gain</p>
+                          <p className="text-2xl font-bold text-blue-600">+{pick.predictedGain}%</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">Confidence</p>
+                          <p className="text-2xl font-bold">{pick.confidence}%</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 p-4 bg-muted/30 rounded-lg">
+                        <p className="text-sm text-muted-foreground mb-2">Reasoning</p>
+                        <p className="text-base">{pick.reasoning}</p>
+                      </div>
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowFullHistory(false);
+                            setSelectedTicker(pick.ticker);
+                          }}
+                          data-testid={`button-view-chart-${pick.ticker}`}
+                        >
+                          <BarChart3 className="h-4 w-4 mr-1" /> View Chart
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                        >
+                          <a 
+                            href={`/api/go/${pick.ticker}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            data-testid={`button-trade-${pick.ticker}`}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" /> Trade {pick.ticker}
+                          </a>
+                        </Button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
                 ))}
-                {dailyPredictionResults.predictions.length === 0 && (
-                  <tr>
-                    <td colSpan={dailyPredictionResults.isAfterHours ? 9 : 7} className="px-3 py-8 text-center text-muted-foreground">
-                      Analyzing market data to generate predictions...
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+              </Accordion>
+            )}
           </div>
         </DialogContent>
       </Dialog>
