@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist } from "@shared/schema";
+import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
@@ -16,17 +16,22 @@ export interface IStorage {
   getStripeProducts(): Promise<any[]>;
   getStripeProductsWithPrices(): Promise<any[]>;
   getStripeSubscription(subscriptionId: string): Promise<any>;
+  logAffiliateClick(click: InsertAffiliateClick): Promise<AffiliateClick>;
+  getAffiliateClicks(): Promise<AffiliateClick[]>;
+  getAffiliateClickStats(): Promise<{ ticker: string; count: number }[]>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private predictions: Map<string, Prediction>;
   private watchlistItems: Map<string, WatchlistItem>;
+  private affiliateClicksList: AffiliateClick[];
 
   constructor() {
     this.users = new Map();
     this.predictions = new Map();
     this.watchlistItems = new Map();
+    this.affiliateClicksList = [];
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -158,6 +163,36 @@ export class MemStorage implements IStorage {
     } catch {
       return null;
     }
+  }
+
+  async logAffiliateClick(click: InsertAffiliateClick): Promise<AffiliateClick> {
+    const id = randomUUID();
+    const affiliateClick: AffiliateClick = {
+      id,
+      ticker: click.ticker.toUpperCase(),
+      destination: click.destination,
+      referrer: click.referrer || null,
+      userAgent: click.userAgent || null,
+      clickedAt: new Date(),
+    };
+    this.affiliateClicksList.push(affiliateClick);
+    return affiliateClick;
+  }
+
+  async getAffiliateClicks(): Promise<AffiliateClick[]> {
+    return [...this.affiliateClicksList].sort(
+      (a, b) => new Date(b.clickedAt).getTime() - new Date(a.clickedAt).getTime()
+    );
+  }
+
+  async getAffiliateClickStats(): Promise<{ ticker: string; count: number }[]> {
+    const counts: Record<string, number> = {};
+    for (const click of this.affiliateClicksList) {
+      counts[click.ticker] = (counts[click.ticker] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([ticker, count]) => ({ ticker, count }))
+      .sort((a, b) => b.count - a.count);
   }
 }
 

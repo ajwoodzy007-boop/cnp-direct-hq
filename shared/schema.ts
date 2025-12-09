@@ -52,3 +52,20 @@ export const insertWatchlistSchema = createInsertSchema(watchlist).omit({
 
 export type InsertWatchlist = z.infer<typeof insertWatchlistSchema>;
 export type WatchlistItem = typeof watchlist.$inferSelect;
+
+export const affiliateClicks = pgTable("affiliate_clicks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticker: text("ticker").notNull(),
+  destination: text("destination").notNull(),
+  referrer: text("referrer"),
+  userAgent: text("user_agent"),
+  clickedAt: timestamp("clicked_at").notNull().defaultNow(),
+});
+
+export const insertAffiliateClickSchema = createInsertSchema(affiliateClicks).omit({
+  id: true,
+  clickedAt: true,
+});
+
+export type InsertAffiliateClick = z.infer<typeof insertAffiliateClickSchema>;
+export type AffiliateClick = typeof affiliateClicks.$inferSelect;
