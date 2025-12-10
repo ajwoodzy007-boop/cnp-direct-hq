@@ -80,10 +80,39 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
 
         {/* Content Container */}
         <div className={cn(
-          "max-w-6xl mx-auto px-6 pb-20 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          "max-w-6xl mx-auto px-6 pb-8 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1"
         )}>
           {children}
         </div>
+
+        {/* Legal Disclaimer Footer */}
+        <footer className="mt-auto border-t border-border bg-muted/30 py-6 px-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center space-y-3">
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+                Important Disclaimer
+              </p>
+              <div className="text-xs text-muted-foreground leading-relaxed max-w-4xl mx-auto space-y-2">
+                <p>
+                  <strong>For Educational Purposes Only.</strong> CNP Direct and The Market Sentinel are software tools designed for educational and informational purposes only. 
+                  The signals, predictions, and analysis provided (including but not limited to "BUY," "SELL," or "MOMENTUM" indicators) do not constitute financial advice, 
+                  investment recommendations, or solicitation to buy or sell any securities.
+                </p>
+                <p>
+                  CNP Direct is not a registered investment advisor, broker-dealer, or financial planner. Past performance is not indicative of future results. 
+                  All investments involve risk, including the potential loss of principal. You should consult with a qualified financial advisor before making any investment decisions.
+                </p>
+                <p>
+                  By using this software, you acknowledge that you understand these risks and agree that CNP Direct bears no responsibility for any financial losses 
+                  or damages resulting from your use of or reliance on the information provided.
+                </p>
+              </div>
+              <p className="text-[10px] text-muted-foreground pt-2">
+                &copy; {new Date().getFullYear()} CNP Direct. All rights reserved.
+              </p>
+            </div>
+          </div>
+        </footer>
       </main>
 
       {/* Settings Dialog */}
