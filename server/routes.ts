@@ -9,6 +9,7 @@ import { z } from "zod";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 import oracleRouter from "./routes/oracle";
+import strategistRouter from "./routes/strategist";
 
 // Cache for daily predictions - regenerated at 7:30 AM ET each weekday
 interface DailyPredictionsCache {
@@ -93,6 +94,9 @@ export async function registerRoutes(
   
   // Oracle routes
   app.use("/api/oracle", oracleRouter);
+  
+  // Strategist routes
+  app.use("/api/strategist", strategistRouter);
 
   // GET /api/market/scan - Scan market for gainers/losers
   app.get("/api/market/scan", async (req, res) => {
