@@ -115,11 +115,12 @@ export const dailyPredictionEntries = pgTable("daily_prediction_entries", {
   confidence: real("confidence").notNull(),
   reasoning: text("reasoning"),
   entryPrice: real("entry_price").notNull(),
+  predictedPrice: real("predicted_price"), // Target price prediction for end of day
   closePrice: real("close_price"),
   currentPrice: real("current_price"),
   closePnl: real("close_pnl"),
   totalPnl: real("total_pnl"),
-  outcome: text("outcome"), // 'win' | 'loss' | 'pending'
+  outcome: text("outcome"), // 'win' | 'loss' | 'pending' - based on predicted vs actual close
 });
 
 export const insertDailyPredictionEntrySchema = createInsertSchema(dailyPredictionEntries).omit({
