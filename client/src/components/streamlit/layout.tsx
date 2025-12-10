@@ -48,13 +48,16 @@ export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
         <div className="h-full flex flex-col w-[336px]">
           {/* Sidebar Header */}
           <div className="p-6 flex items-center justify-between">
-            <div className="font-bold text-xl tracking-tight flex items-center gap-3">
+            <div className="font-bold tracking-tight flex items-center gap-3">
               <img 
                 src="/assets/logo.jpg" 
                 alt="CNP Direct" 
-                className="w-10 h-10 rounded-lg object-cover"
+                className="w-12 h-12 rounded-lg object-cover"
               />
-              <span className="text-lg">CNP Direct</span>
+              <div>
+                <span className="text-lg font-bold">CNP DIRECT</span>
+                <p className="text-[10px] text-muted-foreground tracking-wide">Capital. Net Profit. Direct.</p>
+              </div>
             </div>
             <Button
               variant="ghost"
@@ -72,7 +75,10 @@ export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
           </div>
 
           {/* Sidebar Footer */}
-          <div className="p-6 border-t border-sidebar-border mt-auto">
+          <div className="p-6 border-t border-sidebar-border mt-auto space-y-3">
+            <p className="text-[10px] text-muted-foreground leading-relaxed">
+              The Market Sentinel is a proprietary analysis tool provided by Capital Net Profit Direct.
+            </p>
             <div className="flex items-center justify-between text-muted-foreground text-sm">
               <span>v1.28.0</span>
               <div className="flex gap-2">

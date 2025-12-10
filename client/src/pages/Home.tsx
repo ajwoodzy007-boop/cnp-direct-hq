@@ -1263,11 +1263,11 @@ export default function Home() {
               <img 
                 src="/assets/logo.jpg" 
                 alt="CNP Direct Market Sentinel" 
-                className="w-12 h-12 rounded-lg object-cover"
+                className="w-14 h-14 rounded-lg object-cover"
               />
               <div>
-                <h2 className="text-xl font-bold tracking-tight">Market Sentinel</h2>
-                <p className="text-xs text-muted-foreground">Real-time trading signals powered by CNP Direct</p>
+                <h2 className="text-xl font-bold tracking-tight">The Market Sentinel</h2>
+                <p className="text-xs text-muted-foreground">Capital. Net Profit. Direct.</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
