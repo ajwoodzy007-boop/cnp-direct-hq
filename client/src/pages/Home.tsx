@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
+import { motion } from "framer-motion";
 
 // Types matching backend response
 interface StockData {
@@ -639,7 +640,7 @@ export default function Home() {
       }
     });
     
-    return suggestions.slice(0, 5);
+    return suggestions.slice(0, 12);
   }, [marketData, predictionsData]);
 
   // Handler to manually add a stock
@@ -1253,6 +1254,123 @@ export default function Home() {
         Real-time market scanner powered by AI sentiment analysis. Identify breakout candidates and oversold
         opportunities instantly.
       </StText>
+
+      {/* --- CNP DIRECT MARKET SENTINEL --- */}
+      <div className="mt-6 mb-8">
+        <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-purple-500/5 p-6 shadow-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-6 h-6 text-primary-foreground"
+                >
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-xl font-bold tracking-tight">Market Sentinel</h2>
+                <p className="text-xs text-muted-foreground">Real-time trading signals powered by CNP Direct</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {marketStatus === "open" && (
+                <Badge className="bg-green-600 animate-pulse">🟢 LIVE</Badge>
+              )}
+              {marketStatus === "pre-market" && (
+                <Badge className="bg-blue-600">🌅 Pre-Market</Badge>
+              )}
+              {marketStatus === "after-hours" && (
+                <Badge className="bg-purple-600">🌙 After Hours</Badge>
+              )}
+              {marketStatus === "closed" && (
+                <Badge variant="outline">Market Closed</Badge>
+              )}
+            </div>
+          </div>
+          
+          {suggestedStocks.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {suggestedStocks.slice(0, 6).map((item, idx) => (
+                <motion.div
+                  key={`${item.stock.ticker}-${item.signalType}`}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.1 }}
+                  className={`p-4 rounded-lg border cursor-pointer transition-all hover:scale-[1.02] ${
+                    item.signalType === "MOMENTUM BUY" 
+                      ? "bg-green-500/10 border-green-500/30 hover:border-green-500/50" 
+                      : item.signalType === "VALUE BUY"
+                      ? "bg-blue-500/10 border-blue-500/30 hover:border-blue-500/50"
+                      : "bg-yellow-500/10 border-yellow-500/30 hover:border-yellow-500/50"
+                  }`}
+                  onClick={() => setSelectedTicker(item.stock.ticker)}
+                  data-testid={`sentinel-signal-${item.stock.ticker}`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{item.icon}</span>
+                      <a 
+                        href={`/api/go/${item.stock.ticker}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-bold text-lg hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {item.stock.ticker}
+                      </a>
+                    </div>
+                    <Badge 
+                      className={`text-xs ${
+                        item.signalType === "MOMENTUM BUY" 
+                          ? "bg-green-600" 
+                          : item.signalType === "VALUE BUY"
+                          ? "bg-blue-600"
+                          : "bg-yellow-600"
+                      }`}
+                    >
+                      {item.signalType}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Price</span>
+                    <span className="font-mono font-medium">${item.stock.price.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Change</span>
+                    <span className={`font-mono font-medium ${item.stock.changePercent >= 0 ? "text-green-600" : "text-red-600"}`}>
+                      {item.stock.changePercent >= 0 ? "+" : ""}{item.stock.changePercent.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">RSI</span>
+                    <span className="font-mono">{item.stock.rsi}</span>
+                  </div>
+                  <div className="mt-2 pt-2 border-t border-border/50">
+                    <span className="text-xs">{item.stock.sentiment}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                <RefreshCw className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <p className="text-muted-foreground font-medium">No active signals detected</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Signals appear when stocks meet momentum or value criteria
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* --- GAINERS SECTION --- */}
       <div className="mt-8">
