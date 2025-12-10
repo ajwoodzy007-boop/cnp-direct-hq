@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
 import { motion } from "framer-motion";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 // Types matching backend response
 interface StockData {
@@ -1359,8 +1360,20 @@ export default function Home() {
         </div>
       </div>
 
-      {/* --- GAINERS SECTION --- */}
-      <div className="mt-8">
+      {/* --- TABS NAVIGATION --- */}
+      <Tabs defaultValue="signals" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="signals" className="text-sm font-medium" data-testid="tab-signals">
+            📊 Market Signals
+          </TabsTrigger>
+          <TabsTrigger value="predictions" className="text-sm font-medium" data-testid="tab-predictions">
+            🎯 Predictions
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="signals">
+          {/* --- GAINERS SECTION --- */}
+          <div className="mt-4">
 {/* Signal Legend */}
         <div className="flex flex-wrap items-center gap-4 mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm">
           <span className="font-medium text-muted-foreground">Signal Types:</span>
@@ -1909,6 +1922,118 @@ export default function Home() {
           </Card>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="predictions">
+          {/* --- PREDICTIONS TAB CONTENT --- */}
+          <div className="space-y-6">
+            <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-purple-500/5 p-6">
+              <h2 className="text-xl font-bold mb-4">🎯 Today's Top 10 Predictions</h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                AI-generated stock picks with predicted price targets. Track win/loss outcomes based on actual closing prices.
+              </p>
+              
+              {dailyPredictionResults.predictions.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                      <Badge className="bg-green-600">{dailyPredictionResults.wins} Wins</Badge>
+                      <Badge className="bg-red-600">{dailyPredictionResults.losses} Losses</Badge>
+                      {dailyPredictionResults.pending > 0 && (
+                        <Badge variant="outline">{dailyPredictionResults.pending} Pending</Badge>
+                      )}
+                    </div>
+                    <span className="text-sm text-muted-foreground">{dailyPredictionResults.date}</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {dailyPredictionResults.predictions.map((pick, idx) => (
+                      <div
+                        key={pick.ticker}
+                        className={`p-4 rounded-lg border ${
+                          pick.outcome === "win" 
+                            ? "bg-green-500/10 border-green-500/30" 
+                            : pick.outcome === "loss"
+                            ? "bg-red-500/10 border-red-500/30"
+                            : "bg-muted/30 border-border"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-lg">#{idx + 1}</span>
+                            <a 
+                              href={`/api/go/${pick.ticker}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold text-primary hover:underline"
+                            >
+                              {pick.ticker}
+                            </a>
+                          </div>
+                          <Badge className={
+                            pick.outcome === "win" ? "bg-green-600" :
+                            pick.outcome === "loss" ? "bg-red-600" :
+                            "bg-muted"
+                          }>
+                            {pick.outcome ? pick.outcome.toUpperCase() : "PENDING"}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Entry:</span>
+                            <span className="ml-2 font-mono">${pick.entryPrice?.toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Target:</span>
+                            <span className="ml-2 font-mono text-purple-600">${pick.predictedPrice?.toFixed(2) || "N/A"}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Close:</span>
+                            <span className="ml-2 font-mono">${pick.closePrice?.toFixed(2) || "Pending"}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">P/L:</span>
+                            <span className={`ml-2 font-mono ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                              {pick.closePnl >= 0 ? "+" : ""}{pick.closePnl?.toFixed(2) || 0}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No predictions for today yet.</p>
+                  <p className="text-sm text-muted-foreground mt-2">Predictions are generated at market open.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Prediction History */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Prediction History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  View your past predictions and track overall performance over time.
+                </p>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowFullHistory(true)}
+                  data-testid="button-view-history-tab"
+                >
+                  <History className="h-4 w-4 mr-2" /> View Full History
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Prediction Detail Dialog */}
       <Dialog open={!!selectedPrediction} onOpenChange={() => setSelectedPrediction(null)}>
