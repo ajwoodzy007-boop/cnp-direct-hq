@@ -15,8 +15,16 @@ async function getQuote(ticker: string): Promise<any> {
   }
 }
 
+// Use OPENAI_API_KEY first, fall back to integration key only if it's not a dummy
+const getOpenAIKey = () => {
+  if (process.env.OPENAI_API_KEY) return process.env.OPENAI_API_KEY;
+  const integrationKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY;
+  if (integrationKey && !integrationKey.includes("DUMMY")) return integrationKey;
+  return process.env.OPENAI_API_KEY || "";
+};
+
 const openai = new OpenAI({
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+  apiKey: getOpenAIKey(),
 });
 
 interface PlaybookResult {
