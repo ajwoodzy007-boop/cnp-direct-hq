@@ -10,6 +10,7 @@ import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
 import oracleRouter from "./routes/oracle";
 import strategistRouter from "./routes/strategist";
+import vaultRouter from "./routes/vault";
 
 // Cache for daily predictions - regenerated at 7:30 AM ET each weekday
 interface DailyPredictionsCache {
@@ -97,6 +98,9 @@ export async function registerRoutes(
   
   // Strategist routes
   app.use("/api/strategist", strategistRouter);
+  
+  // Vault routes
+  app.use("/api/vault", vaultRouter);
 
   // GET /api/market/scan - Scan market for gainers/losers
   app.get("/api/market/scan", async (req, res) => {
