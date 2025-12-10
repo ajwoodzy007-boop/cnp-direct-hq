@@ -995,6 +995,129 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Historical Accuracy */}
+      {predictionStatsData && (
+        <div className="rounded-lg bg-gradient-to-br from-primary/5 via-background to-green-500/5 border border-primary/20 p-4 text-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-foreground flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Historical Accuracy
+            </h4>
+            <Dialog open={showPerformanceHistory} onOpenChange={setShowPerformanceHistory}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 px-2" data-testid="button-view-history">
+                  <History className="h-3 w-3" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Prediction History</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  {predictionHistoryData.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No historical predictions yet. Predictions are saved daily at 7:30 AM ET.</p>
+                  ) : (
+                    <Accordion type="single" collapsible className="w-full">
+                      {predictionHistoryData.map((run) => {
+                        const wins = run.entries.filter(e => e.outcome === "win").length;
+                        const losses = run.entries.filter(e => e.outcome === "loss").length;
+                        const avgPnl = run.entries.filter(e => e.closePnl !== null).length > 0
+                          ? run.entries.filter(e => e.closePnl !== null).reduce((a, b) => a + (b.closePnl || 0), 0) / run.entries.filter(e => e.closePnl !== null).length
+                          : 0;
+                        return (
+                          <AccordionItem key={run.id} value={run.id}>
+                            <AccordionTrigger className="hover:no-underline">
+                              <div className="flex items-center justify-between w-full pr-4">
+                                <span className="font-medium">{new Date(run.runDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span className="text-green-600">{wins}W</span>
+                                  <span className="text-red-500">{losses}L</span>
+                                  <span className={avgPnl >= 0 ? "text-green-600" : "text-red-500"}>
+                                    {avgPnl >= 0 ? "+" : ""}{avgPnl.toFixed(2)}%
+                                  </span>
+                                  {run.finalizedAt ? (
+                                    <Badge variant="outline" className="text-xs">Finalized</Badge>
+                                  ) : (
+                                    <Badge variant="secondary" className="text-xs">Pending</Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </AccordionTrigger>
+                            <AccordionContent>
+                              <div className="grid gap-2 pt-2">
+                                {run.entries.map((entry) => (
+                                  <div 
+                                    key={entry.id} 
+                                    className={`flex items-center justify-between p-2 rounded-lg text-sm ${
+                                      entry.outcome === "win" ? "bg-green-500/10" : 
+                                      entry.outcome === "loss" ? "bg-red-500/10" : "bg-muted/50"
+                                    }`}
+                                    data-testid={`history-entry-${entry.ticker}`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <span className={`font-bold ${entry.outcome === "win" ? "text-green-600" : entry.outcome === "loss" ? "text-red-500" : ""}`}>
+                                        {entry.ticker}
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        Entry: ${entry.entryPrice.toFixed(2)}
+                                      </span>
+                                      {entry.closePrice && (
+                                        <span className="text-muted-foreground">
+                                          Close: ${entry.closePrice.toFixed(2)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {entry.closePnl !== null && (
+                                        <span className={`font-medium ${entry.closePnl >= 0 ? "text-green-600" : "text-red-500"}`}>
+                                          {entry.closePnl >= 0 ? "+" : ""}{entry.closePnl.toFixed(2)}%
+                                        </span>
+                                      )}
+                                      {entry.outcome === "win" && <TrendingUp className="h-4 w-4 text-green-600" />}
+                                      {entry.outcome === "loss" && <TrendingDown className="h-4 w-4 text-red-500" />}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </AccordionContent>
+                          </AccordionItem>
+                        );
+                      })}
+                    </Accordion>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
+          
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <div>
+              <div className="text-lg font-bold text-green-600">{predictionStatsData.wins}</div>
+              <div className="text-[10px] text-muted-foreground">Wins</div>
+            </div>
+            <div>
+              <div className="text-lg font-bold text-red-500">{predictionStatsData.losses}</div>
+              <div className="text-[10px] text-muted-foreground">Losses</div>
+            </div>
+            <div>
+              <div className={`text-lg font-bold ${predictionStatsData.winRate >= 50 ? "text-green-600" : "text-red-500"}`}>
+                {predictionStatsData.winRate}%
+              </div>
+              <div className="text-[10px] text-muted-foreground">Win Rate</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-between text-xs pt-2 border-t">
+            <span className="text-muted-foreground">{predictionStatsData.totalRuns} days, {predictionStatsData.totalPicks} picks</span>
+            {predictionStatsData.avgPnl !== 0 && (
+              <span className={predictionStatsData.avgPnl >= 0 ? "text-green-600" : "text-red-500"}>
+                Avg: {predictionStatsData.avgPnl >= 0 ? "+" : ""}{predictionStatsData.avgPnl}%
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* AI Playbook */}
       <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
@@ -1101,140 +1224,6 @@ export default function Home() {
         Real-time market scanner powered by AI sentiment analysis. Identify breakout candidates and oversold
         opportunities instantly.
       </StText>
-
-      {/* --- PERFORMANCE STATS CARD --- */}
-      {predictionStatsData && (
-        <Card className="mt-4 bg-gradient-to-br from-primary/5 via-background to-green-500/5 border-primary/20">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="h-5 w-5 text-primary" />
-                Historical Accuracy
-              </CardTitle>
-              <Dialog open={showPerformanceHistory} onOpenChange={setShowPerformanceHistory}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" data-testid="button-view-history">
-                    <History className="mr-2 h-4 w-4" />
-                    View History
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Prediction History</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    {predictionHistoryData.length === 0 ? (
-                      <p className="text-center text-muted-foreground py-8">No historical predictions yet. Predictions are saved daily at 7:30 AM ET.</p>
-                    ) : (
-                      <Accordion type="single" collapsible className="w-full">
-                        {predictionHistoryData.map((run) => {
-                          const wins = run.entries.filter(e => e.outcome === "win").length;
-                          const losses = run.entries.filter(e => e.outcome === "loss").length;
-                          const avgPnl = run.entries.filter(e => e.closePnl !== null).length > 0
-                            ? run.entries.filter(e => e.closePnl !== null).reduce((a, b) => a + (b.closePnl || 0), 0) / run.entries.filter(e => e.closePnl !== null).length
-                            : 0;
-                          return (
-                            <AccordionItem key={run.id} value={run.id}>
-                              <AccordionTrigger className="hover:no-underline">
-                                <div className="flex items-center justify-between w-full pr-4">
-                                  <span className="font-medium">{new Date(run.runDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                                  <div className="flex items-center gap-4 text-sm">
-                                    <span className="text-green-600">{wins}W</span>
-                                    <span className="text-red-500">{losses}L</span>
-                                    <span className={avgPnl >= 0 ? "text-green-600" : "text-red-500"}>
-                                      {avgPnl >= 0 ? "+" : ""}{avgPnl.toFixed(2)}%
-                                    </span>
-                                    {run.finalizedAt ? (
-                                      <Badge variant="outline" className="text-xs">Finalized</Badge>
-                                    ) : (
-                                      <Badge variant="secondary" className="text-xs">Pending</Badge>
-                                    )}
-                                  </div>
-                                </div>
-                              </AccordionTrigger>
-                              <AccordionContent>
-                                <div className="grid gap-2 pt-2">
-                                  {run.entries.map((entry) => (
-                                    <div 
-                                      key={entry.id} 
-                                      className={`flex items-center justify-between p-2 rounded-lg text-sm ${
-                                        entry.outcome === "win" ? "bg-green-500/10" : 
-                                        entry.outcome === "loss" ? "bg-red-500/10" : "bg-muted/50"
-                                      }`}
-                                      data-testid={`history-entry-${entry.ticker}`}
-                                    >
-                                      <div className="flex items-center gap-3">
-                                        <span className={`font-bold ${entry.outcome === "win" ? "text-green-600" : entry.outcome === "loss" ? "text-red-500" : ""}`}>
-                                          {entry.ticker}
-                                        </span>
-                                        <span className="text-muted-foreground">
-                                          Entry: ${entry.entryPrice.toFixed(2)}
-                                        </span>
-                                        {entry.closePrice && (
-                                          <span className="text-muted-foreground">
-                                            Close: ${entry.closePrice.toFixed(2)}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        {entry.closePnl !== null && (
-                                          <span className={`font-medium ${entry.closePnl >= 0 ? "text-green-600" : "text-red-500"}`}>
-                                            {entry.closePnl >= 0 ? "+" : ""}{entry.closePnl.toFixed(2)}%
-                                          </span>
-                                        )}
-                                        {entry.outcome === "win" && <TrendingUp className="h-4 w-4 text-green-600" />}
-                                        {entry.outcome === "loss" && <TrendingDown className="h-4 w-4 text-red-500" />}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </AccordionContent>
-                            </AccordionItem>
-                          );
-                        })}
-                      </Accordion>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{predictionStatsData.totalRuns}</div>
-                <div className="text-xs text-muted-foreground">Trading Days</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold">{predictionStatsData.totalPicks}</div>
-                <div className="text-xs text-muted-foreground">Total Picks</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{predictionStatsData.wins}</div>
-                <div className="text-xs text-muted-foreground">Wins</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-red-500">{predictionStatsData.losses}</div>
-                <div className="text-xs text-muted-foreground">Losses</div>
-              </div>
-              <div className="text-center">
-                <div className={`text-2xl font-bold ${predictionStatsData.winRate >= 50 ? "text-green-600" : "text-red-500"}`}>
-                  {predictionStatsData.winRate}%
-                </div>
-                <div className="text-xs text-muted-foreground">Win Rate</div>
-              </div>
-            </div>
-            {predictionStatsData.avgPnl !== 0 && (
-              <div className="mt-3 pt-3 border-t text-center">
-                <span className="text-sm text-muted-foreground">Average P/L: </span>
-                <span className={`font-bold ${predictionStatsData.avgPnl >= 0 ? "text-green-600" : "text-red-500"}`}>
-                  {predictionStatsData.avgPnl >= 0 ? "+" : ""}{predictionStatsData.avgPnl}%
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {/* --- GAINERS SECTION --- */}
       <div className="mt-8">
