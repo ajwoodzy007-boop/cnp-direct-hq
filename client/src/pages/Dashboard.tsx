@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
 import MarketRadar from '@/components/MarketRadar';
 import TheOracle from '@/components/TheOracle';
+import TheStrategist from '@/components/TheStrategist';
 
 const ComingSoon = ({ title }: { title: string }) => (
   <div className="flex flex-col items-center justify-center h-[50vh] text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
@@ -20,7 +21,7 @@ export default function Dashboard() {
       case 'oracle':
         return <TheOracle />;
       case 'strategist':
-        return <ComingSoon title="The Strategist (AI Playbook)" />;
+        return <TheStrategist />;
       case 'vault':
         return <ComingSoon title="The Vault (Portfolio)" />;
       case 'academy':
