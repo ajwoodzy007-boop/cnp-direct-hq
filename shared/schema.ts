@@ -238,3 +238,84 @@ export const insertCachedMarketMetricSchema = createInsertSchema(cachedMarketMet
 
 export type InsertCachedMarketMetric = z.infer<typeof insertCachedMarketMetricSchema>;
 export type CachedMarketMetric = typeof cachedMarketMetrics.$inferSelect;
+
+// ============================================
+// AI SIGNAL INSIGHTS AND LEARNING TABLES
+// ============================================
+
+// AI signal insights - stores AI analysis of market signals
+export const aiSignalInsights = pgTable("ai_signal_insights", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticker: text("ticker").notNull(),
+  surface: text("surface").notNull(), // 'market_sentinel' | 'top_gainers' | 'top_losers' | 'buy_opportunities' | 'sell_warnings' | 'top10_predictions'
+  signalType: text("signal_type"), // 'BUY' | 'SELL' | 'HOLD' | 'STRONG_BUY' | 'STRONG_SELL'
+  confidence: real("confidence").notNull(), // 0-100
+  aiReasoning: text("ai_reasoning").notNull(),
+  technicalFactors: jsonb("technical_factors"), // RSI, momentum, volume data
+  sentimentFactors: jsonb("sentiment_factors"), // news sentiment, social sentiment
+  priceTargets: jsonb("price_targets"), // entry, stop loss, targets
+  validUntil: timestamp("valid_until").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertAiSignalInsightSchema = createInsertSchema(aiSignalInsights).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiSignalInsight = z.infer<typeof insertAiSignalInsightSchema>;
+export type AiSignalInsight = typeof aiSignalInsights.$inferSelect;
+
+// AI prediction scores - tracks AI-generated prediction confidence with outcomes
+export const aiPredictionScores = pgTable("ai_prediction_scores", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticker: text("ticker").notNull(),
+  predictionType: text("prediction_type").notNull(), // 'daily' | 'swing' | 'momentum'
+  aiConfidence: real("ai_confidence").notNull(), // 0-100
+  predictedDirection: text("predicted_direction").notNull(), // 'bullish' | 'bearish' | 'neutral'
+  predictedChange: real("predicted_change"), // Expected % change
+  entryPrice: real("entry_price").notNull(),
+  targetPrice: real("target_price"),
+  stopLoss: real("stop_loss"),
+  aiReasoning: text("ai_reasoning").notNull(),
+  factorsUsed: jsonb("factors_used"), // technical, sentiment, historical patterns
+  actualOutcome: text("actual_outcome"), // 'win' | 'loss' | 'pending'
+  actualChange: real("actual_change"),
+  outcomePrice: real("outcome_price"),
+  predictionDate: timestamp("prediction_date").notNull().defaultNow(),
+  outcomeDate: timestamp("outcome_date"),
+});
+
+export const insertAiPredictionScoreSchema = createInsertSchema(aiPredictionScores).omit({
+  id: true,
+  predictionDate: true,
+  actualOutcome: true,
+  actualChange: true,
+  outcomePrice: true,
+  outcomeDate: true,
+});
+
+export type InsertAiPredictionScore = z.infer<typeof insertAiPredictionScoreSchema>;
+export type AiPredictionScore = typeof aiPredictionScores.$inferSelect;
+
+// AI model performance tracking - for learning from historical outcomes
+export const aiModelMetrics = pgTable("ai_model_metrics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  metricDate: text("metric_date").notNull(), // YYYY-MM-DD
+  surface: text("surface").notNull(), // which feature this metric is for
+  totalPredictions: real("total_predictions").notNull().default(0),
+  correctPredictions: real("correct_predictions").notNull().default(0),
+  winRate: real("win_rate").notNull().default(0),
+  avgConfidence: real("avg_confidence").notNull().default(0),
+  avgActualReturn: real("avg_actual_return").default(0),
+  factorWeights: jsonb("factor_weights"), // learned importance of each factor
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertAiModelMetricSchema = createInsertSchema(aiModelMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertAiModelMetric = z.infer<typeof insertAiModelMetricSchema>;
+export type AiModelMetric = typeof aiModelMetrics.$inferSelect;
