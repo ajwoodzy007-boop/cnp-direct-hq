@@ -568,6 +568,34 @@ Provide a JSON response with exactly this structure:
     }
   });
 
+  // POST /api/ai/playbook/options - Generate options trading signals
+  app.post("/api/ai/playbook/options", async (req, res) => {
+    try {
+      const { userId = "demo", ticker, outlook = "neutral", timeframe = "weekly" } = req.body;
+      
+      const access = await checkPremiumAccess(userId);
+      if (!access.allowed) {
+        return res.status(403).json({ success: false, error: access.reason, requiresPremium: true });
+      }
+      
+      if (!ticker) {
+        return res.status(400).json({ success: false, error: "Ticker is required" });
+      }
+      
+      const { generateOptionsSignals } = await import("./lib/aiPlaybook");
+      const result = await generateOptionsSignals(userId, ticker.toUpperCase(), outlook, timeframe);
+      
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error });
+      }
+      
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("AI options error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate options signals" });
+    }
+  });
+
   // ============================================
   // AI MARKET INTELLIGENCE ROUTES
   // ============================================

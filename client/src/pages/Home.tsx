@@ -2361,6 +2361,83 @@ export default function Home() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Options Signals */}
+              <Card className="border-cyan-500/20 hover:border-cyan-500/40 transition-colors col-span-full lg:col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <BarChart3 className="h-5 w-5 text-cyan-500" />
+                    Options Signals
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    AI generates call/put recommendations with strike prices, Greeks analysis, and risk management.
+                  </p>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Ticker (e.g., AAPL)" 
+                        className="flex-1"
+                        id="options-ticker-input"
+                        data-testid="input-options-ticker"
+                      />
+                      <select 
+                        id="options-outlook-select"
+                        className="px-3 py-2 rounded-md border border-input bg-background text-sm"
+                        defaultValue="neutral"
+                        data-testid="select-options-outlook"
+                      >
+                        <option value="bullish">Bullish</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="bearish">Bearish</option>
+                      </select>
+                    </div>
+                    <div className="flex gap-2">
+                      <select 
+                        id="options-timeframe-select"
+                        className="flex-1 px-3 py-2 rounded-md border border-input bg-background text-sm"
+                        defaultValue="weekly"
+                        data-testid="select-options-timeframe"
+                      >
+                        <option value="weekly">Weekly Expiry</option>
+                        <option value="monthly">Monthly Expiry</option>
+                        <option value="quarterly">Quarterly/LEAPS</option>
+                      </select>
+                      <Button 
+                        variant="outline" 
+                        className="border-cyan-500/30 hover:bg-cyan-500/10"
+                        disabled={aiResult.loading}
+                        onClick={async () => {
+                          const ticker = (document.getElementById("options-ticker-input") as HTMLInputElement)?.value;
+                          const outlook = (document.getElementById("options-outlook-select") as HTMLSelectElement)?.value;
+                          const timeframe = (document.getElementById("options-timeframe-select") as HTMLSelectElement)?.value;
+                          if (!ticker) { toast.error("Enter a ticker"); return; }
+                          setAiResult({ type: "options", title: "Options Signals", content: "", loading: true, error: null });
+                          try {
+                            const res = await fetch("/api/ai/playbook/options", {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ ticker, outlook, timeframe })
+                            });
+                            const data = await res.json();
+                            if (data.success && data.data?.sections?.[0]) {
+                              setAiResult({ type: "options", title: data.data.sections[0].title, content: data.data.sections[0].content, loading: false, error: null });
+                            } else {
+                              setAiResult({ type: "options", title: "Options Signals", content: "", loading: false, error: data.error || "Failed to generate" });
+                            }
+                          } catch (e) { 
+                            setAiResult({ type: "options", title: "Options Signals", content: "", loading: false, error: "Network error" });
+                          }
+                        }}
+                        data-testid="button-generate-options"
+                      >
+                        {aiResult.loading && aiResult.type === "options" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate"}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* AI Result Display */}
@@ -2415,7 +2492,7 @@ export default function Home() {
                 <Crown className="h-12 w-12 mx-auto mb-4 text-purple-500" />
                 <h3 className="text-xl font-bold mb-2">Unlock Full AI Playbook Access</h3>
                 <p className="text-muted-foreground mb-4">
-                  Get unlimited access to all 7 AI-powered trading tools with a premium subscription.
+                  Get unlimited access to all 8 AI-powered trading tools with a premium subscription.
                 </p>
                 <Link href="/pricing">
                   <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" data-testid="button-upgrade-premium">

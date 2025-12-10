@@ -487,3 +487,100 @@ Focus on actionable trading strategies around the earnings event.`;
     return { success: false, sections: [], error: error.message };
   }
 }
+
+export async function generateOptionsSignals(
+  userId: string,
+  ticker: string,
+  outlook: string = "neutral",
+  timeframe: string = "weekly"
+): Promise<PlaybookResult> {
+  try {
+    const run = await storage.createPlaybookRun({
+      userId,
+      playbookType: "options",
+      status: "generating",
+      inputData: { ticker, outlook, timeframe },
+    });
+
+    const quote = await getQuote(ticker);
+    const news = await getNews(ticker);
+
+    const prompt = `You are an expert options strategist. Generate options trading signals for ${ticker}.
+
+Current Stock Data:
+- Price: $${quote.c?.toFixed(2) || "N/A"}
+- Change: ${quote.dp?.toFixed(2) || "N/A"}%
+- Day High: $${quote.h?.toFixed(2) || "N/A"}
+- Day Low: $${quote.l?.toFixed(2) || "N/A"}
+- Previous Close: $${quote.pc?.toFixed(2) || "N/A"}
+
+Trader Outlook: ${outlook.toUpperCase()}
+Preferred Timeframe: ${timeframe}
+
+Recent News:
+${news.slice(0, 3).map((n: any) => `- ${n.title}`).join("\n")}
+
+Provide comprehensive options trade recommendations:
+
+1. **Primary Options Play**
+   - Strategy type (call, put, spread, straddle, iron condor, etc.)
+   - Strike price(s) with reasoning
+   - Expiration date recommendation
+   - Entry price range
+   - Profit target and stop loss levels
+
+2. **Alternative Strategy**
+   - A different approach based on risk tolerance
+   - When to use this alternative
+
+3. **Greeks Analysis**
+   - Expected Delta exposure
+   - Theta decay considerations
+   - Implied volatility assessment
+   - Vega sensitivity for earnings/events
+
+4. **Risk Management**
+   - Max loss scenario
+   - Position sizing recommendation (% of portfolio)
+   - Adjustment triggers
+
+5. **Key Catalysts**
+   - Upcoming events that could impact the trade
+   - Optimal entry timing
+
+6. **Exit Plan**
+   - Profit-taking levels (25%, 50%, 75%)
+   - When to cut losses
+   - Roll strategy if applicable
+
+Be specific with strike prices, dates, and dollar amounts. Use realistic options pricing.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.7,
+      max_tokens: 2000,
+    });
+
+    const content = response.choices[0].message.content || "";
+
+    const sections = [
+      {
+        sectionType: "options",
+        title: `Options Signals: ${ticker} (${outlook.toUpperCase()})`,
+        content,
+        metadata: { ticker, outlook, timeframe, quote },
+        priority: "high",
+      },
+    ];
+
+    await storage.savePlaybookSections(
+      sections.map((s) => ({ ...s, runId: run.id }))
+    );
+    await storage.updatePlaybookRunStatus(run.id, "completed");
+
+    return { success: true, runId: run.id, sections };
+  } catch (error: any) {
+    return { success: false, sections: [], error: error.message };
+  }
+}
