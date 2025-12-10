@@ -9,7 +9,7 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX, GraduationCap } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX, GraduationCap, Brain, Target, Zap, ShieldAlert, PieChart, DollarSign } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -1362,12 +1362,15 @@ export default function Home() {
 
       {/* --- TABS NAVIGATION --- */}
       <Tabs defaultValue="signals" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
+        <TabsList className="grid w-full grid-cols-3 mb-6">
           <TabsTrigger value="signals" className="text-sm font-medium" data-testid="tab-signals">
             📊 Market Signals
           </TabsTrigger>
           <TabsTrigger value="predictions" className="text-sm font-medium" data-testid="tab-predictions">
             🎯 Predictions
+          </TabsTrigger>
+          <TabsTrigger value="playbook" className="text-sm font-medium" data-testid="tab-playbook">
+            🧠 AI Playbook
           </TabsTrigger>
         </TabsList>
 
@@ -2028,6 +2031,319 @@ export default function Home() {
                   data-testid="button-view-history-tab"
                 >
                   <History className="h-4 w-4 mr-2" /> View Full History
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="playbook">
+          {/* --- AI PLAYBOOK PREMIUM CONTENT --- */}
+          <div className="space-y-6">
+            {/* Premium Banner */}
+            <div className="rounded-xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-background to-blue-500/10 p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 rounded-full bg-purple-500/20">
+                  <Brain className="h-8 w-8 text-purple-500" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">AI Playbook</h2>
+                  <p className="text-muted-foreground">Premium AI-powered trading tools</p>
+                </div>
+                <Badge className="ml-auto bg-gradient-to-r from-purple-600 to-blue-600">PREMIUM</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mb-6">
+                Unlock AI-generated trading strategies, market briefings, smart signals, risk assessments, portfolio optimization, pattern recognition, and earnings analysis.
+              </p>
+            </div>
+
+            {/* Feature Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Trading Strategies */}
+              <Card className="border-purple-500/20 hover:border-purple-500/40 transition-colors">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Target className="h-5 w-5 text-purple-500" />
+                    Trading Strategies
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    AI generates personalized trading playbooks based on your style, risk tolerance, and experience level.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-purple-500/30 hover:bg-purple-500/10"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/ai/playbook/strategies", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ tradingStyle: "swing", riskTolerance: "moderate" })
+                        });
+                        const data = await res.json();
+                        if (data.success) alert("Strategy generated! Check console for details.");
+                        console.log("Strategy:", data);
+                      } catch (e) { console.error(e); }
+                    }}
+                    data-testid="button-generate-strategies"
+                  >
+                    Generate Strategy
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Market Briefings */}
+              <Card className="border-blue-500/20 hover:border-blue-500/40 transition-colors">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <TrendingUp className="h-5 w-5 text-blue-500" />
+                    Market Briefings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Daily AI-generated market reports with sector analysis, key observations, and trading opportunities.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-blue-500/30 hover:bg-blue-500/10"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/ai/playbook/briefing", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({})
+                        });
+                        const data = await res.json();
+                        if (data.success) alert("Briefing generated! Check console for details.");
+                        console.log("Briefing:", data);
+                      } catch (e) { console.error(e); }
+                    }}
+                    data-testid="button-generate-briefing"
+                  >
+                    Get Today's Briefing
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Smart Signals */}
+              <Card className="border-green-500/20 hover:border-green-500/40 transition-colors">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Zap className="h-5 w-5 text-green-500" />
+                    Smart Entry/Exit Signals
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    AI identifies optimal entry and exit points with specific price levels and stop-loss recommendations.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-green-500/30 hover:bg-green-500/10"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/ai/playbook/signals", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ tickers: ["AAPL", "MSFT", "NVDA"] })
+                        });
+                        const data = await res.json();
+                        if (data.success) alert("Signals generated! Check console for details.");
+                        console.log("Signals:", data);
+                      } catch (e) { console.error(e); }
+                    }}
+                    data-testid="button-generate-signals"
+                  >
+                    Generate Signals
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Risk Assessment */}
+              <Card className="border-red-500/20 hover:border-red-500/40 transition-colors">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <ShieldAlert className="h-5 w-5 text-red-500" />
+                    Risk Assessment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    AI evaluates each stock with risk/reward scores, key risk factors, and position size recommendations.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Ticker (e.g., AAPL)" 
+                      className="flex-1"
+                      id="risk-ticker-input"
+                      data-testid="input-risk-ticker"
+                    />
+                    <Button 
+                      variant="outline" 
+                      className="border-red-500/30 hover:bg-red-500/10"
+                      onClick={async () => {
+                        const ticker = (document.getElementById("risk-ticker-input") as HTMLInputElement)?.value;
+                        if (!ticker) { alert("Enter a ticker"); return; }
+                        try {
+                          const res = await fetch("/api/ai/playbook/risk", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ ticker })
+                          });
+                          const data = await res.json();
+                          if (data.success) alert("Risk assessment generated!");
+                          console.log("Risk:", data);
+                        } catch (e) { console.error(e); }
+                      }}
+                      data-testid="button-generate-risk"
+                    >
+                      Assess
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Portfolio Optimizer */}
+              <Card className="border-amber-500/20 hover:border-amber-500/40 transition-colors">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <PieChart className="h-5 w-5 text-amber-500" />
+                    Portfolio Optimizer
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    AI suggests portfolio adjustments based on diversification, correlation, and market conditions.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    className="w-full border-amber-500/30 hover:bg-amber-500/10"
+                    onClick={async () => {
+                      try {
+                        const res = await fetch("/api/ai/playbook/portfolio", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ 
+                            holdings: [
+                              { ticker: "AAPL", shares: 10, avgCost: 175 },
+                              { ticker: "MSFT", shares: 5, avgCost: 350 },
+                              { ticker: "NVDA", shares: 3, avgCost: 120 }
+                            ] 
+                          })
+                        });
+                        const data = await res.json();
+                        if (data.success) alert("Portfolio analysis generated!");
+                        console.log("Portfolio:", data);
+                      } catch (e) { console.error(e); }
+                    }}
+                    data-testid="button-generate-portfolio"
+                  >
+                    Optimize Portfolio
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Pattern Recognition */}
+              <Card className="border-cyan-500/20 hover:border-cyan-500/40 transition-colors">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <BarChart3 className="h-5 w-5 text-cyan-500" />
+                    Pattern Recognition
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    AI detects chart patterns (head & shoulders, triangles, flags) with explanations and trade setups.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Ticker (e.g., TSLA)" 
+                      className="flex-1"
+                      id="pattern-ticker-input"
+                      data-testid="input-pattern-ticker"
+                    />
+                    <Button 
+                      variant="outline" 
+                      className="border-cyan-500/30 hover:bg-cyan-500/10"
+                      onClick={async () => {
+                        const ticker = (document.getElementById("pattern-ticker-input") as HTMLInputElement)?.value;
+                        if (!ticker) { alert("Enter a ticker"); return; }
+                        try {
+                          const res = await fetch("/api/ai/playbook/patterns", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ ticker })
+                          });
+                          const data = await res.json();
+                          if (data.success) alert("Pattern analysis generated!");
+                          console.log("Patterns:", data);
+                        } catch (e) { console.error(e); }
+                      }}
+                      data-testid="button-generate-patterns"
+                    >
+                      Analyze
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Earnings Analyzer */}
+              <Card className="border-orange-500/20 hover:border-orange-500/40 transition-colors col-span-full lg:col-span-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <DollarSign className="h-5 w-5 text-orange-500" />
+                    Earnings Play Analyzer
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    AI analyzes upcoming earnings with pre/post strategies, options plays, and risk considerations.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Ticker (e.g., META)" 
+                      className="flex-1"
+                      id="earnings-ticker-input"
+                      data-testid="input-earnings-ticker"
+                    />
+                    <Button 
+                      variant="outline" 
+                      className="border-orange-500/30 hover:bg-orange-500/10"
+                      onClick={async () => {
+                        const ticker = (document.getElementById("earnings-ticker-input") as HTMLInputElement)?.value;
+                        if (!ticker) { alert("Enter a ticker"); return; }
+                        try {
+                          const res = await fetch("/api/ai/playbook/earnings", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ ticker })
+                          });
+                          const data = await res.json();
+                          if (data.success) alert("Earnings analysis generated!");
+                          console.log("Earnings:", data);
+                        } catch (e) { console.error(e); }
+                      }}
+                      data-testid="button-generate-earnings"
+                    >
+                      Analyze
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Upgrade CTA for non-premium users */}
+            <Card className="border-2 border-dashed border-purple-500/30 bg-purple-500/5">
+              <CardContent className="py-8 text-center">
+                <Crown className="h-12 w-12 mx-auto mb-4 text-purple-500" />
+                <h3 className="text-xl font-bold mb-2">Unlock Full AI Playbook Access</h3>
+                <p className="text-muted-foreground mb-4">
+                  Get unlimited access to all 7 AI-powered trading tools with a premium subscription.
+                </p>
+                <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" data-testid="button-upgrade-premium">
+                  Upgrade to Premium
                 </Button>
               </CardContent>
             </Card>

@@ -340,6 +340,239 @@ Provide a JSON response with exactly this structure:
     }
   });
 
+  // ============================================
+  // AI PLAYBOOK PREMIUM ROUTES
+  // ============================================
+
+  // Premium check middleware helper
+  const ALLOW_DEMO_MODE = process.env.ALLOW_DEMO_MODE !== "false"; // Disable in production by setting ALLOW_DEMO_MODE=false
+  
+  async function checkPremiumAccess(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    // Demo mode for development/testing - disable in production
+    if (userId === "demo" && ALLOW_DEMO_MODE) {
+      console.log("[AI Playbook] Demo mode access granted - set ALLOW_DEMO_MODE=false in production");
+      return { allowed: true };
+    }
+    
+    // Reject demo userId when demo mode is disabled
+    if (userId === "demo" && !ALLOW_DEMO_MODE) {
+      return { allowed: false, reason: "Demo mode is disabled in production" };
+    }
+    
+    // Check premium status for real users
+    const isPremium = await storage.checkPremiumStatus(userId);
+    if (!isPremium) {
+      return { allowed: false, reason: "Premium subscription required" };
+    }
+    
+    return { allowed: true };
+  }
+
+  // POST /api/ai/playbook/strategies - Generate personalized trading strategies
+  app.post("/api/ai/playbook/strategies", async (req, res) => {
+    try {
+      const { userId = "demo", tradingStyle = "swing", riskTolerance = "moderate", experienceLevel = "intermediate" } = req.body;
+      
+      const access = await checkPremiumAccess(userId);
+      if (!access.allowed) {
+        return res.status(403).json({ success: false, error: access.reason, requiresPremium: true });
+      }
+      
+      const { generateTradingStrategies } = await import("./lib/aiPlaybook");
+      const result = await generateTradingStrategies(userId, tradingStyle, riskTolerance, experienceLevel);
+      
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error });
+      }
+      
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("AI strategies error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate trading strategies" });
+    }
+  });
+
+  // POST /api/ai/playbook/briefing - Generate daily market briefing
+  app.post("/api/ai/playbook/briefing", async (req, res) => {
+    try {
+      const { userId = "demo" } = req.body;
+      
+      const access = await checkPremiumAccess(userId);
+      if (!access.allowed) {
+        return res.status(403).json({ success: false, error: access.reason, requiresPremium: true });
+      }
+      
+      const { generateMarketBriefing } = await import("./lib/aiPlaybook");
+      const result = await generateMarketBriefing(userId);
+      
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error });
+      }
+      
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("AI briefing error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate market briefing" });
+    }
+  });
+
+  // POST /api/ai/playbook/signals - Generate smart entry/exit signals
+  app.post("/api/ai/playbook/signals", async (req, res) => {
+    try {
+      const { userId = "demo", tickers = ["AAPL", "MSFT", "GOOGL"] } = req.body;
+      
+      const access = await checkPremiumAccess(userId);
+      if (!access.allowed) {
+        return res.status(403).json({ success: false, error: access.reason, requiresPremium: true });
+      }
+      
+      const { generateEntryExitSignals } = await import("./lib/aiPlaybook");
+      const result = await generateEntryExitSignals(userId, tickers);
+      
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error });
+      }
+      
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("AI signals error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate entry/exit signals" });
+    }
+  });
+
+  // POST /api/ai/playbook/risk - Generate risk assessment for a stock
+  app.post("/api/ai/playbook/risk", async (req, res) => {
+    try {
+      const { userId = "demo", ticker } = req.body;
+      
+      const access = await checkPremiumAccess(userId);
+      if (!access.allowed) {
+        return res.status(403).json({ success: false, error: access.reason, requiresPremium: true });
+      }
+      
+      if (!ticker) {
+        return res.status(400).json({ success: false, error: "Ticker is required" });
+      }
+      
+      const { generateRiskAssessment } = await import("./lib/aiPlaybook");
+      const result = await generateRiskAssessment(userId, ticker.toUpperCase());
+      
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error });
+      }
+      
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("AI risk error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate risk assessment" });
+    }
+  });
+
+  // POST /api/ai/playbook/portfolio - Generate portfolio optimization
+  app.post("/api/ai/playbook/portfolio", async (req, res) => {
+    try {
+      const { userId = "demo", holdings = [] } = req.body;
+      
+      const access = await checkPremiumAccess(userId);
+      if (!access.allowed) {
+        return res.status(403).json({ success: false, error: access.reason, requiresPremium: true });
+      }
+      
+      if (!holdings || holdings.length === 0) {
+        return res.status(400).json({ success: false, error: "Holdings are required" });
+      }
+      
+      const { generatePortfolioOptimization } = await import("./lib/aiPlaybook");
+      const result = await generatePortfolioOptimization(userId, holdings);
+      
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error });
+      }
+      
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("AI portfolio error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate portfolio optimization" });
+    }
+  });
+
+  // POST /api/ai/playbook/patterns - Generate pattern recognition analysis
+  app.post("/api/ai/playbook/patterns", async (req, res) => {
+    try {
+      const { userId = "demo", ticker } = req.body;
+      
+      const access = await checkPremiumAccess(userId);
+      if (!access.allowed) {
+        return res.status(403).json({ success: false, error: access.reason, requiresPremium: true });
+      }
+      
+      if (!ticker) {
+        return res.status(400).json({ success: false, error: "Ticker is required" });
+      }
+      
+      const { generatePatternRecognition } = await import("./lib/aiPlaybook");
+      const result = await generatePatternRecognition(userId, ticker.toUpperCase());
+      
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error });
+      }
+      
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("AI patterns error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate pattern analysis" });
+    }
+  });
+
+  // POST /api/ai/playbook/earnings - Generate earnings play analysis
+  app.post("/api/ai/playbook/earnings", async (req, res) => {
+    try {
+      const { userId = "demo", ticker } = req.body;
+      
+      const access = await checkPremiumAccess(userId);
+      if (!access.allowed) {
+        return res.status(403).json({ success: false, error: access.reason, requiresPremium: true });
+      }
+      
+      if (!ticker) {
+        return res.status(400).json({ success: false, error: "Ticker is required" });
+      }
+      
+      const { generateEarningsAnalysis } = await import("./lib/aiPlaybook");
+      const result = await generateEarningsAnalysis(userId, ticker.toUpperCase());
+      
+      if (!result.success) {
+        return res.status(500).json({ success: false, error: result.error });
+      }
+      
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("AI earnings error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate earnings analysis" });
+    }
+  });
+
+  // GET /api/user/premium-status - Check user's premium subscription status
+  app.get("/api/user/premium-status", async (req, res) => {
+    try {
+      const userId = (req.query.userId as string) || "demo";
+      const isPremium = await storage.checkPremiumStatus(userId);
+      const profile = await storage.getUserProfile(userId);
+      
+      res.json({ 
+        success: true, 
+        isPremium,
+        profile: profile || null,
+        features: isPremium ? [
+          "strategies", "briefing", "signals", "risk", "portfolio", "patterns", "earnings"
+        ] : []
+      });
+    } catch (error: any) {
+      console.error("Premium status error:", error);
+      res.status(500).json({ success: false, error: "Failed to check premium status" });
+    }
+  });
+
   // GET /api/stripe/config - Get Stripe publishable key
   app.get("/api/stripe/config", async (req, res) => {
     try {

@@ -1,7 +1,7 @@
-import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick, type WeeklyRecommendation, type InsertWeeklyRecommendation, type DailyPredictionRun, type InsertDailyPredictionRun, type DailyPredictionEntry, type InsertDailyPredictionEntry, predictions, dailyPredictionRuns, dailyPredictionEntries } from "@shared/schema";
+import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick, type WeeklyRecommendation, type InsertWeeklyRecommendation, type DailyPredictionRun, type InsertDailyPredictionRun, type DailyPredictionEntry, type InsertDailyPredictionEntry, type UserProfile, type InsertUserProfile, type UserPortfolioItem, type InsertUserPortfolio, type AiPlaybookRun, type InsertAiPlaybookRun, type PlaybookSection, type InsertPlaybookSection, type CachedMarketMetric, type InsertCachedMarketMetric, predictions, dailyPredictionRuns, dailyPredictionEntries, userProfiles, userPortfolio, aiPlaybookRuns, playbookSections, cachedMarketMetrics } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { sql, eq, desc } from "drizzle-orm";
+import { sql, eq, desc, and, gt } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -29,6 +29,22 @@ export interface IStorage {
   finalizeDailyPredictionRun(runDate: string, entries: { ticker: string; closePrice: number; currentPrice: number; closePnl: number; totalPnl: number; outcome: string }[]): Promise<void>;
   getDailyPredictionHistory(limit?: number): Promise<(DailyPredictionRun & { entries: DailyPredictionEntry[] })[]>;
   getDailyPredictionStats(): Promise<{ totalRuns: number; totalPicks: number; wins: number; losses: number; pending: number; winRate: number; avgPnl: number }>;
+  // AI Playbook Premium Features
+  getUserProfile(userId: string): Promise<UserProfile | undefined>;
+  createOrUpdateUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
+  checkPremiumStatus(userId: string): Promise<boolean>;
+  updateSubscriptionStatus(userId: string, status: string, subscriptionId?: string, periodEnd?: Date): Promise<void>;
+  getUserPortfolio(userId: string): Promise<UserPortfolioItem[]>;
+  addToUserPortfolio(item: InsertUserPortfolio): Promise<UserPortfolioItem>;
+  removeFromUserPortfolio(userId: string, ticker: string): Promise<boolean>;
+  createPlaybookRun(run: InsertAiPlaybookRun): Promise<AiPlaybookRun>;
+  getPlaybookRun(runId: string): Promise<AiPlaybookRun | undefined>;
+  getLatestPlaybookRun(userId: string, playbookType: string): Promise<AiPlaybookRun | undefined>;
+  updatePlaybookRunStatus(runId: string, status: string): Promise<void>;
+  savePlaybookSections(sections: InsertPlaybookSection[]): Promise<PlaybookSection[]>;
+  getPlaybookSections(runId: string): Promise<PlaybookSection[]>;
+  getCachedMetric(metricType: string, ticker?: string): Promise<CachedMarketMetric | undefined>;
+  saveMarketMetric(metric: InsertCachedMarketMetric): Promise<CachedMarketMetric>;
 }
 
 export class MemStorage implements IStorage {
@@ -371,6 +387,136 @@ export class MemStorage implements IStorage {
       winRate: parseFloat(winRate.toFixed(1)),
       avgPnl: parseFloat(avgPnl.toFixed(2)),
     };
+  }
+
+  // AI Playbook Premium Features Implementation
+  async getUserProfile(userId: string): Promise<UserProfile | undefined> {
+    const result = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId));
+    return result[0];
+  }
+
+  async createOrUpdateUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
+    if (profile.userId) {
+      const existing = await this.getUserProfile(profile.userId);
+      if (existing) {
+        const result = await db.update(userProfiles)
+          .set({ ...profile, updatedAt: new Date() })
+          .where(eq(userProfiles.userId, profile.userId))
+          .returning();
+        return result[0];
+      }
+    }
+    const result = await db.insert(userProfiles).values(profile).returning();
+    return result[0];
+  }
+
+  async checkPremiumStatus(userId: string): Promise<boolean> {
+    const profile = await this.getUserProfile(userId);
+    if (!profile) return false;
+    if (profile.subscriptionStatus !== 'active') return false;
+    if (profile.subscriptionPeriodEnd && new Date(profile.subscriptionPeriodEnd) < new Date()) return false;
+    return true;
+  }
+
+  async updateSubscriptionStatus(userId: string, status: string, subscriptionId?: string, periodEnd?: Date): Promise<void> {
+    await db.update(userProfiles)
+      .set({
+        subscriptionStatus: status,
+        subscriptionId: subscriptionId || undefined,
+        subscriptionPeriodEnd: periodEnd || undefined,
+        updatedAt: new Date(),
+      })
+      .where(eq(userProfiles.userId, userId));
+  }
+
+  async getUserPortfolio(userId: string): Promise<UserPortfolioItem[]> {
+    const result = await db.select().from(userPortfolio).where(eq(userPortfolio.userId, userId));
+    return result;
+  }
+
+  async addToUserPortfolio(item: InsertUserPortfolio): Promise<UserPortfolioItem> {
+    const result = await db.insert(userPortfolio).values(item).returning();
+    return result[0];
+  }
+
+  async removeFromUserPortfolio(userId: string, ticker: string): Promise<boolean> {
+    const result = await db.delete(userPortfolio)
+      .where(and(eq(userPortfolio.userId, userId), eq(userPortfolio.ticker, ticker)));
+    return true;
+  }
+
+  async createPlaybookRun(run: InsertAiPlaybookRun): Promise<AiPlaybookRun> {
+    const result = await db.insert(aiPlaybookRuns).values(run).returning();
+    return result[0];
+  }
+
+  async getPlaybookRun(runId: string): Promise<AiPlaybookRun | undefined> {
+    const result = await db.select().from(aiPlaybookRuns).where(eq(aiPlaybookRuns.id, runId));
+    return result[0];
+  }
+
+  async getLatestPlaybookRun(userId: string, playbookType: string): Promise<AiPlaybookRun | undefined> {
+    const result = await db.select()
+      .from(aiPlaybookRuns)
+      .where(and(
+        eq(aiPlaybookRuns.userId, userId),
+        eq(aiPlaybookRuns.playbookType, playbookType),
+        eq(aiPlaybookRuns.status, 'completed')
+      ))
+      .orderBy(desc(aiPlaybookRuns.generatedAt))
+      .limit(1);
+    return result[0];
+  }
+
+  async updatePlaybookRunStatus(runId: string, status: string): Promise<void> {
+    await db.update(aiPlaybookRuns)
+      .set({
+        status,
+        completedAt: status === 'completed' ? new Date() : undefined,
+      })
+      .where(eq(aiPlaybookRuns.id, runId));
+  }
+
+  async savePlaybookSections(sections: InsertPlaybookSection[]): Promise<PlaybookSection[]> {
+    if (sections.length === 0) return [];
+    const result = await db.insert(playbookSections).values(sections).returning();
+    return result;
+  }
+
+  async getPlaybookSections(runId: string): Promise<PlaybookSection[]> {
+    const result = await db.select().from(playbookSections).where(eq(playbookSections.runId, runId));
+    return result;
+  }
+
+  async getCachedMetric(metricType: string, ticker?: string): Promise<CachedMarketMetric | undefined> {
+    const now = new Date();
+    let result;
+    if (ticker) {
+      result = await db.select()
+        .from(cachedMarketMetrics)
+        .where(and(
+          eq(cachedMarketMetrics.metricType, metricType),
+          eq(cachedMarketMetrics.ticker, ticker),
+          gt(cachedMarketMetrics.expiresAt, now)
+        ))
+        .orderBy(desc(cachedMarketMetrics.cachedAt))
+        .limit(1);
+    } else {
+      result = await db.select()
+        .from(cachedMarketMetrics)
+        .where(and(
+          eq(cachedMarketMetrics.metricType, metricType),
+          gt(cachedMarketMetrics.expiresAt, now)
+        ))
+        .orderBy(desc(cachedMarketMetrics.cachedAt))
+        .limit(1);
+    }
+    return result[0];
+  }
+
+  async saveMarketMetric(metric: InsertCachedMarketMetric): Promise<CachedMarketMetric> {
+    const result = await db.insert(cachedMarketMetrics).values(metric).returning();
+    return result[0];
   }
 }
 

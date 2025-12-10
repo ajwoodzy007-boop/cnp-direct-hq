@@ -37,6 +37,16 @@ Key API endpoints:
 - `POST /api/predictions` - Record trading predictions
 - `GET /api/predictions` - Retrieve prediction history
 
+**AI Playbook Premium Endpoints** (requires premium subscription):
+- `POST /api/ai/playbook/strategies` - Generate personalized trading strategies
+- `POST /api/ai/playbook/briefing` - Generate daily market briefing
+- `POST /api/ai/playbook/signals` - Generate smart entry/exit signals
+- `POST /api/ai/playbook/risk` - Generate risk assessment for a stock
+- `POST /api/ai/playbook/portfolio` - Generate portfolio optimization
+- `POST /api/ai/playbook/patterns` - Generate pattern recognition analysis
+- `POST /api/ai/playbook/earnings` - Generate earnings play analysis
+- `GET /api/user/premium-status` - Check user's premium subscription status
+
 ### Data Storage
 - **Database**: PostgreSQL via Drizzle ORM
 - **Schema Location**: `shared/schema.ts`
@@ -45,6 +55,13 @@ Key API endpoints:
 Current tables:
 - `users` - User accounts with id, username, password
 - `predictions` - Trading predictions with ticker, signal type, entry price, outcome tracking
+- `user_profiles` - User preferences, trading style, risk tolerance, subscription status
+- `user_portfolio` - User's stock holdings for portfolio optimization
+- `ai_playbook_runs` - Tracks AI playbook generation sessions
+- `playbook_sections` - Stores generated AI content for each feature
+- `cached_market_metrics` - Cached market data for efficiency
+- `daily_prediction_runs` - Daily Top 10 prediction tracking
+- `daily_prediction_entries` - Individual predictions with win/loss outcomes
 
 ### Market Data Integration
 - **Primary API**: Finnhub API for real-time stock data
@@ -68,4 +85,29 @@ Current tables:
 - `recharts` - Chart visualizations
 - `framer-motion` - UI animations
 - `wouter` - Client-side routing
+- `openai` - AI content generation
+- `stripe` - Payment processing for premium subscriptions
 - Radix UI primitives - Accessible component foundations
+
+## AI Playbook Premium Features
+
+The AI Playbook is a premium feature offering 7 AI-powered trading tools:
+
+1. **Trading Strategies** - Personalized playbooks based on trading style, risk tolerance, and experience
+2. **Market Briefings** - Daily AI-generated market reports with sector analysis
+3. **Smart Entry/Exit Signals** - AI identifies optimal entry/exit points with price levels
+4. **Risk Assessment** - AI evaluates stocks with risk/reward scores and position sizing
+5. **Portfolio Optimizer** - AI suggests portfolio adjustments for better diversification
+6. **Pattern Recognition** - AI detects chart patterns with explanations and trade setups
+7. **Earnings Analyzer** - AI analyzes earnings with pre/post strategies and options plays
+
+**Architecture:**
+- `server/lib/aiPlaybook.ts` - AI generation service using OpenAI GPT-4o
+- Premium access controlled via `checkPremiumAccess()` middleware
+- Results stored in `ai_playbook_runs` and `playbook_sections` tables
+- Demo mode (`userId=demo`) allowed for testing (disable in production with `ALLOW_DEMO_MODE=false`)
+
+**Security Notes:**
+- Set `ALLOW_DEMO_MODE=false` in production to enforce premium authentication
+- Full authentication (session/JWT) should be implemented before production deployment
+- Premium status is checked via `storage.checkPremiumStatus(userId)` which validates subscription status
