@@ -91,6 +91,37 @@ interface MarketScanResponse {
   timestampET: string;
 }
 
+interface AISignalResult {
+  ticker: string;
+  signal: "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL";
+  confidence: number;
+  reasoning: string;
+  entryPrice?: number;
+  targetPrice?: number;
+  stopLoss?: number;
+}
+
+interface AIMarketInsights {
+  gainersAnalysis: string;
+  losersAnalysis: string;
+  marketSentiment: string;
+  topBuyOpportunities: AISignalResult[];
+  topSellWarnings: AISignalResult[];
+  timestamp: string;
+}
+
+interface AIAccuracyStats {
+  overall: {
+    totalPredictions: number;
+    correctPredictions: number;
+    winRate: number;
+    avgConfidence: number;
+    avgActualReturn: number;
+  };
+  byFeature: Record<string, { totalPredictions: number; correctPredictions: number; winRate: number }>;
+  recentTrend: { date: string; winRate: number }[];
+}
+
 // API calls
 async function fetchMarketScan(): Promise<MarketScanResponse> {
   const res = await fetch("/api/market/scan");
@@ -187,6 +218,27 @@ async function generateAIPlaybook(marketSummary?: string): Promise<AIPlaybook> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ marketSummary }),
   });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchAIMarketInsights(): Promise<AIMarketInsights> {
+  const res = await fetch("/api/ai/market-insights");
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchAIAccuracyStats(): Promise<AIAccuracyStats> {
+  const res = await fetch("/api/ai/accuracy-stats");
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchAISignal(ticker: string): Promise<AISignalResult> {
+  const res = await fetch(`/api/ai/signal/${ticker}`);
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
   return json.data;
@@ -510,6 +562,21 @@ export default function Home() {
     queryKey: ["prediction-history"],
     queryFn: () => fetchPredictionHistory(30),
     refetchInterval: 5 * 60 * 1000,
+  });
+
+  // Fetch AI market insights
+  const { data: aiInsightsData, isLoading: aiInsightsLoading, refetch: refetchAIInsights } = useQuery({
+    queryKey: ["ai-market-insights"],
+    queryFn: fetchAIMarketInsights,
+    refetchInterval: 10 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch AI accuracy stats
+  const { data: aiAccuracyData } = useQuery({
+    queryKey: ["ai-accuracy-stats"],
+    queryFn: fetchAIAccuracyStats,
+    refetchInterval: 10 * 60 * 1000,
   });
 
   // State for showing history dialog
@@ -1029,6 +1096,100 @@ export default function Home() {
             <span className="text-xs text-muted-foreground">(RSI {">"}80 + Bearish)</span>
           </div>
         </div>
+
+        {/* AI-Powered Insights Section */}
+        {aiInsightsData && (
+          <div className="mb-6 p-4 rounded-xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/5 via-background to-blue-500/5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Brain className="w-5 h-5 text-purple-500" />
+                <h3 className="text-lg font-bold">AI Market Intelligence</h3>
+                {aiAccuracyData?.overall && (
+                  <Badge variant="outline" className="text-xs">
+                    {(aiAccuracyData.overall.winRate * 100).toFixed(0)}% Win Rate
+                  </Badge>
+                )}
+              </div>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                onClick={() => refetchAIInsights()}
+                disabled={aiInsightsLoading}
+                data-testid="button-refresh-ai"
+              >
+                {aiInsightsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {/* Top 5 Buy Opportunities */}
+              <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <span className="font-semibold text-green-600">Top 5 Buy Opportunities</span>
+                </div>
+                {aiInsightsData.topBuyOpportunities.slice(0, 5).map((opp, idx) => (
+                  <div key={opp.ticker} className="flex items-center justify-between py-1.5 border-b border-green-500/10 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{idx + 1}.</span>
+                      <span className="font-mono font-medium">{opp.ticker}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={`text-xs ${opp.signal === "STRONG_BUY" ? "bg-green-600" : "bg-green-500/80"}`}>
+                        {opp.confidence}%
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+                {aiInsightsData.topBuyOpportunities.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No strong buy signals detected</p>
+                )}
+              </div>
+              
+              {/* Top 5 Sell Warnings */}
+              <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingDown className="w-4 h-4 text-red-500" />
+                  <span className="font-semibold text-red-600">Top 5 Sell Warnings</span>
+                </div>
+                {aiInsightsData.topSellWarnings.slice(0, 5).map((warn, idx) => (
+                  <div key={warn.ticker} className="flex items-center justify-between py-1.5 border-b border-red-500/10 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{idx + 1}.</span>
+                      <span className="font-mono font-medium">{warn.ticker}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="text-xs bg-red-500/80">
+                        {warn.confidence}%
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+                {aiInsightsData.topSellWarnings.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No sell warnings detected</p>
+                )}
+              </div>
+            </div>
+            
+            {/* AI Market Analysis */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-blue-500" />
+                  <span className="font-medium text-sm">Gainers Analysis</span>
+                </div>
+                <p className="text-sm text-muted-foreground">{aiInsightsData.gainersAnalysis}</p>
+              </div>
+              <div className="p-3 rounded-lg bg-muted/50">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-orange-500" />
+                  <span className="font-medium text-sm">Losers Analysis</span>
+                </div>
+                <p className="text-sm text-muted-foreground">{aiInsightsData.losersAnalysis}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
           <h2 className="text-xl font-bold">📈 Top Gainers</h2>

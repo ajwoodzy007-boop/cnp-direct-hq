@@ -568,6 +568,95 @@ Provide a JSON response with exactly this structure:
     }
   });
 
+  // ============================================
+  // AI MARKET INTELLIGENCE ROUTES
+  // ============================================
+
+  // GET /api/ai/market-insights - Get AI-powered market analysis
+  app.get("/api/ai/market-insights", async (req, res) => {
+    try {
+      const { generateMarketInsights } = await import("./lib/aiMarketService");
+      const insights = await generateMarketInsights();
+      res.json({ success: true, data: insights });
+    } catch (error: any) {
+      console.error("AI market insights error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate market insights" });
+    }
+  });
+
+  // GET /api/ai/top10-predictions - Get AI-enhanced Top 10 predictions
+  app.get("/api/ai/top10-predictions", async (req, res) => {
+    try {
+      const { generateTop10Predictions } = await import("./lib/aiMarketService");
+      const predictions = await generateTop10Predictions();
+      res.json({ success: true, data: predictions });
+    } catch (error: any) {
+      console.error("AI Top 10 predictions error:", error);
+      res.status(500).json({ success: false, error: "Failed to generate AI predictions" });
+    }
+  });
+
+  // POST /api/ai/validate-signals - Validate Market Sentinel signals with AI
+  app.post("/api/ai/validate-signals", async (req, res) => {
+    try {
+      const { signals } = req.body;
+      if (!signals || !Array.isArray(signals)) {
+        return res.status(400).json({ success: false, error: "Signals array is required" });
+      }
+      
+      const { validateMarketSentinelSignals } = await import("./lib/aiMarketService");
+      const validated = await validateMarketSentinelSignals(signals);
+      res.json({ success: true, data: validated });
+    } catch (error: any) {
+      console.error("AI signal validation error:", error);
+      res.status(500).json({ success: false, error: "Failed to validate signals" });
+    }
+  });
+
+  // POST /api/ai/update-outcomes - Update prediction outcomes and learn
+  app.post("/api/ai/update-outcomes", async (req, res) => {
+    try {
+      const { updatePredictionOutcomes } = await import("./lib/aiMarketService");
+      const result = await updatePredictionOutcomes();
+      res.json({ success: true, data: result });
+    } catch (error: any) {
+      console.error("AI update outcomes error:", error);
+      res.status(500).json({ success: false, error: "Failed to update outcomes" });
+    }
+  });
+
+  // GET /api/ai/accuracy-stats - Get AI prediction accuracy statistics
+  app.get("/api/ai/accuracy-stats", async (req, res) => {
+    try {
+      const { getAIAccuracyStats } = await import("./lib/aiMarketService");
+      const stats = await getAIAccuracyStats();
+      res.json({ success: true, data: stats });
+    } catch (error: any) {
+      console.error("AI accuracy stats error:", error);
+      res.status(500).json({ success: false, error: "Failed to get accuracy stats" });
+    }
+  });
+
+  // GET /api/ai/signal/:ticker - Get AI insight for a specific ticker
+  app.get("/api/ai/signal/:ticker", async (req, res) => {
+    try {
+      const { ticker } = req.params;
+      const marketData = await scanMarket();
+      const stock = marketData.find(s => s.ticker.toUpperCase() === ticker.toUpperCase());
+      
+      if (!stock) {
+        return res.status(404).json({ success: false, error: "Stock not found in market data" });
+      }
+      
+      const { analyzeMarketSignal } = await import("./lib/aiMarketService");
+      const signal = await analyzeMarketSignal(stock);
+      res.json({ success: true, data: signal });
+    } catch (error: any) {
+      console.error("AI signal analysis error:", error);
+      res.status(500).json({ success: false, error: "Failed to analyze signal" });
+    }
+  });
+
   // GET /api/user/premium-status - Check user's premium subscription status
   app.get("/api/user/premium-status", async (req, res) => {
     try {

@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick, type WeeklyRecommendation, type InsertWeeklyRecommendation, type DailyPredictionRun, type InsertDailyPredictionRun, type DailyPredictionEntry, type InsertDailyPredictionEntry, type UserProfile, type InsertUserProfile, type UserPortfolioItem, type InsertUserPortfolio, type AiPlaybookRun, type InsertAiPlaybookRun, type PlaybookSection, type InsertPlaybookSection, type CachedMarketMetric, type InsertCachedMarketMetric, predictions, dailyPredictionRuns, dailyPredictionEntries, userProfiles, userPortfolio, aiPlaybookRuns, playbookSections, cachedMarketMetrics } from "@shared/schema";
+import { type User, type InsertUser, type Prediction, type InsertPrediction, type WatchlistItem, type InsertWatchlist, type AffiliateClick, type InsertAffiliateClick, type WeeklyRecommendation, type InsertWeeklyRecommendation, type DailyPredictionRun, type InsertDailyPredictionRun, type DailyPredictionEntry, type InsertDailyPredictionEntry, type UserProfile, type InsertUserProfile, type UserPortfolioItem, type InsertUserPortfolio, type AiPlaybookRun, type InsertAiPlaybookRun, type PlaybookSection, type InsertPlaybookSection, type CachedMarketMetric, type InsertCachedMarketMetric, type AiSignalInsight, type InsertAiSignalInsight, type AiPredictionScore, type InsertAiPredictionScore, type AiModelMetric, type InsertAiModelMetric, predictions, dailyPredictionRuns, dailyPredictionEntries, userProfiles, userPortfolio, aiPlaybookRuns, playbookSections, cachedMarketMetrics, aiSignalInsights, aiPredictionScores, aiModelMetrics } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
 import { sql, eq, desc, and, gt } from "drizzle-orm";
@@ -45,6 +45,17 @@ export interface IStorage {
   getPlaybookSections(runId: string): Promise<PlaybookSection[]>;
   getCachedMetric(metricType: string, ticker?: string): Promise<CachedMarketMetric | undefined>;
   saveMarketMetric(metric: InsertCachedMarketMetric): Promise<CachedMarketMetric>;
+  // AI Signal Insights and Learning
+  saveAiSignalInsight(insight: InsertAiSignalInsight): Promise<AiSignalInsight>;
+  getAiSignalInsights(surface: string, ticker?: string): Promise<AiSignalInsight[]>;
+  saveAiPredictionScore(score: InsertAiPredictionScore): Promise<AiPredictionScore>;
+  getPendingAiPredictions(): Promise<AiPredictionScore[]>;
+  updateAiPredictionOutcome(id: string, update: { actualOutcome: string; actualChange: number; outcomePrice: number; outcomeDate: Date }): Promise<void>;
+  getLatestModelMetrics(surface: string): Promise<{ totalPredictions: number; correctPredictions: number; winRate: number; avgConfidence: number; avgActualReturn: number } | null>;
+  getModelMetricsByDate(surface: string, date: string): Promise<AiModelMetric | undefined>;
+  saveModelMetrics(metrics: InsertAiModelMetric): Promise<AiModelMetric>;
+  updateModelMetrics(id: string, update: Partial<InsertAiModelMetric>): Promise<void>;
+  getAllModelMetrics(): Promise<AiModelMetric[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -517,6 +528,111 @@ export class MemStorage implements IStorage {
   async saveMarketMetric(metric: InsertCachedMarketMetric): Promise<CachedMarketMetric> {
     const result = await db.insert(cachedMarketMetrics).values(metric).returning();
     return result[0];
+  }
+
+  // AI Signal Insights and Learning Implementation
+  async saveAiSignalInsight(insight: InsertAiSignalInsight): Promise<AiSignalInsight> {
+    const result = await db.insert(aiSignalInsights).values(insight).returning();
+    return result[0];
+  }
+
+  async getAiSignalInsights(surface: string, ticker?: string): Promise<AiSignalInsight[]> {
+    const now = new Date();
+    if (ticker) {
+      return await db.select()
+        .from(aiSignalInsights)
+        .where(and(
+          eq(aiSignalInsights.surface, surface),
+          eq(aiSignalInsights.ticker, ticker),
+          gt(aiSignalInsights.validUntil, now)
+        ))
+        .orderBy(desc(aiSignalInsights.createdAt));
+    }
+    return await db.select()
+      .from(aiSignalInsights)
+      .where(and(
+        eq(aiSignalInsights.surface, surface),
+        gt(aiSignalInsights.validUntil, now)
+      ))
+      .orderBy(desc(aiSignalInsights.createdAt));
+  }
+
+  async saveAiPredictionScore(score: InsertAiPredictionScore): Promise<AiPredictionScore> {
+    const result = await db.insert(aiPredictionScores).values(score).returning();
+    return result[0];
+  }
+
+  async getPendingAiPredictions(): Promise<AiPredictionScore[]> {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return await db.select()
+      .from(aiPredictionScores)
+      .where(and(
+        sql`${aiPredictionScores.actualOutcome} IS NULL`,
+        gt(aiPredictionScores.predictionDate, oneDayAgo)
+      ));
+  }
+
+  async updateAiPredictionOutcome(id: string, update: { actualOutcome: string; actualChange: number; outcomePrice: number; outcomeDate: Date }): Promise<void> {
+    await db.update(aiPredictionScores)
+      .set({
+        actualOutcome: update.actualOutcome,
+        actualChange: update.actualChange,
+        outcomePrice: update.outcomePrice,
+        outcomeDate: update.outcomeDate,
+      })
+      .where(eq(aiPredictionScores.id, id));
+  }
+
+  async getLatestModelMetrics(surface: string): Promise<{ totalPredictions: number; correctPredictions: number; winRate: number; avgConfidence: number; avgActualReturn: number } | null> {
+    const metrics = await db.select()
+      .from(aiModelMetrics)
+      .where(eq(aiModelMetrics.surface, surface))
+      .orderBy(desc(aiModelMetrics.metricDate))
+      .limit(7);
+    
+    if (metrics.length === 0) return null;
+    
+    const totalPredictions = metrics.reduce((sum, m) => sum + (m.totalPredictions || 0), 0);
+    const correctPredictions = metrics.reduce((sum, m) => sum + (m.correctPredictions || 0), 0);
+    const avgConfidence = metrics.reduce((sum, m) => sum + (m.avgConfidence || 0), 0) / metrics.length;
+    const avgActualReturn = metrics.reduce((sum, m) => sum + (m.avgActualReturn || 0), 0) / metrics.length;
+    
+    return {
+      totalPredictions,
+      correctPredictions,
+      winRate: totalPredictions > 0 ? correctPredictions / totalPredictions : 0,
+      avgConfidence,
+      avgActualReturn,
+    };
+  }
+
+  async getModelMetricsByDate(surface: string, date: string): Promise<AiModelMetric | undefined> {
+    const result = await db.select()
+      .from(aiModelMetrics)
+      .where(and(
+        eq(aiModelMetrics.surface, surface),
+        eq(aiModelMetrics.metricDate, date)
+      ))
+      .limit(1);
+    return result[0];
+  }
+
+  async saveModelMetrics(metrics: InsertAiModelMetric): Promise<AiModelMetric> {
+    const result = await db.insert(aiModelMetrics).values(metrics).returning();
+    return result[0];
+  }
+
+  async updateModelMetrics(id: string, update: Partial<InsertAiModelMetric>): Promise<void> {
+    await db.update(aiModelMetrics)
+      .set(update)
+      .where(eq(aiModelMetrics.id, id));
+  }
+
+  async getAllModelMetrics(): Promise<AiModelMetric[]> {
+    return await db.select()
+      .from(aiModelMetrics)
+      .orderBy(desc(aiModelMetrics.metricDate))
+      .limit(100);
   }
 }
 
