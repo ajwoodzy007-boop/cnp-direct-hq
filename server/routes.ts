@@ -8,6 +8,7 @@ import OpenAI from "openai";
 import { z } from "zod";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
+import oracleRouter from "./routes/oracle";
 
 // Cache for daily predictions - regenerated at 7:30 AM ET each weekday
 interface DailyPredictionsCache {
@@ -90,6 +91,9 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
+  // Oracle routes
+  app.use("/api/oracle", oracleRouter);
+
   // GET /api/market/scan - Scan market for gainers/losers
   app.get("/api/market/scan", async (req, res) => {
     try {
