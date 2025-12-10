@@ -48,22 +48,13 @@ export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
         <div className="h-full flex flex-col w-[336px]">
           {/* Sidebar Header */}
           <div className="p-6 flex items-center justify-between">
-            <div className="font-bold text-xl tracking-tight flex items-center gap-2">
-              <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center text-primary-foreground">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-5 h-5"
-                >
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <span>CNP Direct | Market Sentinel</span>
+            <div className="font-bold text-xl tracking-tight flex items-center gap-3">
+              <img 
+                src="/assets/logo.jpg" 
+                alt="CNP Direct" 
+                className="w-10 h-10 rounded-lg object-cover"
+              />
+              <span className="text-lg">CNP Direct</span>
             </div>
             <Button
               variant="ghost"

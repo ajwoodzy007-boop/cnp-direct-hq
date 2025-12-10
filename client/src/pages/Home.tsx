@@ -1260,20 +1260,11 @@ export default function Home() {
         <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-purple-500/5 p-6 shadow-lg">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-6 h-6 text-primary-foreground"
-                >
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
+              <img 
+                src="/assets/logo.jpg" 
+                alt="CNP Direct Market Sentinel" 
+                className="w-12 h-12 rounded-lg object-cover"
+              />
               <div>
                 <h2 className="text-xl font-bold tracking-tight">Market Sentinel</h2>
                 <p className="text-xs text-muted-foreground">Real-time trading signals powered by CNP Direct</p>
