@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { Menu, X, Settings, Moon, Sun, Github, Bell, BellOff, Volume2, VolumeX, RefreshCw, LayoutGrid, Minimize2 } from "lucide-react";
+import { Settings, Moon, Sun, Bell, BellOff, Volume2, VolumeX, RefreshCw, LayoutGrid, Minimize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -12,105 +11,29 @@ import { Separator } from "@/components/ui/separator";
 
 interface StreamlitLayoutProps {
   children: React.ReactNode;
-  sidebar: React.ReactNode;
 }
 
-export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+export function StreamlitLayout({ children }: StreamlitLayoutProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { settings, updateSetting } = useSettings();
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
-      {/* Mobile Sidebar Overlay */}
-      <AnimatePresence>
-        {isSidebarOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black/20 z-40 lg:hidden backdrop-blur-sm"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar */}
-      <motion.aside
-        initial={{ x: 0, width: 336 }}
-        animate={{
-          x: isSidebarOpen ? 0 : -336,
-          width: 336,
-        }}
-        transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-        className="fixed lg:sticky top-0 left-0 h-screen bg-sidebar border-r border-sidebar-border z-50 overflow-hidden shrink-0 shadow-xl lg:shadow-none"
-      >
-        <div className="h-full flex flex-col w-[336px]">
-          {/* Sidebar Header */}
-          <div className="p-6 flex items-center justify-between">
-            <div className="font-bold tracking-tight flex items-center gap-3">
-              <img 
-                src="/assets/logo.jpg" 
-                alt="CNP Direct" 
-                className="w-12 h-12 rounded-lg object-cover"
-              />
-              <div>
-                <span className="text-lg font-bold">CNP DIRECT</span>
-                <p className="text-[10px] text-muted-foreground tracking-wide">Capital. Net Profit. Direct.</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setIsSidebarOpen(false)}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-
-          {/* Sidebar Scroll Area */}
-          <div className="flex-1 overflow-y-auto px-6 py-2 space-y-6">
-            {sidebar}
-          </div>
-
-          {/* Sidebar Footer */}
-          <div className="p-6 border-t border-sidebar-border mt-auto space-y-3">
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
-              The Market Sentinel is a proprietary analysis tool provided by Capital Net Profit Direct.
-            </p>
-            <div className="flex items-center justify-between text-muted-foreground text-sm">
-              <span>v1.28.0</span>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => updateSetting("darkMode", !settings.darkMode)}>
-                  {settings.darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <Github className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.aside>
-
+    <div className="flex flex-col min-h-screen bg-background text-foreground font-sans selection:bg-primary/20">
       {/* Main Content */}
-      <main className={cn(
-        "flex-1 min-w-0 transition-all duration-300 relative",
-        isSidebarOpen ? "lg:ml-0" : "lg:-ml-[336px]"
-      )}>
-        {/* Top Navigation / Toggle */}
-        <header className="sticky top-0 z-30 flex items-center h-16 px-6 bg-background/80 backdrop-blur-md">
-          {!isSidebarOpen && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsSidebarOpen(true)}
-              className="mr-4 text-muted-foreground hover:text-foreground"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
+      <main className="flex-1 min-w-0 relative flex flex-col">
+        {/* Top Navigation */}
+        <header className="sticky top-0 z-30 flex items-center h-16 px-6 bg-background/80 backdrop-blur-md border-b border-border">
+          <div className="flex items-center gap-3">
+            <img 
+              src="/assets/logo.jpg" 
+              alt="CNP Direct" 
+              className="w-10 h-10 rounded-lg object-cover"
+            />
+            <div>
+              <span className="text-lg font-bold">CNP DIRECT</span>
+              <p className="text-[10px] text-muted-foreground tracking-wide hidden sm:block">Capital. Net Profit. Direct.</p>
+            </div>
+          </div>
           <div className="flex-1" />
           <div className="flex items-center gap-1">
             {/* Quick Alert Toggles */}
@@ -157,8 +80,7 @@ export function StreamlitLayout({ children, sidebar }: StreamlitLayoutProps) {
 
         {/* Content Container */}
         <div className={cn(
-          "max-w-4xl mx-auto px-6 pb-20 pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500",
-          settings.compactMode && "max-w-6xl"
+          "max-w-6xl mx-auto px-6 pb-20 pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
         )}>
           {children}
         </div>

@@ -15,7 +15,7 @@ import { Link } from "wouter";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { AdBanner, AdSidebar } from "@/components/AdBanner";
+import { AdBanner } from "@/components/AdBanner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -848,411 +848,8 @@ export default function Home() {
     toast.success("Share your win!", { description: "Twitter opened in new window" });
   };
 
-  // Sidebar UI
-  const SidebarContent = (
-    <div className="space-y-6">
-      {/* Today's Predictions & Daily Win/Loss */}
-      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-4">
-        <h4 className="font-semibold text-foreground flex items-center gap-2">
-          <TrendingUp className="h-4 w-4" />
-          Today's Top 10 Predictions
-        </h4>
-        
-        {/* Market Status Indicator */}
-        {top10TodayData && (
-          <div className="flex items-center gap-2 text-xs">
-            <Badge 
-              variant="outline" 
-              className={top10TodayData.marketOpen ? "text-green-600 border-green-600" : "text-yellow-600 border-yellow-600"}
-            >
-              {top10TodayData.marketOpen ? "🟢 Market Open" : "🌙 After Hours"}
-            </Badge>
-            {!top10TodayData.marketOpen && (
-              <span className="text-muted-foreground">Using {top10TodayData.date} close</span>
-            )}
-          </div>
-        )}
-        
-        {/* Daily Win/Loss Stats */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="bg-green-500/10 rounded p-2 text-center">
-            <p className="text-lg font-bold text-green-600">{dailyPredictionResults.wins}</p>
-            <p className="text-[10px] text-muted-foreground">Winning</p>
-          </div>
-          <div className="bg-red-500/10 rounded p-2 text-center">
-            <p className="text-lg font-bold text-red-600">{dailyPredictionResults.losses}</p>
-            <p className="text-[10px] text-muted-foreground">Losing</p>
-          </div>
-          <div className="bg-muted/50 rounded p-2 text-center">
-            <p className="text-lg font-bold">
-              {dailyPredictionResults.predictions.length > 0 
-                ? `${((dailyPredictionResults.wins / dailyPredictionResults.predictions.length) * 100).toFixed(0)}%`
-                : "0%"}
-            </p>
-            <p className="text-[10px] text-muted-foreground">Win Rate</p>
-          </div>
-        </div>
-
-        {/* Top 5 Predictions Preview */}
-        <div className="pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground mb-2">Stocks most likely to gain today</p>
-          <div className="space-y-2">
-            {dailyPredictionResults.predictions.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">
-                Analyzing market data...
-              </p>
-            ) : (
-              dailyPredictionResults.predictions.slice(0, 5).map((pick, idx) => (
-                <div 
-                  key={`${pick.ticker}-${idx}`}
-                  className={`flex items-center justify-between text-xs rounded p-2 cursor-pointer transition-colors ${
-                    pick.outcome === "win" 
-                      ? "bg-green-500/10 hover:bg-green-500/20 border border-green-500/20" 
-                      : pick.outcome === "loss"
-                      ? "bg-red-500/10 hover:bg-red-500/20 border border-red-500/20"
-                      : "bg-muted/30 hover:bg-muted/50 border border-border"
-                  }`}
-                  onClick={() => setSelectedTicker(pick.ticker)}
-                  data-testid={`prediction-${pick.ticker}`}
-                >
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1">
-                      <span className="font-bold text-foreground">#{idx + 1}</span>
-                      <span className="font-bold">{pick.ticker}</span>
-                      <Badge 
-                        variant="outline" 
-                        className={`text-[8px] px-1 py-0 ${
-                          pick.outcome === "win" ? "text-green-600 border-green-600" : 
-                          pick.outcome === "loss" ? "text-red-600 border-red-600" : 
-                          "text-muted-foreground border-muted-foreground"
-                        }`}
-                      >
-                        {pick.confidence}% conf
-                      </Badge>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground truncate max-w-[140px]">
-                      {pick.reasoning}
-                    </span>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className={`font-bold ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
-                      {pick.closePnl >= 0 ? "+" : ""}{pick.closePnl}%
-                    </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      ${pick.closePrice.toFixed(2)}
-                      {pick.hasAfterHours && <span className="text-yellow-600 ml-1">({pick.totalPnl >= 0 ? "+" : ""}{pick.totalPnl}% AH)</span>}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-          
-          {/* View All Top 10 Predictions Link */}
-          <Button
-            variant="link"
-            size="sm"
-            className="w-full mt-2 text-xs"
-            onClick={() => { setHistoryFilter("all"); setShowFullHistory(true); }}
-            data-testid="button-view-top-10"
-          >
-            View All 10 Predictions
-          </Button>
-        </div>
-
-      </div>
-
-      {/* Watchlist */}
-      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
-        <h4 className="font-semibold text-foreground flex items-center gap-2">
-          <Star className="h-4 w-4" />
-          My Watchlist
-        </h4>
-        
-        {/* Add to watchlist input */}
-        <div className="flex gap-2">
-          <Input
-            placeholder="Add ticker..."
-            value={watchlistInput}
-            onChange={(e) => setWatchlistInput(e.target.value.toUpperCase())}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && watchlistInput.trim()) {
-                addWatchlistMutation.mutate(watchlistInput.trim());
-                setWatchlistInput("");
-              }
-            }}
-            className="h-8 text-xs"
-            data-testid="input-watchlist-ticker"
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-8 px-2"
-            onClick={() => {
-              if (watchlistInput.trim()) {
-                addWatchlistMutation.mutate(watchlistInput.trim());
-                setWatchlistInput("");
-              }
-            }}
-            disabled={!watchlistInput.trim() || addWatchlistMutation.isPending}
-            data-testid="button-add-watchlist"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-
-        {/* Watchlist items */}
-        <div className="space-y-2">
-          {watchlistWithPrices.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-2">
-              No stocks in watchlist. Add one above!
-            </p>
-          ) : (
-            watchlistWithPrices.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between text-xs bg-muted/30 rounded p-2 cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => setSelectedTicker(item.ticker)}
-                data-testid={`watchlist-item-${item.ticker}`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className="font-bold">{item.ticker}</span>
-                  {item.price !== undefined && (
-                    <span className="text-muted-foreground">${item.price.toFixed(2)}</span>
-                  )}
-                  {item.changePercent !== undefined && (
-                    <span className={item.changePercent >= 0 ? "text-green-600" : "text-red-600"}>
-                      {item.changePercent >= 0 ? "+" : ""}{item.changePercent.toFixed(2)}%
-                    </span>
-                  )}
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 hover:bg-red-500/10"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeWatchlistMutation.mutate(item.ticker);
-                  }}
-                  data-testid={`button-remove-watchlist-${item.ticker}`}
-                >
-                  <X className="h-3 w-3" />
-                </Button>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Historical Accuracy */}
-      {predictionStatsData && (
-        <div className="rounded-lg bg-gradient-to-br from-primary/5 via-background to-green-500/5 border border-primary/20 p-4 text-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-foreground flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-primary" />
-              Historical Accuracy
-            </h4>
-            <Dialog open={showPerformanceHistory} onOpenChange={setShowPerformanceHistory}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-6 px-2" data-testid="button-view-history">
-                  <History className="h-3 w-3" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Prediction History</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  {predictionHistoryData.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">No historical predictions yet. Predictions are saved daily at 7:30 AM ET.</p>
-                  ) : (
-                    <Accordion type="single" collapsible className="w-full">
-                      {predictionHistoryData.map((run) => {
-                        const wins = run.entries.filter(e => e.outcome === "win").length;
-                        const losses = run.entries.filter(e => e.outcome === "loss").length;
-                        const avgPnl = run.entries.filter(e => e.closePnl !== null).length > 0
-                          ? run.entries.filter(e => e.closePnl !== null).reduce((a, b) => a + (b.closePnl || 0), 0) / run.entries.filter(e => e.closePnl !== null).length
-                          : 0;
-                        return (
-                          <AccordionItem key={run.id} value={run.id}>
-                            <AccordionTrigger className="hover:no-underline">
-                              <div className="flex items-center justify-between w-full pr-4">
-                                <span className="font-medium">{new Date(run.runDate + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-                                <div className="flex items-center gap-4 text-sm">
-                                  <span className="text-green-600">{wins}W</span>
-                                  <span className="text-red-500">{losses}L</span>
-                                  <span className={avgPnl >= 0 ? "text-green-600" : "text-red-500"}>
-                                    {avgPnl >= 0 ? "+" : ""}{avgPnl.toFixed(2)}%
-                                  </span>
-                                  {run.finalizedAt ? (
-                                    <Badge variant="outline" className="text-xs">Finalized</Badge>
-                                  ) : (
-                                    <Badge variant="secondary" className="text-xs">Pending</Badge>
-                                  )}
-                                </div>
-                              </div>
-                            </AccordionTrigger>
-                            <AccordionContent>
-                              <div className="grid gap-2 pt-2">
-                                {run.entries.map((entry) => (
-                                  <div 
-                                    key={entry.id} 
-                                    className={`flex items-center justify-between p-2 rounded-lg text-sm ${
-                                      entry.outcome === "win" ? "bg-green-500/10" : 
-                                      entry.outcome === "loss" ? "bg-red-500/10" : "bg-muted/50"
-                                    }`}
-                                    data-testid={`history-entry-${entry.ticker}`}
-                                  >
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                      <span className={`font-bold ${entry.outcome === "win" ? "text-green-600" : entry.outcome === "loss" ? "text-red-500" : ""}`}>
-                                        {entry.ticker}
-                                      </span>
-                                      <span className="text-muted-foreground">
-                                        Entry: ${entry.entryPrice.toFixed(2)}
-                                      </span>
-                                      {entry.predictedPrice && (
-                                        <span className="text-purple-600">
-                                          Target: ${entry.predictedPrice.toFixed(2)}
-                                        </span>
-                                      )}
-                                      {entry.closePrice && (
-                                        <span className="text-muted-foreground">
-                                          Close: ${entry.closePrice.toFixed(2)}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      {entry.closePnl !== null && (
-                                        <span className={`font-medium ${entry.closePnl >= 0 ? "text-green-600" : "text-red-500"}`}>
-                                          {entry.closePnl >= 0 ? "+" : ""}{entry.closePnl.toFixed(2)}%
-                                        </span>
-                                      )}
-                                      {entry.outcome === "win" && <TrendingUp className="h-4 w-4 text-green-600" />}
-                                      {entry.outcome === "loss" && <TrendingDown className="h-4 w-4 text-red-500" />}
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        );
-                      })}
-                    </Accordion>
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-          
-          <div className="grid grid-cols-3 gap-2 text-center">
-            <div>
-              <div className="text-lg font-bold text-green-600">{predictionStatsData.wins}</div>
-              <div className="text-[10px] text-muted-foreground">Wins</div>
-            </div>
-            <div>
-              <div className="text-lg font-bold text-red-500">{predictionStatsData.losses}</div>
-              <div className="text-[10px] text-muted-foreground">Losses</div>
-            </div>
-            <div>
-              <div className={`text-lg font-bold ${predictionStatsData.winRate >= 50 ? "text-green-600" : "text-red-500"}`}>
-                {predictionStatsData.winRate}%
-              </div>
-              <div className="text-[10px] text-muted-foreground">Win Rate</div>
-            </div>
-          </div>
-          
-          <div className="flex items-center justify-between text-xs pt-2 border-t">
-            <span className="text-muted-foreground">{predictionStatsData.totalRuns} days, {predictionStatsData.totalPicks} picks</span>
-            {predictionStatsData.avgPnl !== 0 && (
-              <span className={predictionStatsData.avgPnl >= 0 ? "text-green-600" : "text-red-500"}>
-                Avg: {predictionStatsData.avgPnl >= 0 ? "+" : ""}{predictionStatsData.avgPnl}%
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* AI Playbook */}
-      <div className="rounded-lg bg-card border border-border p-4 text-sm space-y-3">
-        <h4 className="font-semibold text-foreground flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-yellow-500" />
-          AI Playbook
-        </h4>
-        
-        <Button
-          size="sm"
-          className="w-full"
-          onClick={() => aiPlaybookMutation.mutate(undefined)}
-          disabled={aiPlaybookMutation.isPending}
-          data-testid="button-generate-insights"
-        >
-          {aiPlaybookMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-              Analyzing...
-            </>
-          ) : (
-            <>
-              <Sparkles className="mr-2 h-3 w-3" />
-              Generate Insights
-            </>
-          )}
-        </Button>
-
-        {aiPlaybookMutation.data && (
-          <div className="space-y-3 pt-2">
-            <div className="bg-primary/5 rounded p-3">
-              <p className="text-xs leading-relaxed">{aiPlaybookMutation.data.summary}</p>
-            </div>
-            
-            {aiPlaybookMutation.data.insights.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Key Insights</p>
-                {aiPlaybookMutation.data.insights.map((insight, i) => (
-                  <div key={i} className="flex items-start gap-2 text-xs">
-                    <Lightbulb className="h-3 w-3 mt-0.5 text-yellow-500 flex-shrink-0" />
-                    <span>{insight}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            <div className="bg-green-500/10 rounded p-3 border-l-2 border-green-500">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Recommendation</p>
-              <p className="text-xs text-green-700 dark:text-green-400">{aiPlaybookMutation.data.recommendation}</p>
-            </div>
-          </div>
-        )}
-
-        {!aiPlaybookMutation.data && !aiPlaybookMutation.isPending && (
-          <p className="text-xs text-muted-foreground text-center py-2">
-            Click above to get AI-powered trading insights based on your performance.
-          </p>
-        )}
-      </div>
-
-      {/* Upgrade Banner */}
-      <div className="rounded-lg bg-gradient-to-r from-yellow-500/10 via-primary/10 to-purple-500/10 border border-primary/20 p-4 text-center">
-        <Crown className="h-6 w-6 mx-auto mb-2 text-yellow-500" />
-        <h4 className="font-semibold text-sm mb-1">Upgrade to Pro</h4>
-        <p className="text-xs text-muted-foreground mb-3">
-          Unlock unlimited AI insights & predictions
-        </p>
-        <Link href="/pricing">
-          <Button size="sm" className="w-full" data-testid="button-upgrade-sidebar">
-            <Crown className="mr-2 h-3 w-3" />
-            View Plans
-          </Button>
-        </Link>
-      </div>
-
-      {/* Sidebar Advertisement */}
-      <AdSidebar />
-    </div>
-  );
-
   return (
-    <StreamlitLayout sidebar={SidebarContent}>
+    <StreamlitLayout>
       {/* --- HERO: CNP DIRECT MARKET SENTINEL --- */}
       <div className="mb-8">
         <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-purple-500/5 p-6 shadow-lg">
@@ -1898,6 +1495,86 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Watchlist Section */}
+        <div className="mt-8">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-500" />
+                My Watchlist
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2 mb-4">
+                <Input
+                  placeholder="Add ticker (e.g., AAPL)"
+                  value={watchlistInput}
+                  onChange={(e) => setWatchlistInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && watchlistInput.trim()) {
+                      addWatchlistMutation.mutate(watchlistInput.trim());
+                    }
+                  }}
+                  className="flex-1"
+                  data-testid="input-watchlist"
+                />
+                <Button
+                  onClick={() => {
+                    if (watchlistInput.trim()) {
+                      addWatchlistMutation.mutate(watchlistInput.trim());
+                    }
+                  }}
+                  disabled={!watchlistInput.trim() || addWatchlistMutation.isPending}
+                  data-testid="button-add-watchlist"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                {watchlistWithPrices.length === 0 ? (
+                  <p className="text-sm text-muted-foreground col-span-full text-center py-4">
+                    No stocks in watchlist. Add one above!
+                  </p>
+                ) : (
+                  watchlistWithPrices.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between text-sm bg-muted/30 rounded-lg p-3 cursor-pointer hover:bg-muted/50 transition-colors group"
+                      onClick={() => setSelectedTicker(item.ticker)}
+                      data-testid={`watchlist-card-${item.ticker}`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-bold">{item.ticker}</span>
+                        {item.price !== undefined && (
+                          <span className="text-xs text-muted-foreground">${item.price.toFixed(2)}</span>
+                        )}
+                        {item.changePercent !== undefined && (
+                          <span className={`text-xs ${item.changePercent >= 0 ? "text-green-600" : "text-red-600"}`}>
+                            {item.changePercent >= 0 ? "+" : ""}{item.changePercent.toFixed(2)}%
+                          </span>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-red-500/10"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeWatchlistMutation.mutate(item.ticker);
+                        }}
+                        data-testid={`button-remove-watchlist-card-${item.ticker}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Trading Resources Section */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Free Learning Resources */}
@@ -2126,6 +1803,51 @@ export default function Home() {
                 </Button>
               </CardContent>
             </Card>
+
+            {/* Historical Accuracy Stats */}
+            {predictionStatsData && (
+              <Card className="bg-gradient-to-br from-primary/5 via-background to-green-500/5 border-primary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                    Historical Accuracy
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 md:grid-cols-5 gap-4 text-center">
+                    <div className="bg-green-500/10 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-green-600">{predictionStatsData.wins}</div>
+                      <div className="text-xs text-muted-foreground">Total Wins</div>
+                    </div>
+                    <div className="bg-red-500/10 rounded-lg p-4">
+                      <div className="text-2xl font-bold text-red-500">{predictionStatsData.losses}</div>
+                      <div className="text-xs text-muted-foreground">Total Losses</div>
+                    </div>
+                    <div className={`rounded-lg p-4 ${predictionStatsData.winRate >= 50 ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                      <div className={`text-2xl font-bold ${predictionStatsData.winRate >= 50 ? "text-green-600" : "text-red-500"}`}>
+                        {predictionStatsData.winRate}%
+                      </div>
+                      <div className="text-xs text-muted-foreground">Win Rate</div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <div className="text-2xl font-bold">{predictionStatsData.totalRuns}</div>
+                      <div className="text-xs text-muted-foreground">Trading Days</div>
+                    </div>
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <div className="text-2xl font-bold">{predictionStatsData.totalPicks}</div>
+                      <div className="text-xs text-muted-foreground">Total Picks</div>
+                    </div>
+                  </div>
+                  {predictionStatsData.avgPnl !== 0 && (
+                    <div className="mt-4 text-center">
+                      <span className={`text-lg font-medium ${predictionStatsData.avgPnl >= 0 ? "text-green-600" : "text-red-500"}`}>
+                        Average P&L: {predictionStatsData.avgPnl >= 0 ? "+" : ""}{predictionStatsData.avgPnl}%
+                      </span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
