@@ -511,6 +511,7 @@ Provide a JSON response with exactly this structure:
         prevClose: number;
         closePrice: number;
         predictedGain: number;
+        predictedPrice: number;
         confidence: number;
         reasoning: string;
         score: number;
@@ -632,6 +633,10 @@ Provide a JSON response with exactly this structure:
             reasons.push(`RSI ${rsi.toFixed(0)}`);
           }
           
+          // Calculate predicted closing price based on entry price and predicted gain
+          const entryPriceForPrediction = todayOpen;
+          const predictedPriceValue = entryPriceForPrediction * (1 + Math.max(0.1, Math.abs(predictedGain)) / 100);
+          
           predictions.push({
             ticker: stock.ticker,
             price: priceToUse,
@@ -639,6 +644,7 @@ Provide a JSON response with exactly this structure:
             prevClose: yesterdayClose,
             closePrice: todayClose,
             predictedGain: parseFloat(Math.max(0.1, Math.abs(predictedGain)).toFixed(2)),
+            predictedPrice: parseFloat(predictedPriceValue.toFixed(2)),
             confidence: Math.round(confidence),
             reasoning: reasons.slice(0, 3).join(", "),
             score: Math.max(1, score) // Ensure positive score for sorting
@@ -653,13 +659,14 @@ Provide a JSON response with exactly this structure:
       const top10 = predictions
         .sort((a, b) => b.score - a.score)
         .slice(0, 10)
-        .map(({ ticker, price, openPrice, prevClose, closePrice, predictedGain, confidence, reasoning }) => ({
+        .map(({ ticker, price, openPrice, prevClose, closePrice, predictedGain, predictedPrice, confidence, reasoning }) => ({
           ticker,
           price,
           openPrice,
           prevClose,
           closePrice,
           predictedGain,
+          predictedPrice,
           confidence,
           reasoning
         }));
@@ -1195,6 +1202,7 @@ Provide a JSON response with exactly this structure:
           ticker: z.string().min(1),
           price: z.number(),
           openPrice: z.number().optional(),
+          predictedPrice: z.number().optional(),
           confidence: z.number().optional(),
           reasoning: z.string().optional(),
         })).min(1),
@@ -1223,6 +1231,7 @@ Provide a JSON response with exactly this structure:
         confidence: pick.confidence || 0,
         reasoning: pick.reasoning || "",
         entryPrice: pick.openPrice || pick.price,
+        predictedPrice: pick.predictedPrice || null,
         closePrice: null,
         currentPrice: pick.price,
         closePnl: null,

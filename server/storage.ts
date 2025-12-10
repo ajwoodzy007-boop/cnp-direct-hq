@@ -296,6 +296,7 @@ export class MemStorage implements IStorage {
       confidence: entry.confidence,
       reasoning: entry.reasoning,
       entryPrice: entry.entryPrice,
+      predictedPrice: entry.predictedPrice,
       closePrice: entry.closePrice,
       currentPrice: entry.currentPrice,
       closePnl: entry.closePnl,

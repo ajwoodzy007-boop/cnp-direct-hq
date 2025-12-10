@@ -188,6 +188,7 @@ interface Top10Pick {
   prevClose: number;
   closePrice?: number;
   predictedGain: number;
+  predictedPrice?: number;
   confidence: number;
   reasoning: string;
 }
@@ -234,6 +235,7 @@ interface HistoricalEntry {
   confidence: number;
   reasoning: string | null;
   entryPrice: number;
+  predictedPrice?: number | null;
   closePrice: number | null;
   currentPrice: number | null;
   closePnl: number | null;
@@ -507,13 +509,18 @@ export default function Home() {
       // P/L from open to current (includes after-hours if applicable)
       const totalPnl = hasLivePrice ? ((currentPrice - entryPrice) / entryPrice) * 100 : closePnl;
       
-      // Determine outcome based on close price P/L (regular hours result)
+      // Determine outcome based on predicted price vs actual close
+      // All predictions are bullish (expecting gains), so:
+      // Win = close price > entry price (stock went up as predicted)
+      // Loss = close price <= entry price (stock didn't go up)
       let outcome: "win" | "loss" | "pending";
       if (!hasLivePrice && !pick.closePrice) {
         outcome = "pending";
-      } else if (closePnl > 0) {
+      } else if (closePrice > entryPrice) {
+        // Stock closed higher than entry - win
         outcome = "win";
       } else {
+        // Stock closed at or below entry - loss
         outcome = "loss";
       }
       
@@ -1054,13 +1061,18 @@ export default function Home() {
                                     }`}
                                     data-testid={`history-entry-${entry.ticker}`}
                                   >
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 flex-wrap">
                                       <span className={`font-bold ${entry.outcome === "win" ? "text-green-600" : entry.outcome === "loss" ? "text-red-500" : ""}`}>
                                         {entry.ticker}
                                       </span>
                                       <span className="text-muted-foreground">
                                         Entry: ${entry.entryPrice.toFixed(2)}
                                       </span>
+                                      {entry.predictedPrice && (
+                                        <span className="text-purple-600">
+                                          Target: ${entry.predictedPrice.toFixed(2)}
+                                        </span>
+                                      )}
                                       {entry.closePrice && (
                                         <span className="text-muted-foreground">
                                           Close: ${entry.closePrice.toFixed(2)}
@@ -1990,6 +2002,18 @@ export default function Home() {
                           <p className="text-sm text-muted-foreground mb-1">Predicted Gain</p>
                           <p className="text-2xl font-bold text-blue-600">+{pick.predictedGain}%</p>
                         </div>
+                        {pick.predictedPrice && (
+                          <div>
+                            <p className="text-sm text-muted-foreground mb-1">Predicted Close</p>
+                            <p className="text-2xl font-bold text-purple-600">${pick.predictedPrice.toFixed(2)}</p>
+                            {pick.closePrice && (
+                              <p className={`text-xs mt-1 ${pick.closePrice >= pick.predictedPrice * 0.995 ? "text-green-600" : "text-red-500"}`}>
+                                {pick.closePrice >= pick.predictedPrice ? "Hit Target" : 
+                                  `${((pick.closePrice - pick.entryPrice) / (pick.predictedPrice - pick.entryPrice) * 100).toFixed(0)}% of target`}
+                              </p>
+                            )}
+                          </div>
+                        )}
                         <div>
                           <p className="text-sm text-muted-foreground mb-1">Confidence</p>
                           <p className="text-2xl font-bold">{pick.confidence}%</p>
