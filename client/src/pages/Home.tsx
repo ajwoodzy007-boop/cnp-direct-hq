@@ -264,6 +264,30 @@ async function fetchRecommendations(): Promise<RecommendationsData> {
   return json.data;
 }
 
+interface SentinelResult {
+  ticker: string;
+  price: number;
+  changePercent: number;
+  rsi: number;
+  rvol: number;
+  sentimentScore: number;
+  verdict: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  signal: 'MOMENTUM BUY' | 'VALUE BUY' | 'SELL WARNING' | 'WAIT';
+}
+
+interface SentinelData {
+  count: number;
+  timestamp: string;
+  data: SentinelResult[];
+}
+
+async function fetchSentinelScan(): Promise<SentinelData> {
+  const res = await fetch("/api/market/sentinel");
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json;
+}
+
 interface Top10Pick {
   ticker: string;
   price: number;
@@ -575,6 +599,15 @@ export default function Home() {
     queryFn: fetchAIMarketInsights,
     refetchInterval: 10 * 60 * 1000,
     staleTime: 5 * 60 * 1000,
+  });
+
+  // Fetch Market Sentinel scan
+  const { data: sentinelData, isLoading: sentinelLoading, refetch: refetchSentinel } = useQuery({
+    queryKey: ["sentinel-scan"],
+    queryFn: fetchSentinelScan,
+    refetchInterval: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+    enabled: false, // Only fetch on demand
   });
 
   // Fetch AI accuracy stats
@@ -1072,9 +1105,12 @@ export default function Home() {
 
       {/* --- TABS NAVIGATION --- */}
       <Tabs defaultValue="signals" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="signals" className="text-sm font-medium" data-testid="tab-signals">
             📊 Market Signals
+          </TabsTrigger>
+          <TabsTrigger value="sentinel" className="text-sm font-medium" data-testid="tab-sentinel">
+            🛡️ Sentinel
           </TabsTrigger>
           <TabsTrigger value="predictions" className="text-sm font-medium" data-testid="tab-predictions">
             🎯 Predictions
@@ -1878,6 +1914,157 @@ export default function Home() {
           </Card>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="sentinel">
+          {/* --- MARKET SENTINEL TAB --- */}
+          <div className="space-y-6">
+            <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-cyan-500/5 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    🛡️ Market Sentinel
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Real-time stock analysis with RSI, relative volume, and news sentiment
+                  </p>
+                </div>
+                <Button
+                  onClick={() => refetchSentinel()}
+                  disabled={sentinelLoading}
+                  className="gap-2"
+                  data-testid="button-scan-sentinel"
+                >
+                  {sentinelLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Scanning...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4" />
+                      Run Scan
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Signal Legend */}
+              <div className="flex flex-wrap gap-3 mb-6 p-3 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                  <span>MOMENTUM BUY</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                  <span>VALUE BUY</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="w-3 h-3 rounded-full bg-orange-500"></span>
+                  <span>SELL WARNING</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs">
+                  <span className="w-3 h-3 rounded-full bg-gray-400"></span>
+                  <span>WAIT</span>
+                </div>
+              </div>
+
+              {sentinelLoading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-3 text-muted-foreground">Scanning top gainers...</span>
+                </div>
+              ) : sentinelData?.data && sentinelData.data.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="text-xs text-muted-foreground mb-2">
+                    Found {sentinelData.count} stocks • Last scan: {new Date(sentinelData.timestamp).toLocaleTimeString()}
+                  </div>
+                  <div className="grid gap-3">
+                    {sentinelData.data.map((stock) => (
+                      <div
+                        key={stock.ticker}
+                        className={`p-4 rounded-lg border ${
+                          stock.signal === 'MOMENTUM BUY' ? 'bg-green-500/10 border-green-500/30' :
+                          stock.signal === 'VALUE BUY' ? 'bg-blue-500/10 border-blue-500/30' :
+                          stock.signal === 'SELL WARNING' ? 'bg-orange-500/10 border-orange-500/30' :
+                          'bg-muted/30 border-border'
+                        }`}
+                        data-testid={`sentinel-card-${stock.ticker}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <a
+                              href={`/api/go/${stock.ticker}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold text-lg text-primary hover:underline"
+                            >
+                              {stock.ticker}
+                            </a>
+                            <span className="text-lg font-mono">${stock.price.toFixed(2)}</span>
+                            <span className={`text-sm font-medium ${stock.changePercent >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                              {stock.changePercent >= 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
+                            </span>
+                          </div>
+                          <Badge className={`${
+                            stock.signal === 'MOMENTUM BUY' ? 'bg-green-600' :
+                            stock.signal === 'VALUE BUY' ? 'bg-blue-600' :
+                            stock.signal === 'SELL WARNING' ? 'bg-orange-600' :
+                            'bg-gray-500'
+                          }`}>
+                            {stock.signal}
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-4 gap-4 mt-3 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">RSI:</span>
+                            <span className={`ml-2 font-mono ${
+                              stock.rsi < 30 ? 'text-green-600' :
+                              stock.rsi > 70 ? 'text-red-500' :
+                              'text-foreground'
+                            }`}>
+                              {stock.rsi}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">RVol:</span>
+                            <span className={`ml-2 font-mono ${stock.rvol > 2 ? 'text-purple-600 font-bold' : ''}`}>
+                              {stock.rvol}x
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Sentiment:</span>
+                            <span className={`ml-2 font-mono ${
+                              stock.sentimentScore > 0 ? 'text-green-600' :
+                              stock.sentimentScore < 0 ? 'text-red-500' :
+                              'text-foreground'
+                            }`}>
+                              {stock.sentimentScore.toFixed(2)}
+                            </span>
+                          </div>
+                          <div>
+                            <Badge variant="outline" className={`${
+                              stock.verdict === 'BULLISH' ? 'border-green-500 text-green-600' :
+                              stock.verdict === 'BEARISH' ? 'border-red-500 text-red-500' :
+                              'border-gray-400 text-gray-500'
+                            }`}>
+                              {stock.verdict === 'BULLISH' ? '🟢' : stock.verdict === 'BEARISH' ? '🔴' : '⚪'} {stock.verdict}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-4">🛡️</div>
+                  <p className="text-muted-foreground">Click "Run Scan" to analyze top market gainers</p>
+                  <p className="text-xs text-muted-foreground mt-2">Uses Yahoo Finance data with RSI, volume, and sentiment analysis</p>
+                </div>
+              )}
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="predictions">
