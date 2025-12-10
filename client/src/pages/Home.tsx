@@ -2434,9 +2434,11 @@ export default function Home() {
                 <p className="text-muted-foreground mb-4">
                   Get unlimited access to all 7 AI-powered trading tools with a premium subscription.
                 </p>
-                <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" data-testid="button-upgrade-premium">
-                  Upgrade to Premium
-                </Button>
+                <Link href="/pricing">
+                  <Button className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700" data-testid="button-upgrade-premium">
+                    Upgrade to Premium
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </div>
