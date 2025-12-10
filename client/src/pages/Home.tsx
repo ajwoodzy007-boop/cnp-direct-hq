@@ -73,12 +73,25 @@ interface AIPlaybook {
   recommendation: string;
 }
 
+interface MarketScanResponse {
+  data: StockData[];
+  timestamp: string;
+  marketStatus: "pre-market" | "open" | "after-hours" | "closed";
+  timestampET: string;
+}
+
 // API calls
-async function fetchMarketScan(): Promise<StockData[]> {
+async function fetchMarketScan(): Promise<MarketScanResponse> {
   const res = await fetch("/api/market/scan");
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
-  return json.data;
+  
+  return {
+    data: json.data,
+    timestamp: json.timestamp || new Date().toISOString(),
+    marketStatus: json.marketStatus || "closed",
+    timestampET: json.timestampET || ""
+  };
 }
 
 async function fetchChartData(ticker: string, period: string = "3m"): Promise<ChartDataPoint[]> {
@@ -338,11 +351,15 @@ export default function Home() {
   }, [notificationsEnabled, soundEnabled]);
 
   // Fetch market data with React Query
-  const { data: marketData = [], isLoading, refetch } = useQuery({
+  const { data: marketScanResponse, isLoading, refetch } = useQuery({
     queryKey: ["market-scan"],
     queryFn: fetchMarketScan,
     refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
   });
+  
+  const marketData = marketScanResponse?.data || [];
+  const marketTimestamp = marketScanResponse?.timestampET || "";
+  const marketStatus = marketScanResponse?.marketStatus || "closed";
 
   // Fetch chart data for selected ticker
   const { data: chartData = [] } = useQuery({
@@ -1271,7 +1288,28 @@ export default function Home() {
           </div>
         </div>
 
-        <StHeader>📈 Top Gainers</StHeader>
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <h2 className="text-xl font-bold">📈 Top Gainers</h2>
+          <div className="flex items-center gap-3 text-sm">
+            {marketStatus === "open" && (
+              <Badge className="bg-green-600 animate-pulse">🟢 Market Open</Badge>
+            )}
+            {marketStatus === "pre-market" && (
+              <Badge className="bg-blue-600">🌅 Pre-Market</Badge>
+            )}
+            {marketStatus === "after-hours" && (
+              <Badge className="bg-purple-600">🌙 After Hours</Badge>
+            )}
+            {marketStatus === "closed" && (
+              <Badge variant="outline" className="text-muted-foreground">Market Closed</Badge>
+            )}
+            {marketTimestamp && (
+              <span className="text-xs text-muted-foreground">
+                Updated {marketTimestamp}
+              </span>
+            )}
+          </div>
+        </div>
         <div className="rounded-md border border-border overflow-hidden my-4 bg-card shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
@@ -1351,7 +1389,28 @@ export default function Home() {
 
       {/* --- LOSERS SECTION --- */}
       <div className="mt-8">
-        <StHeader>📉 Top Losers (Dip Watch)</StHeader>
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <h2 className="text-xl font-bold">📉 Top Losers (Dip Watch)</h2>
+          <div className="flex items-center gap-3 text-sm">
+            {marketStatus === "open" && (
+              <Badge className="bg-green-600 animate-pulse">🟢 Market Open</Badge>
+            )}
+            {marketStatus === "pre-market" && (
+              <Badge className="bg-blue-600">🌅 Pre-Market</Badge>
+            )}
+            {marketStatus === "after-hours" && (
+              <Badge className="bg-purple-600">🌙 After Hours</Badge>
+            )}
+            {marketStatus === "closed" && (
+              <Badge variant="outline" className="text-muted-foreground">Market Closed</Badge>
+            )}
+            {marketTimestamp && (
+              <span className="text-xs text-muted-foreground">
+                Updated {marketTimestamp}
+              </span>
+            )}
+          </div>
+        </div>
         <div className="rounded-md border border-border overflow-hidden my-4 bg-card shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">

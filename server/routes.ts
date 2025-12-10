@@ -34,6 +34,50 @@ function isCacheValid(): boolean {
   return today === cacheDate;
 }
 
+// Get current market status based on ET time
+function getMarketStatus(): { status: "pre-market" | "open" | "after-hours" | "closed"; timestampET: string } {
+  const now = new Date();
+  const etOptions: Intl.DateTimeFormatOptions = { 
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true
+  };
+  const timestampET = now.toLocaleTimeString("en-US", etOptions) + " ET";
+  
+  // Get ET hour and minute
+  const etFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "numeric",
+    minute: "numeric",
+    hour12: false,
+    weekday: "short"
+  });
+  const parts = etFormatter.formatToParts(now);
+  const hour = parseInt(parts.find(p => p.type === "hour")?.value || "0");
+  const minute = parseInt(parts.find(p => p.type === "minute")?.value || "0");
+  const weekday = parts.find(p => p.type === "weekday")?.value || "";
+  
+  const isWeekend = weekday === "Sat" || weekday === "Sun";
+  
+  let status: "pre-market" | "open" | "after-hours" | "closed";
+  if (isWeekend) {
+    status = "closed";
+  } else if (hour < 4) {
+    status = "closed";
+  } else if (hour < 9 || (hour === 9 && minute < 30)) {
+    status = "pre-market";
+  } else if (hour < 16) {
+    status = "open";
+  } else if (hour < 20) {
+    status = "after-hours";
+  } else {
+    status = "closed";
+  }
+  
+  return { status, timestampET };
+}
+
 const aiPlaybookResponseSchema = z.object({
   summary: z.string().default("Unable to generate summary"),
   insights: z.array(z.string()).default([]),
@@ -49,7 +93,14 @@ export async function registerRoutes(
   app.get("/api/market/scan", async (req, res) => {
     try {
       const data = await scanMarket();
-      res.json({ success: true, data: Array.isArray(data) ? data : [], timestamp: new Date().toISOString() });
+      const { status: marketStatus, timestampET } = getMarketStatus();
+      res.json({ 
+        success: true, 
+        data: Array.isArray(data) ? data : [], 
+        timestamp: new Date().toISOString(),
+        marketStatus,
+        timestampET
+      });
     } catch (error) {
       console.error("Market scan error:", error);
       res.status(500).json({ 
