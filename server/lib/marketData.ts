@@ -408,6 +408,76 @@ export async function getNews(ticker: string): Promise<NewsItem[]> {
   return generateMockNews(ticker);
 }
 
+// Sentiment trend data point
+interface SentimentTrendPoint {
+  date: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  score: number;
+  articleCount: number;
+}
+
+// Get sentiment trend data over the past 7 days
+export async function getSentimentTrend(ticker: string): Promise<SentimentTrendPoint[]> {
+  const today = new Date();
+  const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+  
+  const formatDate = (d: Date) => d.toISOString().split('T')[0];
+  
+  const trendData: Map<string, { positive: number; neutral: number; negative: number }> = new Map();
+  
+  // Initialize last 7 days
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateStr = formatDate(date);
+    trendData.set(dateStr, { positive: 0, neutral: 0, negative: 0 });
+  }
+  
+  if (process.env.FINNHUB_API_KEY) {
+    const news = await getCompanyNews(ticker, formatDate(twoWeeksAgo), formatDate(today));
+    
+    if (news.length > 0) {
+      for (const article of news) {
+        const articleDate = formatDate(new Date(article.datetime * 1000));
+        const sentiment = determineSentiment(article.headline);
+        
+        if (trendData.has(articleDate)) {
+          const dayData = trendData.get(articleDate)!;
+          dayData[sentiment]++;
+        }
+      }
+    }
+  } else {
+    // Generate mock trend data
+    Array.from(trendData.entries()).forEach(([dateStr, dayData]) => {
+      dayData.positive = Math.floor(Math.random() * 5) + 1;
+      dayData.neutral = Math.floor(Math.random() * 3) + 1;
+      dayData.negative = Math.floor(Math.random() * 4);
+    });
+  }
+  
+  // Convert to array with calculated scores
+  const result: SentimentTrendPoint[] = Array.from(trendData.entries()).map(([date, data]) => {
+    const total = data.positive + data.neutral + data.negative;
+    const score = total > 0 
+      ? parseFloat(((data.positive - data.negative) / total).toFixed(2))
+      : 0;
+    
+    return {
+      date,
+      positive: data.positive,
+      neutral: data.neutral,
+      negative: data.negative,
+      score,
+      articleCount: total
+    };
+  });
+  
+  return result.sort((a, b) => a.date.localeCompare(b.date));
+}
+
 // Determine sentiment from headline (simple keyword analysis)
 function determineSentiment(headline: string): "positive" | "neutral" | "negative" {
   const lower = headline.toLowerCase();

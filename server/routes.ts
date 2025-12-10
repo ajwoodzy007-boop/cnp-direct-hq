@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { scanMarket, getChartData, getNews } from "./lib/marketData";
+import { scanMarket, getChartData, getNews, getSentimentTrend } from "./lib/marketData";
 import { storage } from "./storage";
 import { insertPredictionSchema, insertWatchlistSchema } from "@shared/schema";
 import OpenAI from "openai";
@@ -140,6 +140,22 @@ export async function registerRoutes(
       res.status(500).json({ 
         success: false, 
         error: "Failed to fetch news data",
+        data: []
+      });
+    }
+  });
+
+  // GET /api/market/sentiment-trend/:ticker - Get sentiment trend data over time
+  app.get("/api/market/sentiment-trend/:ticker", async (req, res) => {
+    try {
+      const { ticker } = req.params;
+      const data = await getSentimentTrend(ticker.toUpperCase());
+      res.json({ success: true, ticker, data });
+    } catch (error) {
+      console.error("Sentiment trend error:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to fetch sentiment trend data",
         data: []
       });
     }

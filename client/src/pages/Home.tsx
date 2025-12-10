@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid } from "recharts";
+import { Area, AreaChart, Bar, BarChart, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid, Legend } from "recharts";
 import { motion } from "framer-motion";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
@@ -75,6 +75,15 @@ interface AIPlaybook {
   recommendation: string;
 }
 
+interface SentimentTrendPoint {
+  date: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  score: number;
+  articleCount: number;
+}
+
 interface MarketScanResponse {
   data: StockData[];
   timestamp: string;
@@ -105,6 +114,13 @@ async function fetchChartData(ticker: string, period: string = "3m"): Promise<Ch
 
 async function fetchNews(ticker: string): Promise<NewsItem[]> {
   const res = await fetch(`/api/market/news/${ticker}`);
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error);
+  return json.data;
+}
+
+async function fetchSentimentTrend(ticker: string): Promise<SentimentTrendPoint[]> {
+  const res = await fetch(`/api/market/sentiment-trend/${ticker}`);
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
   return json.data;
@@ -374,6 +390,13 @@ export default function Home() {
   const { data: newsData = [] } = useQuery({
     queryKey: ["news", selectedTicker],
     queryFn: () => fetchNews(selectedTicker),
+    enabled: !!selectedTicker,
+  });
+
+  // Fetch sentiment trend for selected ticker
+  const { data: sentimentTrendData = [] } = useQuery({
+    queryKey: ["sentimentTrend", selectedTicker],
+    queryFn: () => fetchSentimentTrend(selectedTicker),
     enabled: !!selectedTicker,
   });
 
@@ -1772,6 +1795,75 @@ export default function Home() {
                       />
                     </AreaChart>
                   </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* News Sentiment Trend Chart */}
+          <div>
+            <StSubheader>Sentiment Trend (7 Days)</StSubheader>
+            <Card className="mt-4">
+              <CardContent className="pt-4">
+                <div className="h-[200px]" data-testid="chart-sentiment-trend">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={sentimentTrendData}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted/30" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 10 }} 
+                        tickFormatter={(value) => {
+                          const date = new Date(value);
+                          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        }}
+                      />
+                      <YAxis 
+                        yAxisId="left"
+                        tick={{ fontSize: 10 }}
+                        label={{ value: 'Articles', angle: -90, position: 'insideLeft', fontSize: 10 }}
+                      />
+                      <YAxis 
+                        yAxisId="right"
+                        orientation="right"
+                        domain={[-1, 1]}
+                        tick={{ fontSize: 10 }}
+                        label={{ value: 'Score', angle: 90, position: 'insideRight', fontSize: 10 }}
+                      />
+                      <RechartsTooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'hsl(var(--card))', 
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px'
+                        }}
+                        formatter={(value: number, name: string) => {
+                          if (name === 'score') return [value.toFixed(2), 'Sentiment Score'];
+                          return [value, name.charAt(0).toUpperCase() + name.slice(1)];
+                        }}
+                        labelFormatter={(label) => {
+                          const date = new Date(label);
+                          return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                        }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '10px' }} />
+                      <Bar yAxisId="left" dataKey="positive" stackId="a" fill="#22c55e" name="Positive" />
+                      <Bar yAxisId="left" dataKey="neutral" stackId="a" fill="#64748b" name="Neutral" />
+                      <Bar yAxisId="left" dataKey="negative" stackId="a" fill="#ef4444" name="Negative" />
+                      <Line 
+                        yAxisId="right" 
+                        type="monotone" 
+                        dataKey="score" 
+                        stroke="#3b82f6" 
+                        strokeWidth={2}
+                        dot={{ r: 4, fill: '#3b82f6' }}
+                        name="Score"
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Stacked bars show article sentiment breakdown</span>
+                  <span>Blue line shows overall sentiment score (-1 to +1)</span>
                 </div>
               </CardContent>
             </Card>
