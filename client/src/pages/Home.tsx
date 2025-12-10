@@ -1229,60 +1229,56 @@ export default function Home() {
 
   return (
     <StreamlitLayout sidebar={SidebarContent}>
-      <div className="flex items-center justify-between gap-4">
-        <StTitle>⚡ CNP Direct</StTitle>
-        <Button
-          onClick={() => refetch()}
-          disabled={isLoading}
-          size="sm"
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          data-testid="button-refresh"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="mr-2 h-4 w-4" /> Refresh Data
-            </>
-          )}
-        </Button>
-      </div>
-
-      <StText>
-        Real-time market scanner powered by AI sentiment analysis. Identify breakout candidates and oversold
-        opportunities instantly.
-      </StText>
-
-      {/* --- CNP DIRECT MARKET SENTINEL --- */}
-      <div className="mt-6 mb-8">
+      {/* --- HERO: CNP DIRECT MARKET SENTINEL --- */}
+      <div className="mb-8">
         <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-purple-500/5 p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-4">
               <img 
                 src="/assets/logo.jpg" 
                 alt="CNP Direct Market Sentinel" 
-                className="w-14 h-14 rounded-lg object-cover"
+                className="w-20 h-20 rounded-xl object-cover shadow-md"
               />
               <div>
-                <h2 className="text-xl font-bold tracking-tight">The Market Sentinel</h2>
-                <p className="text-xs text-muted-foreground">Capital. Net Profit. Direct.</p>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">The Market Sentinel</h1>
+                <p className="text-sm text-muted-foreground mt-1">Capital. Net Profit. Direct.</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Real-time trading signals powered by AI sentiment analysis
+                </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              {marketStatus === "open" && (
-                <Badge className="bg-green-600 animate-pulse">🟢 LIVE</Badge>
-              )}
-              {marketStatus === "pre-market" && (
-                <Badge className="bg-blue-600">🌅 Pre-Market</Badge>
-              )}
-              {marketStatus === "after-hours" && (
-                <Badge className="bg-purple-600">🌙 After Hours</Badge>
-              )}
-              {marketStatus === "closed" && (
-                <Badge variant="outline">Market Closed</Badge>
-              )}
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                {marketStatus === "open" && (
+                  <Badge className="bg-green-600 animate-pulse text-sm px-3 py-1">🟢 LIVE</Badge>
+                )}
+                {marketStatus === "pre-market" && (
+                  <Badge className="bg-blue-600 text-sm px-3 py-1">🌅 Pre-Market</Badge>
+                )}
+                {marketStatus === "after-hours" && (
+                  <Badge className="bg-purple-600 text-sm px-3 py-1">🌙 After Hours</Badge>
+                )}
+                {marketStatus === "closed" && (
+                  <Badge variant="outline" className="text-sm px-3 py-1">Market Closed</Badge>
+                )}
+              </div>
+              <Button
+                onClick={() => refetch()}
+                disabled={isLoading}
+                size="sm"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                data-testid="button-refresh"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                  </>
+                )}
+              </Button>
             </div>
           </div>
           
