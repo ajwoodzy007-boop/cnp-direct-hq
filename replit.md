@@ -113,3 +113,30 @@ The AI Playbook is a premium feature offering 8 AI-powered trading tools:
 - Set `ALLOW_DEMO_MODE=false` in production to enforce premium authentication
 - Full authentication (session/JWT) should be implemented before production deployment
 - Premium status is checked via `storage.checkPremiumStatus(userId)` which validates subscription status
+
+## Predictions Tab Enhancements
+
+The Predictions tab (Top 10 Daily Picks) includes enhanced UI features:
+
+### Visual Enhancements
+- **Progress Bars**: Shows progress toward predicted price target with color-coded status
+- **Confidence Gauges**: Color-coded progress bars showing AI confidence (green: 70%+, yellow: 50-70%, red: <50%)
+- **Risk Level Badges**: Visual badges for Low/Medium/High risk (🛡️/⚖️/🔥 icons)
+- **AI Reasoning Tooltips**: Popover with "Why this pick?" showing AI reasoning
+- **Stop-Loss Indicators**: Displays calculated stop-loss prices for each prediction
+- **Risk/Reward Ratios**: Shows R:R ratio for each pick
+- **Locked Timestamps**: Shows when predictions were generated
+
+### Sorting & Filtering
+- **Sort by**: Rank (default), Confidence, Potential Return, or Risk Level
+- Sorted predictions preserve original AI rank in tooltip
+
+### Historical Accuracy Section
+- **Win Streak Counter**: Shows consecutive winning days (days where wins > losses)
+- **Fire Badge**: Displays special badge for streaks of 3+ days
+
+### Technical Implementation
+- `sortedPredictions` useMemo for efficient sorting based on user selection
+- Win streak calculated from resolved entries only (ignoring pending)
+- Risk metrics (stopLoss, riskLevel, riskRewardRatio, volatility) have default fallbacks
+- TypeScript interfaces updated: `Top10Pick` includes risk fields, `PredictionStats` includes winStreak

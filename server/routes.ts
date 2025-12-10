@@ -895,15 +895,35 @@ Provide a JSON response with exactly this structure:
             // Get latest chart data for accurate close price
             const chartData = await getChartData(pick.ticker, "1m");
             const chartClose = chartData.length > 0 ? chartData[chartData.length - 1].close : pick.closePrice;
+            
+            // Calculate default values for risk metrics if not present in cache
+            const entryPrice = stock.openPrice || pick.openPrice || pick.price;
+            const defaultStopLoss = pick.stopLoss ?? parseFloat((entryPrice * 0.97).toFixed(2));
+            const defaultRiskLevel = pick.riskLevel ?? "medium";
+            const defaultRiskRewardRatio = pick.riskRewardRatio ?? "1:2";
+            const defaultVolatility = pick.volatility ?? 0;
+            
             return {
               ...pick,
               price: stock.price, // Current live price
               openPrice: stock.openPrice || pick.openPrice, // Today's open
               closePrice: isMarketOpen ? stock.price : chartClose, // During market: live price, after: last close
-              prevClose: stock.prevClose || pick.prevClose
+              prevClose: stock.prevClose || pick.prevClose,
+              // Ensure risk metrics are always present
+              stopLoss: defaultStopLoss,
+              riskLevel: defaultRiskLevel,
+              riskRewardRatio: defaultRiskRewardRatio,
+              volatility: defaultVolatility
             };
           }
-          return pick;
+          // Ensure risk metrics are present even for picks without live stock data
+          return {
+            ...pick,
+            stopLoss: pick.stopLoss ?? parseFloat(((pick.openPrice || pick.price) * 0.97).toFixed(2)),
+            riskLevel: pick.riskLevel ?? "medium",
+            riskRewardRatio: pick.riskRewardRatio ?? "1:2",
+            volatility: pick.volatility ?? 0
+          };
         }));
         
         return res.json({
@@ -932,6 +952,10 @@ Provide a JSON response with exactly this structure:
         confidence: number;
         reasoning: string;
         score: number;
+        stopLoss: number;
+        riskLevel: 'low' | 'medium' | 'high';
+        riskRewardRatio: string;
+        volatility: number;
       }
       
       const predictions: StockPrediction[] = [];
@@ -1054,6 +1078,28 @@ Provide a JSON response with exactly this structure:
           const entryPriceForPrediction = todayOpen;
           const predictedPriceValue = entryPriceForPrediction * (1 + Math.max(0.1, Math.abs(predictedGain)) / 100);
           
+          // Calculate volatility from daily returns standard deviation
+          const volatilityStd = dailyReturns.length > 1 
+            ? Math.sqrt(dailyReturns.reduce((sum, r) => sum + Math.pow(r - (dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length), 2), 0) / dailyReturns.length)
+            : 2;
+          
+          // Calculate stop loss based on volatility (1.5x volatility below entry)
+          const stopLossPercent = Math.max(1.5, volatilityStd * 1.5);
+          const stopLossPrice = parseFloat((todayOpen * (1 - stopLossPercent / 100)).toFixed(2));
+          
+          // Determine risk level based on volatility and RSI
+          let riskLevel: 'low' | 'medium' | 'high' = 'medium';
+          if (volatilityStd < 2 && rsi > 30 && rsi < 70) {
+            riskLevel = 'low';
+          } else if (volatilityStd > 4 || rsi < 25 || rsi > 80) {
+            riskLevel = 'high';
+          }
+          
+          // Calculate risk/reward ratio
+          const potentialReward = Math.max(0.1, Math.abs(predictedGain));
+          const potentialRisk = stopLossPercent;
+          const riskRewardRatio = `1:${(potentialReward / potentialRisk).toFixed(1)}`;
+          
           predictions.push({
             ticker: stock.ticker,
             price: priceToUse,
@@ -1064,7 +1110,11 @@ Provide a JSON response with exactly this structure:
             predictedPrice: parseFloat(predictedPriceValue.toFixed(2)),
             confidence: Math.round(confidence),
             reasoning: reasons.slice(0, 3).join(", "),
-            score: Math.max(1, score) // Ensure positive score for sorting
+            score: Math.max(1, score),
+            stopLoss: stopLossPrice,
+            riskLevel,
+            riskRewardRatio,
+            volatility: parseFloat(volatilityStd.toFixed(2))
           });
         } catch (error) {
           // Skip failed stocks
@@ -1076,7 +1126,7 @@ Provide a JSON response with exactly this structure:
       const top10 = predictions
         .sort((a, b) => b.score - a.score)
         .slice(0, 10)
-        .map(({ ticker, price, openPrice, prevClose, closePrice, predictedGain, predictedPrice, confidence, reasoning }) => ({
+        .map(({ ticker, price, openPrice, prevClose, closePrice, predictedGain, predictedPrice, confidence, reasoning, stopLoss, riskLevel, riskRewardRatio, volatility }) => ({
           ticker,
           price,
           openPrice,
@@ -1085,7 +1135,11 @@ Provide a JSON response with exactly this structure:
           predictedGain,
           predictedPrice,
           confidence,
-          reasoning
+          reasoning,
+          stopLoss,
+          riskLevel,
+          riskRewardRatio,
+          volatility
         }));
       
       // Get the date to use - for after hours, use previous trading day

@@ -28,7 +28,7 @@ export interface IStorage {
   saveDailyPredictionEntries(runId: string, entries: Omit<InsertDailyPredictionEntry, 'runId'>[]): Promise<DailyPredictionEntry[]>;
   finalizeDailyPredictionRun(runDate: string, entries: { ticker: string; closePrice: number; currentPrice: number; closePnl: number; totalPnl: number; outcome: string }[]): Promise<void>;
   getDailyPredictionHistory(limit?: number): Promise<(DailyPredictionRun & { entries: DailyPredictionEntry[] })[]>;
-  getDailyPredictionStats(): Promise<{ totalRuns: number; totalPicks: number; wins: number; losses: number; pending: number; winRate: number; avgPnl: number }>;
+  getDailyPredictionStats(): Promise<{ totalRuns: number; totalPicks: number; wins: number; losses: number; pending: number; winRate: number; avgPnl: number; winStreak: number }>;
   // AI Playbook Premium Features
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
   createOrUpdateUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
@@ -376,8 +376,8 @@ export class MemStorage implements IStorage {
     return result;
   }
 
-  async getDailyPredictionStats(): Promise<{ totalRuns: number; totalPicks: number; wins: number; losses: number; pending: number; winRate: number; avgPnl: number }> {
-    const runs = await db.select().from(dailyPredictionRuns);
+  async getDailyPredictionStats(): Promise<{ totalRuns: number; totalPicks: number; wins: number; losses: number; pending: number; winRate: number; avgPnl: number; winStreak: number }> {
+    const runs = await db.select().from(dailyPredictionRuns).orderBy(desc(dailyPredictionRuns.runDate));
     const allEntries = await db.select().from(dailyPredictionEntries);
     
     const wins = allEntries.filter(e => e.outcome === 'win').length;
@@ -389,6 +389,29 @@ export class MemStorage implements IStorage {
     const pnls = allEntries.filter(e => e.closePnl !== null).map(e => e.closePnl!);
     const avgPnl = pnls.length > 0 ? pnls.reduce((a, b) => a + b, 0) / pnls.length : 0;
     
+    // Calculate win streak (consecutive days where wins > losses)
+    // A winning day requires more wins than losses among resolved entries
+    let winStreak = 0;
+    for (const run of runs) {
+      // Get entries for this run
+      const runEntries = allEntries.filter(e => e.runId === run.id);
+      // Count resolved entries
+      const runWins = runEntries.filter(e => e.outcome === 'win').length;
+      const runLosses = runEntries.filter(e => e.outcome === 'loss').length;
+      const totalResolved = runWins + runLosses;
+      
+      // Skip unresolved runs (no wins or losses yet - today's run before market close)
+      if (totalResolved === 0) continue;
+      
+      // Win streak continues only if strictly more wins than losses
+      // Any tie or loss breaks the streak
+      if (runWins > runLosses) {
+        winStreak++;
+      } else {
+        break; // Streak broken by a losing or tie day
+      }
+    }
+    
     return {
       totalRuns: runs.length,
       totalPicks: allEntries.length,
@@ -397,6 +420,7 @@ export class MemStorage implements IStorage {
       pending,
       winRate: parseFloat(winRate.toFixed(1)),
       avgPnl: parseFloat(avgPnl.toFixed(2)),
+      winStreak,
     };
   }
 

@@ -9,7 +9,7 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX, GraduationCap, Brain, Target, Zap, ShieldAlert, PieChart, DollarSign } from "lucide-react";
+import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX, GraduationCap, Brain, Target, Zap, ShieldAlert, PieChart, DollarSign, Lock, Flame, Trophy } from "lucide-react";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -274,6 +274,10 @@ interface Top10Pick {
   predictedPrice?: number;
   confidence: number;
   reasoning: string;
+  stopLoss?: number;
+  riskLevel?: "low" | "medium" | "high";
+  riskRewardRatio?: string;
+  volatility?: number;
 }
 
 interface Top10TodayData {
@@ -309,6 +313,7 @@ interface PredictionStats {
   pending: number;
   winRate: number;
   avgPnl: number;
+  winStreak?: number;
 }
 
 interface HistoricalEntry {
@@ -581,6 +586,9 @@ export default function Home() {
 
   // State for showing history dialog
   const [showPerformanceHistory, setShowPerformanceHistory] = useState(false);
+  
+  // State for sorting predictions
+  const [predictionSort, setPredictionSort] = useState<"rank" | "confidence" | "return" | "risk">("rank");
 
   // Calculate daily win/loss based on top 10 predictions vs current market prices
   // Entry price = today's open price, show close P/L and after-hours P/L separately
@@ -690,6 +698,20 @@ export default function Home() {
     const winRate = completed.length > 0 ? ((wins / completed.length) * 100).toFixed(1) : "0";
     return { total: predictionsData.length, completed: completed.length, wins, losses, winRate };
   }, [predictionsData]);
+
+  // Sorted predictions based on user selection
+  const sortedPredictions = useMemo(() => {
+    const predictions = [...dailyPredictionResults.predictions];
+    if (predictionSort === "confidence") {
+      predictions.sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+    } else if (predictionSort === "return") {
+      predictions.sort((a, b) => (b.predictedGain || 0) - (a.predictedGain || 0));
+    } else if (predictionSort === "risk") {
+      const riskOrder: Record<string, number> = { low: 0, medium: 1, high: 2 };
+      predictions.sort((a, b) => (riskOrder[a.riskLevel || "medium"] || 1) - (riskOrder[b.riskLevel || "medium"] || 1));
+    }
+    return predictions;
+  }, [dailyPredictionResults.predictions, predictionSort]);
 
 
   // Derived state for tables - always show top 10 by change percent
@@ -1862,10 +1884,36 @@ export default function Home() {
           {/* --- PREDICTIONS TAB CONTENT --- */}
           <div className="space-y-6">
             <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-purple-500/5 p-6">
-              <h2 className="text-xl font-bold mb-4">🎯 Today's Top 10 Predictions</h2>
-              <p className="text-sm text-muted-foreground mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold">🎯 Today's Top 10 Predictions</h2>
+                {top10TodayData?.generatedAt && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">
+                    <Lock className="h-3 w-3" />
+                    <span>Generated: {new Date(top10TodayData.generatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })} ET</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
                 AI-generated stock picks with predicted price targets. Track win/loss outcomes based on actual closing prices.
               </p>
+              
+              {/* Sorting Controls */}
+              {dailyPredictionResults.predictions.length > 0 && (
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-xs text-muted-foreground">Sort by:</span>
+                  <select 
+                    className="text-xs px-2 py-1 rounded border border-input bg-background"
+                    value={predictionSort}
+                    onChange={(e) => setPredictionSort(e.target.value as "rank" | "confidence" | "return" | "risk")}
+                    data-testid="select-prediction-sort"
+                  >
+                    <option value="rank">Rank</option>
+                    <option value="confidence">Confidence</option>
+                    <option value="return">Potential Return</option>
+                    <option value="risk">Risk (Low First)</option>
+                  </select>
+                </div>
+              )}
               
               {dailyPredictionResults.predictions.length > 0 ? (
                 <div className="space-y-4">
@@ -1881,59 +1929,130 @@ export default function Home() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {dailyPredictionResults.predictions.map((pick, idx) => (
-                      <div
-                        key={pick.ticker}
-                        className={`p-4 rounded-lg border ${
-                          pick.outcome === "win" 
-                            ? "bg-green-500/10 border-green-500/30" 
-                            : pick.outcome === "loss"
-                            ? "bg-red-500/10 border-red-500/30"
-                            : "bg-muted/30 border-border"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-lg">#{idx + 1}</span>
-                            <a 
-                              href={`/api/go/${pick.ticker}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-bold text-primary hover:underline"
-                            >
-                              {pick.ticker}
-                            </a>
+                    {sortedPredictions.map((pick, idx) => {
+                      // Get original rank for display
+                      const originalRank = dailyPredictionResults.predictions.findIndex(p => p.ticker === pick.ticker) + 1;
+                      // Calculate progress toward target
+                      const progressToTarget = pick.entryPrice && pick.predictedPrice && pick.closePrice
+                        ? Math.min(100, Math.max(0, ((pick.closePrice - pick.entryPrice) / (pick.predictedPrice - pick.entryPrice)) * 100))
+                        : 0;
+                      
+                      return (
+                        <div
+                          key={pick.ticker}
+                          className={`p-4 rounded-lg border ${
+                            pick.outcome === "win" 
+                              ? "bg-green-500/10 border-green-500/30" 
+                              : pick.outcome === "loss"
+                              ? "bg-red-500/10 border-red-500/30"
+                              : "bg-muted/30 border-border"
+                          }`}
+                          data-testid={`prediction-card-${pick.ticker}`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-lg" title={predictionSort !== "rank" ? `AI Rank: #${originalRank}` : undefined}>#{idx + 1}</span>
+                              <a 
+                                href={`/api/go/${pick.ticker}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="font-bold text-primary hover:underline"
+                              >
+                                {pick.ticker}
+                              </a>
+                              {/* Confidence Gauge */}
+                              <div className="flex items-center gap-1" title={`${pick.confidence || 50}% AI Confidence`}>
+                                <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full ${
+                                      (pick.confidence || 50) >= 70 ? "bg-green-500" :
+                                      (pick.confidence || 50) >= 50 ? "bg-yellow-500" : "bg-red-500"
+                                    }`}
+                                    style={{ width: `${pick.confidence || 50}%` }}
+                                  />
+                                </div>
+                                <span className="text-xs font-medium">{pick.confidence || 50}%</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {/* Risk Badge */}
+                              <Badge variant="outline" className={`text-xs ${
+                                pick.riskLevel === "low" ? "border-green-500 text-green-600" :
+                                pick.riskLevel === "high" ? "border-red-500 text-red-500" :
+                                "border-yellow-500 text-yellow-600"
+                              }`}>
+                                {pick.riskLevel === "low" ? "🛡️ Low" : pick.riskLevel === "high" ? "🔥 High" : "⚖️ Med"}
+                              </Badge>
+                              <Badge className={
+                                pick.outcome === "win" ? "bg-green-600" :
+                                pick.outcome === "loss" ? "bg-red-600" :
+                                "bg-muted"
+                              }>
+                                {pick.outcome ? pick.outcome.toUpperCase() : "PENDING"}
+                              </Badge>
+                            </div>
                           </div>
-                          <Badge className={
-                            pick.outcome === "win" ? "bg-green-600" :
-                            pick.outcome === "loss" ? "bg-red-600" :
-                            "bg-muted"
-                          }>
-                            {pick.outcome ? pick.outcome.toUpperCase() : "PENDING"}
-                          </Badge>
+                          
+                          {/* AI Reasoning Tooltip */}
+                          {pick.reasoning && (
+                            <div className="flex items-center gap-1 mb-2">
+                              <Popover>
+                                <PopoverTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+                                  <Info className="h-3 w-3" />
+                                  <span>Why this pick?</span>
+                                </PopoverTrigger>
+                                <PopoverContent className="text-sm w-64">
+                                  <p className="font-medium mb-1">AI Reasoning:</p>
+                                  <p className="text-muted-foreground">{pick.reasoning}</p>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          )}
+                          
+                          {/* Progress to Target Bar */}
+                          <div className="mb-3">
+                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                              <span>Entry: ${pick.entryPrice?.toFixed(2)}</span>
+                              <span>Target: ${pick.predictedPrice?.toFixed(2)}</span>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full rounded-full transition-all ${
+                                  progressToTarget >= 100 ? "bg-green-500" :
+                                  progressToTarget >= 50 ? "bg-blue-500" :
+                                  progressToTarget > 0 ? "bg-yellow-500" : "bg-red-500"
+                                }`}
+                                style={{ width: `${Math.max(0, progressToTarget)}%` }}
+                              />
+                            </div>
+                            <div className="text-xs text-center text-muted-foreground mt-1">
+                              {progressToTarget >= 100 ? "Target Reached! ✓" : `${progressToTarget.toFixed(0)}% to target`}
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Close:</span>
+                              <span className="ml-2 font-mono">${pick.closePrice?.toFixed(2) || "Pending"}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">P/L:</span>
+                              <span className={`ml-2 font-mono ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
+                                {pick.closePnl >= 0 ? "+" : ""}{pick.closePnl?.toFixed(2) || 0}%
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Stop Loss:</span>
+                              <span className="ml-2 font-mono text-red-500">${pick.stopLoss?.toFixed(2) || "N/A"}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">R:R:</span>
+                              <span className="ml-2 font-mono text-blue-500">{pick.riskRewardRatio || "N/A"}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="grid grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Entry:</span>
-                            <span className="ml-2 font-mono">${pick.entryPrice?.toFixed(2)}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Target:</span>
-                            <span className="ml-2 font-mono text-purple-600">${pick.predictedPrice?.toFixed(2) || "N/A"}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Close:</span>
-                            <span className="ml-2 font-mono">${pick.closePrice?.toFixed(2) || "Pending"}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">P/L:</span>
-                            <span className={`ml-2 font-mono ${pick.closePnl >= 0 ? "text-green-600" : "text-red-600"}`}>
-                              {pick.closePnl >= 0 ? "+" : ""}{pick.closePnl?.toFixed(2) || 0}%
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ) : (
@@ -1973,10 +2092,16 @@ export default function Home() {
                   <CardTitle className="text-lg flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-primary" />
                     Historical Accuracy
+                    {predictionStatsData.winStreak && predictionStatsData.winStreak >= 3 && (
+                      <Badge className="bg-gradient-to-r from-orange-500 to-yellow-500 ml-2">
+                        <Flame className="h-3 w-3 mr-1" />
+                        {predictionStatsData.winStreak} Day Streak!
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-3 md:grid-cols-5 gap-4 text-center">
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-4 text-center">
                     <div className="bg-green-500/10 rounded-lg p-4">
                       <div className="text-2xl font-bold text-green-600">{predictionStatsData.wins}</div>
                       <div className="text-xs text-muted-foreground">Total Wins</div>
@@ -1998,6 +2123,16 @@ export default function Home() {
                     <div className="bg-muted/50 rounded-lg p-4">
                       <div className="text-2xl font-bold">{predictionStatsData.totalPicks}</div>
                       <div className="text-xs text-muted-foreground">Total Picks</div>
+                    </div>
+                    {/* Win Streak Counter */}
+                    <div className={`rounded-lg p-4 ${(predictionStatsData.winStreak || 0) >= 3 ? "bg-gradient-to-br from-orange-500/20 to-yellow-500/20" : "bg-muted/50"}`}>
+                      <div className="flex items-center justify-center gap-1">
+                        <Trophy className={`h-5 w-5 ${(predictionStatsData.winStreak || 0) >= 3 ? "text-orange-500" : "text-muted-foreground"}`} />
+                        <span className={`text-2xl font-bold ${(predictionStatsData.winStreak || 0) >= 3 ? "text-orange-500" : ""}`}>
+                          {predictionStatsData.winStreak || 0}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">Win Streak</div>
                     </div>
                   </div>
                   {predictionStatsData.avgPnl !== 0 && (
