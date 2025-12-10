@@ -1,7 +1,9 @@
-import yf from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 // @ts-ignore - vader-sentiment doesn't have type declarations
 import { SentimentIntensityAnalyzer } from 'vader-sentiment';
 import { RSI } from 'technicalindicators';
+
+const yf = new YahooFinance();
 
 const getSentimentScore = (text: string): number => {
   const analyzer = SentimentIntensityAnalyzer;
@@ -23,12 +25,20 @@ export interface SentinelResult {
 async function analyzeStock(ticker: string): Promise<SentinelResult | null> {
   try {
     const quote = await yf.quote(ticker) as any;
-    const history = await yf.historical(ticker, { period1: '1mo', interval: '1d' }) as any[];
+    
+    const period1 = new Date();
+    period1.setMonth(period1.getMonth() - 1);
+    const chartData = await yf.chart(ticker, { 
+      period1, 
+      period2: new Date(),
+      interval: '1d' 
+    }) as any;
     const news = await yf.search(ticker, { newsCount: 5 }) as any;
 
+    const history = chartData?.quotes || [];
     if (!quote || history.length < 15) return null;
 
-    const closes = history.map((h: any) => h.close);
+    const closes = history.map((h: any) => h.close).filter((c: any) => c != null);
     const rsiValues = RSI.calculate({ values: closes, period: 14 });
     const currentRSI = rsiValues[rsiValues.length - 1] || 50;
 
@@ -85,8 +95,7 @@ async function analyzeStock(ticker: string): Promise<SentinelResult | null> {
 
 export const runMarketScan = async (): Promise<SentinelResult[]> => {
   try {
-    const queryOptions = { count: 10, scrIds: 'day_gainers' };
-    const screenerResult = await yf.screener(queryOptions) as any;
+    const screenerResult = await yf.screener({ scrIds: 'day_gainers', count: 10 }) as any;
     
     const tickers = screenerResult.quotes
       .map((q: any) => q.symbol)
