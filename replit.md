@@ -45,6 +45,7 @@ Key API endpoints:
 - `POST /api/ai/playbook/portfolio` - Generate portfolio optimization
 - `POST /api/ai/playbook/patterns` - Generate pattern recognition analysis
 - `POST /api/ai/playbook/earnings` - Generate earnings play analysis
+- `POST /api/ai/playbook/options` - Generate options trading signals
 - `GET /api/user/premium-status` - Check user's premium subscription status
 
 ### Data Storage
@@ -91,7 +92,7 @@ Current tables:
 
 ## AI Playbook Premium Features
 
-The AI Playbook is a premium feature offering 7 AI-powered trading tools:
+The AI Playbook is a premium feature offering 8 AI-powered trading tools:
 
 1. **Trading Strategies** - Personalized playbooks based on trading style, risk tolerance, and experience
 2. **Market Briefings** - Daily AI-generated market reports with sector analysis
@@ -100,6 +101,7 @@ The AI Playbook is a premium feature offering 7 AI-powered trading tools:
 5. **Portfolio Optimizer** - AI suggests portfolio adjustments for better diversification
 6. **Pattern Recognition** - AI detects chart patterns with explanations and trade setups
 7. **Earnings Analyzer** - AI analyzes earnings with pre/post strategies and options plays
+8. **Options Signals** - AI generates call/put recommendations with strike prices, Greeks analysis, and risk management
 
 **Architecture:**
 - `server/lib/aiPlaybook.ts` - AI generation service using OpenAI GPT-4o
