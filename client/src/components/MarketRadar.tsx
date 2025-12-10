@@ -99,7 +99,7 @@ export default function MarketRadar() {
                   <div className="flex items-center gap-2 text-sm">
                     <span className="text-slate-300">${stock.price.toFixed(2)}</span>
                     <span className={`${stock.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {stock.changePercent > 0 ? '+' : ''}{(stock.changePercent * 100).toFixed(2)}%
+                      {stock.changePercent > 0 ? '+' : ''}{stock.changePercent.toFixed(2)}%
                     </span>
                   </div>
                 </div>
