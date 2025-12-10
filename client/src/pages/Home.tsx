@@ -310,6 +310,7 @@ export default function Home() {
   const [watchlistInput, setWatchlistInput] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [aiResult, setAiResult] = useState<{ type: string; title: string; content: string; loading: boolean; error: string | null }>({ type: "", title: "", content: "", loading: false, error: null });
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize audio element for alerts
@@ -1888,7 +1889,9 @@ export default function Home() {
                   <Button 
                     variant="outline" 
                     className="w-full border-purple-500/30 hover:bg-purple-500/10"
+                    disabled={aiResult.loading}
                     onClick={async () => {
+                      setAiResult({ type: "strategy", title: "Trading Strategy", content: "", loading: true, error: null });
                       try {
                         const res = await fetch("/api/ai/playbook/strategies", {
                           method: "POST",
@@ -1896,12 +1899,18 @@ export default function Home() {
                           body: JSON.stringify({ tradingStyle: "swing", riskTolerance: "moderate" })
                         });
                         const data = await res.json();
-                        if (data.success) alert("Strategy generated! Check console for details.");
-                        console.log("Strategy:", data);
-                      } catch (e) { console.error(e); }
+                        if (data.success && data.data?.sections?.[0]) {
+                          setAiResult({ type: "strategy", title: data.data.sections[0].title, content: data.data.sections[0].content, loading: false, error: null });
+                        } else {
+                          setAiResult({ type: "strategy", title: "Trading Strategy", content: "", loading: false, error: data.error || "Failed to generate" });
+                        }
+                      } catch (e) { 
+                        setAiResult({ type: "strategy", title: "Trading Strategy", content: "", loading: false, error: "Network error" });
+                      }
                     }}
                     data-testid="button-generate-strategies"
                   >
+                    {aiResult.loading && aiResult.type === "strategy" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Generate Strategy
                   </Button>
                 </CardContent>
@@ -1922,7 +1931,9 @@ export default function Home() {
                   <Button 
                     variant="outline" 
                     className="w-full border-blue-500/30 hover:bg-blue-500/10"
+                    disabled={aiResult.loading}
                     onClick={async () => {
+                      setAiResult({ type: "briefing", title: "Market Briefing", content: "", loading: true, error: null });
                       try {
                         const res = await fetch("/api/ai/playbook/briefing", {
                           method: "POST",
@@ -1930,12 +1941,18 @@ export default function Home() {
                           body: JSON.stringify({})
                         });
                         const data = await res.json();
-                        if (data.success) alert("Briefing generated! Check console for details.");
-                        console.log("Briefing:", data);
-                      } catch (e) { console.error(e); }
+                        if (data.success && data.data?.sections?.[0]) {
+                          setAiResult({ type: "briefing", title: data.data.sections[0].title, content: data.data.sections[0].content, loading: false, error: null });
+                        } else {
+                          setAiResult({ type: "briefing", title: "Market Briefing", content: "", loading: false, error: data.error || "Failed to generate" });
+                        }
+                      } catch (e) { 
+                        setAiResult({ type: "briefing", title: "Market Briefing", content: "", loading: false, error: "Network error" });
+                      }
                     }}
                     data-testid="button-generate-briefing"
                   >
+                    {aiResult.loading && aiResult.type === "briefing" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Get Today's Briefing
                   </Button>
                 </CardContent>
@@ -1956,7 +1973,9 @@ export default function Home() {
                   <Button 
                     variant="outline" 
                     className="w-full border-green-500/30 hover:bg-green-500/10"
+                    disabled={aiResult.loading}
                     onClick={async () => {
+                      setAiResult({ type: "signals", title: "Smart Signals", content: "", loading: true, error: null });
                       try {
                         const res = await fetch("/api/ai/playbook/signals", {
                           method: "POST",
@@ -1964,12 +1983,18 @@ export default function Home() {
                           body: JSON.stringify({ tickers: ["AAPL", "MSFT", "NVDA"] })
                         });
                         const data = await res.json();
-                        if (data.success) alert("Signals generated! Check console for details.");
-                        console.log("Signals:", data);
-                      } catch (e) { console.error(e); }
+                        if (data.success && data.data?.sections?.[0]) {
+                          setAiResult({ type: "signals", title: data.data.sections[0].title, content: data.data.sections[0].content, loading: false, error: null });
+                        } else {
+                          setAiResult({ type: "signals", title: "Smart Signals", content: "", loading: false, error: data.error || "Failed to generate" });
+                        }
+                      } catch (e) { 
+                        setAiResult({ type: "signals", title: "Smart Signals", content: "", loading: false, error: "Network error" });
+                      }
                     }}
                     data-testid="button-generate-signals"
                   >
+                    {aiResult.loading && aiResult.type === "signals" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Generate Signals
                   </Button>
                 </CardContent>
@@ -1997,9 +2022,11 @@ export default function Home() {
                     <Button 
                       variant="outline" 
                       className="border-red-500/30 hover:bg-red-500/10"
+                      disabled={aiResult.loading}
                       onClick={async () => {
                         const ticker = (document.getElementById("risk-ticker-input") as HTMLInputElement)?.value;
-                        if (!ticker) { alert("Enter a ticker"); return; }
+                        if (!ticker) { toast.error("Enter a ticker"); return; }
+                        setAiResult({ type: "risk", title: "Risk Assessment", content: "", loading: true, error: null });
                         try {
                           const res = await fetch("/api/ai/playbook/risk", {
                             method: "POST",
@@ -2007,13 +2034,18 @@ export default function Home() {
                             body: JSON.stringify({ ticker })
                           });
                           const data = await res.json();
-                          if (data.success) alert("Risk assessment generated!");
-                          console.log("Risk:", data);
-                        } catch (e) { console.error(e); }
+                          if (data.success && data.data?.sections?.[0]) {
+                            setAiResult({ type: "risk", title: data.data.sections[0].title, content: data.data.sections[0].content, loading: false, error: null });
+                          } else {
+                            setAiResult({ type: "risk", title: "Risk Assessment", content: "", loading: false, error: data.error || "Failed to generate" });
+                          }
+                        } catch (e) { 
+                          setAiResult({ type: "risk", title: "Risk Assessment", content: "", loading: false, error: "Network error" });
+                        }
                       }}
                       data-testid="button-generate-risk"
                     >
-                      Assess
+                      {aiResult.loading && aiResult.type === "risk" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assess"}
                     </Button>
                   </div>
                 </CardContent>
@@ -2034,7 +2066,9 @@ export default function Home() {
                   <Button 
                     variant="outline" 
                     className="w-full border-amber-500/30 hover:bg-amber-500/10"
+                    disabled={aiResult.loading}
                     onClick={async () => {
+                      setAiResult({ type: "portfolio", title: "Portfolio Optimization", content: "", loading: true, error: null });
                       try {
                         const res = await fetch("/api/ai/playbook/portfolio", {
                           method: "POST",
@@ -2048,12 +2082,18 @@ export default function Home() {
                           })
                         });
                         const data = await res.json();
-                        if (data.success) alert("Portfolio analysis generated!");
-                        console.log("Portfolio:", data);
-                      } catch (e) { console.error(e); }
+                        if (data.success && data.data?.sections?.[0]) {
+                          setAiResult({ type: "portfolio", title: data.data.sections[0].title, content: data.data.sections[0].content, loading: false, error: null });
+                        } else {
+                          setAiResult({ type: "portfolio", title: "Portfolio Optimization", content: "", loading: false, error: data.error || "Failed to generate" });
+                        }
+                      } catch (e) { 
+                        setAiResult({ type: "portfolio", title: "Portfolio Optimization", content: "", loading: false, error: "Network error" });
+                      }
                     }}
                     data-testid="button-generate-portfolio"
                   >
+                    {aiResult.loading && aiResult.type === "portfolio" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Optimize Portfolio
                   </Button>
                 </CardContent>
@@ -2081,9 +2121,11 @@ export default function Home() {
                     <Button 
                       variant="outline" 
                       className="border-cyan-500/30 hover:bg-cyan-500/10"
+                      disabled={aiResult.loading}
                       onClick={async () => {
                         const ticker = (document.getElementById("pattern-ticker-input") as HTMLInputElement)?.value;
-                        if (!ticker) { alert("Enter a ticker"); return; }
+                        if (!ticker) { toast.error("Enter a ticker"); return; }
+                        setAiResult({ type: "patterns", title: "Pattern Recognition", content: "", loading: true, error: null });
                         try {
                           const res = await fetch("/api/ai/playbook/patterns", {
                             method: "POST",
@@ -2091,13 +2133,18 @@ export default function Home() {
                             body: JSON.stringify({ ticker })
                           });
                           const data = await res.json();
-                          if (data.success) alert("Pattern analysis generated!");
-                          console.log("Patterns:", data);
-                        } catch (e) { console.error(e); }
+                          if (data.success && data.data?.sections?.[0]) {
+                            setAiResult({ type: "patterns", title: data.data.sections[0].title, content: data.data.sections[0].content, loading: false, error: null });
+                          } else {
+                            setAiResult({ type: "patterns", title: "Pattern Recognition", content: "", loading: false, error: data.error || "Failed to generate" });
+                          }
+                        } catch (e) { 
+                          setAiResult({ type: "patterns", title: "Pattern Recognition", content: "", loading: false, error: "Network error" });
+                        }
                       }}
                       data-testid="button-generate-patterns"
                     >
-                      Analyze
+                      {aiResult.loading && aiResult.type === "patterns" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Analyze"}
                     </Button>
                   </div>
                 </CardContent>
@@ -2125,9 +2172,11 @@ export default function Home() {
                     <Button 
                       variant="outline" 
                       className="border-orange-500/30 hover:bg-orange-500/10"
+                      disabled={aiResult.loading}
                       onClick={async () => {
                         const ticker = (document.getElementById("earnings-ticker-input") as HTMLInputElement)?.value;
-                        if (!ticker) { alert("Enter a ticker"); return; }
+                        if (!ticker) { toast.error("Enter a ticker"); return; }
+                        setAiResult({ type: "earnings", title: "Earnings Analysis", content: "", loading: true, error: null });
                         try {
                           const res = await fetch("/api/ai/playbook/earnings", {
                             method: "POST",
@@ -2135,18 +2184,69 @@ export default function Home() {
                             body: JSON.stringify({ ticker })
                           });
                           const data = await res.json();
-                          if (data.success) alert("Earnings analysis generated!");
-                          console.log("Earnings:", data);
-                        } catch (e) { console.error(e); }
+                          if (data.success && data.data?.sections?.[0]) {
+                            setAiResult({ type: "earnings", title: data.data.sections[0].title, content: data.data.sections[0].content, loading: false, error: null });
+                          } else {
+                            setAiResult({ type: "earnings", title: "Earnings Analysis", content: "", loading: false, error: data.error || "Failed to generate" });
+                          }
+                        } catch (e) { 
+                          setAiResult({ type: "earnings", title: "Earnings Analysis", content: "", loading: false, error: "Network error" });
+                        }
                       }}
                       data-testid="button-generate-earnings"
                     >
-                      Analyze
+                      {aiResult.loading && aiResult.type === "earnings" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Analyze"}
                     </Button>
                   </div>
                 </CardContent>
               </Card>
             </div>
+
+            {/* AI Result Display */}
+            {(aiResult.loading || aiResult.content || aiResult.error) && (
+              <Card className="border-purple-500/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <Brain className="h-5 w-5 text-purple-500" />
+                      {aiResult.title}
+                    </span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setAiResult({ type: "", title: "", content: "", loading: false, error: null })}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {aiResult.loading && (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                      <span className="ml-3 text-muted-foreground">Generating AI insights...</span>
+                    </div>
+                  )}
+                  {aiResult.error && (
+                    <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                      <p className="text-red-500 text-sm">{aiResult.error}</p>
+                    </div>
+                  )}
+                  {aiResult.content && !aiResult.loading && (
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed" dangerouslySetInnerHTML={{ 
+                        __html: aiResult.content
+                          .replace(/### (.*)/g, '<h3 class="text-lg font-semibold mt-4 mb-2 text-foreground">$1</h3>')
+                          .replace(/#### (.*)/g, '<h4 class="text-base font-semibold mt-3 mb-1 text-foreground">$1</h4>')
+                          .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                          .replace(/- (.*)/g, '<li class="ml-4">$1</li>')
+                          .replace(/\n/g, '<br/>')
+                      }} />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Upgrade CTA for non-premium users */}
             <Card className="border-2 border-dashed border-purple-500/30 bg-purple-500/5">
