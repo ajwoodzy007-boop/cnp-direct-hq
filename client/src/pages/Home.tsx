@@ -1230,7 +1230,7 @@ export default function Home() {
   return (
     <StreamlitLayout sidebar={SidebarContent}>
       <div className="flex items-center justify-between gap-4">
-        <StTitle>⚡ Dashboard</StTitle>
+        <StTitle>⚡ CNP Direct</StTitle>
         <Button
           onClick={() => refetch()}
           disabled={isLoading}
