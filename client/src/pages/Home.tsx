@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { AdBanner } from "@/components/AdBanner";
+import MarketRadar from "@/components/MarketRadar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -1105,9 +1106,12 @@ export default function Home() {
 
       {/* --- TABS NAVIGATION --- */}
       <Tabs defaultValue="signals" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-6">
+        <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="signals" className="text-sm font-medium" data-testid="tab-signals">
             📊 Market Signals
+          </TabsTrigger>
+          <TabsTrigger value="radar" className="text-sm font-medium" data-testid="tab-radar">
+            📡 Radar
           </TabsTrigger>
           <TabsTrigger value="sentinel" className="text-sm font-medium" data-testid="tab-sentinel">
             🛡️ Sentinel
@@ -1119,6 +1123,10 @@ export default function Home() {
             🧠 AI Playbook
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="radar">
+          <MarketRadar />
+        </TabsContent>
 
         <TabsContent value="signals">
           {/* --- GAINERS SECTION --- */}
