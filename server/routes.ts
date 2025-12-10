@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { scanMarket, getChartData, getNews, getSentimentTrend } from "./lib/marketData";
+import { runMarketScan as runSentinelScan } from "./lib/sentinel";
 import { storage } from "./storage";
 import { insertPredictionSchema, insertWatchlistSchema } from "@shared/schema";
 import OpenAI from "openai";
@@ -108,6 +109,29 @@ export async function registerRoutes(
         error: "Failed to scan market data",
         data: []
       });
+    }
+  });
+
+  // GET /api/market/sentinel - Market Sentinel scanner with RSI, RVOL, and sentiment
+  app.get("/api/market/sentinel", async (req, res) => {
+    try {
+      const results = await runSentinelScan();
+      
+      const sorted = results.sort((a, b) => {
+        if (a.signal.includes('BUY') && !b.signal.includes('BUY')) return -1;
+        if (!a.signal.includes('BUY') && b.signal.includes('BUY')) return 1;
+        return 0;
+      });
+
+      res.json({
+        success: true,
+        count: sorted.length,
+        timestamp: new Date().toISOString(),
+        data: sorted
+      });
+    } catch (error) {
+      console.error("Sentinel scan error:", error);
+      res.status(500).json({ success: false, error: 'Sentinel Scan Failed' });
     }
   });
 
