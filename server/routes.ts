@@ -12,6 +12,7 @@ import oracleRouter from "./routes/oracle";
 import strategistRouter from "./routes/strategist";
 import vaultRouter from "./routes/vault";
 import chartRouter from "./routes/chart";
+import stripeRouter from "./routes/stripe";
 
 // Cache for daily predictions - regenerated at 7:30 AM ET each weekday
 interface DailyPredictionsCache {
@@ -105,6 +106,9 @@ export async function registerRoutes(
   
   // Chart routes
   app.use("/api/chart", chartRouter);
+  
+  // Stripe checkout routes
+  app.use("/api/stripe", stripeRouter);
 
   // GET /api/market/scan - Scan market for gainers/losers
   app.get("/api/market/scan", async (req, res) => {

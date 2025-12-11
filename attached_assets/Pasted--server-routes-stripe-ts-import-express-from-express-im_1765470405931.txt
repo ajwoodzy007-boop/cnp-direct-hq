@@ -1,0 +1,82 @@
+// server/routes/stripe.ts
+import express from 'express';
+import Stripe from 'stripe';
+import { query } from '../db';
+
+const router = express.Router();
+
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  apiVersion: '2022-11-15', // Use latest API version available
+});
+
+const DOMAIN = process.env.DOMAIN; 
+
+// 1. CREATE CHECKOUT SESSION
+router.post('/create-checkout-session', async (req, res) => {
+  const { priceId } = req.body; // Frontend sends either Monthly or Annual ID
+  const user = (req.session as any).user;
+
+  if (!user) return res.status(401).json({ error: 'Please log in' });
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      mode: 'subscription',
+      line_items: [
+        {
+          price: priceId, // The Product ID from Stripe Dashboard
+          quantity: 1,
+        },
+      ],
+      // 7-Day Free Trial Logic
+      subscription_data: {
+        trial_period_days: 7, 
+      },
+      customer_email: user.email,
+      success_url: `${DOMAIN}/api/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${DOMAIN}/`, // If they click "Back", go home
+      metadata: {
+        userId: user.id, // Track who is buying
+      },
+    });
+
+    res.json({ url: session.url });
+  } catch (e: any) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 2. SUCCESS HANDLER (The "Thank You" logic)
+// When payment succeeds, Stripe sends them here. We verifying the session and upgrade the user.
+router.get('/success', async (req, res) => {
+  const { session_id } = req.query;
+
+  try {
+    const session = await stripe.checkout.sessions.retrieve(String(session_id));
+
+    if (session.payment_status === 'paid' || session.status === 'open') {
+      // "open" status allows trials to pass through even if $0 paid today
+      const userId = session.metadata?.userId;
+      
+      // UPGRADE DATABASE
+      await query(`UPDATE users SET tier = 'PREMIUM' WHERE id = $1`, [userId]);
+      
+      // UPGRADE SESSION
+      if ((req.session as any).user) {
+        (req.session as any).user.tier = 'PREMIUM';
+      }
+
+      // Redirect back to the app with a success message
+      res.redirect(`/?upgrade=success`);
+    } else {
+      res.redirect('/?upgrade=failed');
+    }
+  } catch (e) {
+    console.error("Upgrade failed:", e);
+    res.redirect('/?upgrade=error');
+  }
+});
+
+export default router;
