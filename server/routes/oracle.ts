@@ -85,9 +85,9 @@ router.post('/finalize', async (req, res) => {
   try {
     const today = getTodayDate();
     
-    // 1. Get today's unfinalized predictions
+    // 1. Get today's unfinalized predictions (outcome is NULL or empty)
     const todaysPredictions = await db.select().from(predictions)
-      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND ${predictions.outcome} IS NULL`);
+      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
     
     if (todaysPredictions.length === 0) {
       return res.json({ success: true, message: 'No predictions to finalize', finalized: 0 });
