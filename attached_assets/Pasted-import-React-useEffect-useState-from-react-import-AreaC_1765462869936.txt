@@ -29,7 +29,7 @@ export default function StockChart({ ticker }: ChartProps) {
           setData(json.data);
           setTrend(json.trend);
         } else {
-          setError("No data returned");
+            setError("No data returned");
         }
       } catch (e: any) {
         console.error("Chart Fetch Error:", e);
@@ -42,6 +42,7 @@ export default function StockChart({ ticker }: ChartProps) {
     return () => { isMounted = false };
   }, [ticker]);
 
+  // ERROR STATE
   if (error) return (
     <div className="h-64 w-full flex flex-col items-center justify-center bg-slate-950/30 rounded-lg border border-red-900/30">
       <span className="text-red-400 text-xs font-bold mb-2">CHART ERROR</span>
@@ -49,12 +50,14 @@ export default function StockChart({ ticker }: ChartProps) {
     </div>
   );
 
+  // LOADING STATE
   if (loading) return (
     <div className="h-64 w-full flex items-center justify-center bg-slate-950/30 rounded-lg animate-pulse">
       <span className="text-slate-600 text-xs font-mono">LOADING DATA...</span>
     </div>
   );
 
+  // EMPTY DATA STATE
   if (data.length === 0) return (
     <div className="h-64 w-full flex items-center justify-center bg-slate-950/30 rounded-lg">
       <span className="text-slate-600 text-xs">No Price History Available</span>
@@ -65,7 +68,7 @@ export default function StockChart({ ticker }: ChartProps) {
   const gradientId = `colorGradient-${ticker}`;
 
   return (
-    <div className="h-64 w-full bg-slate-950/30 rounded-lg p-4 border border-slate-800" data-testid={`chart-${ticker}`}>
+    <div className="h-64 w-full bg-slate-950/30 rounded-lg p-4 border border-slate-800">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data}>
           <defs>
