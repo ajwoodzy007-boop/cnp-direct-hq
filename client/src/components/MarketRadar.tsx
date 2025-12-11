@@ -42,11 +42,13 @@ export default function MarketRadar() {
   };
 
   const getSignalBadge = (signal: string) => {
+    const baseClasses = "px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap min-w-fit";
+    
     if (signal.includes('BUY')) 
-      return <span className="px-2 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-500 border border-green-500/50">🚀 {signal}</span>;
-    if (signal.includes('WARNING') || signal.includes('SELL')) 
-      return <span className="px-2 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-500 border border-red-500/50">⚠️ {signal}</span>;
-    return <span className="px-2 py-1 rounded-full text-xs font-bold bg-gray-500/20 text-gray-400 border border-gray-500/50">WAIT</span>;
+      return <span className={`${baseClasses} bg-green-500/20 text-green-500 border-green-500/50`}>🚀 {signal}</span>;
+    if (signal.includes('WARNING')) 
+      return <span className={`${baseClasses} bg-red-500/20 text-red-500 border-red-500/50`}>⚠️ {signal}</span>;
+    return <span className={`${baseClasses} bg-gray-500/20 text-gray-400 border-gray-500/50`}>WAIT</span>;
   };
 
   return (
