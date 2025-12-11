@@ -13,20 +13,30 @@ import TheStrategist from './components/TheStrategist';
 import TheVault from './components/TheVault';
 import TheAcademy from './components/TheAcademy';
 import LoginPage from './components/LoginPage';
+import PremiumLock from './components/PremiumLock';
 import Pricing from "@/pages/Pricing";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
 
-function MainDashboard() {
+interface User {
+  id: number;
+  email: string;
+  tier: 'FREE' | 'PREMIUM';
+}
+
+function MainDashboard({ user }: { user: User | null }) {
   const [currentTab, setTab] = useState('radar');
 
   const renderContent = () => {
     switch (currentTab) {
       case 'radar': return <MarketRadar />;
-      case 'oracle': return <TheOracle />;
-      case 'strategist': return <TheStrategist />;
-      case 'vault': return <TheVault />;
       case 'academy': return <TheAcademy />;
+      case 'strategist':
+        return user?.tier === 'PREMIUM' ? <TheStrategist /> : <PremiumLock featureName="The Strategist" />;
+      case 'oracle':
+        return user?.tier === 'PREMIUM' ? <TheOracle /> : <PremiumLock featureName="The Oracle" />;
+      case 'vault':
+        return user?.tier === 'PREMIUM' ? <TheVault /> : <PremiumLock featureName="The Vault" />;
       default: return <MarketRadar />;
     }
   };
@@ -38,14 +48,18 @@ function MainDashboard() {
   );
 }
 
-function AuthenticatedRoutes() {
+function AuthenticatedRoutes({ user }: { user: User | null }) {
   return (
     <Switch>
-      <Route path="/" component={MainDashboard} />
+      <Route path="/">
+        <MainDashboard user={user} />
+      </Route>
       <Route path="/pricing" component={Pricing} />
       <Route path="/checkout/success" component={CheckoutSuccess} />
       <Route path="/checkout/cancel" component={CheckoutCancel} />
-      <Route component={MainDashboard} />
+      <Route>
+        <MainDashboard user={user} />
+      </Route>
     </Switch>
   );
 }
@@ -53,12 +67,16 @@ function AuthenticatedRoutes() {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    fetch('/api/auth/check')
+    fetch('/api/auth/me')
       .then(res => res.json())
       .then(json => {
-        setIsAuthenticated(json.authenticated);
+        if (json.authenticated) {
+          setIsAuthenticated(true);
+          setUser(json.user);
+        }
         setCheckingAuth(false);
       })
       .catch(() => setCheckingAuth(false));
@@ -73,7 +91,16 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage onLogin={() => setIsAuthenticated(true)} />;
+    return <LoginPage onLogin={() => {
+      fetch('/api/auth/me')
+        .then(res => res.json())
+        .then(json => {
+          if (json.authenticated) {
+            setUser(json.user);
+            setIsAuthenticated(true);
+          }
+        });
+    }} />;
   }
 
   return (
@@ -82,7 +109,7 @@ export default function App() {
         <TooltipProvider>
           <Toaster />
           <SonnerToaster position="top-right" richColors />
-          <AuthenticatedRoutes />
+          <AuthenticatedRoutes user={user} />
         </TooltipProvider>
       </SettingsProvider>
     </QueryClientProvider>
