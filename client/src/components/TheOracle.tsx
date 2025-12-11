@@ -3,6 +3,7 @@ import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lo
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import PremiumLock from './PremiumLock';
+import Skeleton from './Skeleton';
 
 interface PickData {
   ticker: string;
@@ -216,7 +217,31 @@ export default function TheOracle() {
         </div>
 
         {loading ? (
-          <div className="text-center py-20 text-slate-500">Consulting the Oracle...</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="space-y-2">
+                    <Skeleton className="h-8 w-20" />
+                    <Skeleton className="h-4 w-32" />
+                  </div>
+                  <Skeleton className="h-8 w-16" />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-20" />
+                  </div>
+                  <Skeleton className="h-2 w-full rounded-full" />
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                </div>
+                <Skeleton className="h-10 w-full mt-4 rounded-lg" />
+              </div>
+            ))}
+          </div>
         ) : picks.length === 0 ? (
           <div className="p-8 border border-dashed border-slate-700 rounded-xl text-center text-slate-500">
             No high-conviction signals found today.

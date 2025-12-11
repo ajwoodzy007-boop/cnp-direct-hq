@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldAlert, RefreshCw, ChevronDown, ChevronUp, Activity, BarChart2 } from 'lucide-react';
 import StockChart from './StockChart';
+import Skeleton from './Skeleton';
 
 interface SentinelData {
   ticker: string;
@@ -72,6 +73,25 @@ export default function MarketRadar() {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
+        {data.length === 0 && loading && (
+          <div className="space-y-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="h-20 bg-slate-900/50 rounded-lg border border-slate-800 p-4 flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-16" />
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <Skeleton className="h-8 w-20 rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {data.length === 0 && !loading && (
           <div className="text-center py-12 text-slate-500">
             Radar Offline. Click "Scan Sector" to begin.
