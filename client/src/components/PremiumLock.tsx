@@ -8,8 +8,8 @@ interface Props {
 export default function PremiumLock({ featureName }: Props) {
   const [loading, setLoading] = useState(false);
 
-  const MONTHLY_PRICE_ID = 'price_1SdDL90frj5koTyzcpbrRjjA'; 
-  const ANNUAL_PRICE_ID = 'price_1SdDM30frj5koTyzfzO5duSn';
+  const MONTHLY_PRICE_ID = 'price_1SdDuH0frj5koTyzbAtvR2eu'; 
+  const ANNUAL_PRICE_ID = 'price_1SdDv70frj5koTyzyFjhc9n1';
 
   const handleCheckout = async (priceId: string) => {
     setLoading(true);
