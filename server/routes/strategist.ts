@@ -139,7 +139,11 @@ router.post('/playbook', requirePremium, async (req, res) => {
 });
 
 router.get('/earnings-scanner', requirePremium, async (req, res) => {
-  const watchlist = ['NVDA', 'TSLA', 'NFLX', 'AMD', 'META', 'AMZN', 'GOOGL', 'MSFT', 'AAPL', 'COIN', 'MSTR', 'CRWD'];
+  const watchlist = [
+    'NVDA', 'TSLA', 'NFLX', 'AMD', 'META', 'AMZN', 'GOOGL', 'MSFT', 'AAPL', 'COIN', 'MSTR', 'CRWD',
+    'ORCL', 'ADBE', 'CRM', 'COST', 'NKE', 'FDX', 'MU', 'AVGO', 'LULU', 'ACN', 'PANW', 'SNOW',
+    'ZS', 'DDOG', 'NET', 'SHOP', 'SQ', 'ROKU', 'ABNB', 'UBER', 'LYFT', 'DASH', 'RBLX', 'PLTR'
+  ];
   
   try {
     const promises = watchlist.map(async (ticker) => {
@@ -147,13 +151,13 @@ router.get('/earnings-scanner', requirePremium, async (req, res) => {
         const summary = await yf.quoteSummary(ticker, { modules: ['calendarEvents', 'price'] });
         const events = summary.calendarEvents;
         
-        if (events && events.earnings && events.earnings.earningsDate) {
+        if (events && events.earnings && events.earnings.earningsDate && events.earnings.earningsDate.length > 0) {
           const date = new Date(events.earnings.earningsDate[0]);
           const now = new Date();
           const diffTime = date.getTime() - now.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-          if (diffDays >= 0 && diffDays <= 21) {
+          if (diffDays >= 0 && diffDays <= 60) {
             return {
               ticker,
               date: date.toLocaleDateString(),
@@ -162,8 +166,8 @@ router.get('/earnings-scanner', requirePremium, async (req, res) => {
             };
           }
         }
-      } catch (e) {
-        // Skip individual ticker errors
+      } catch (e: any) {
+        console.log(`Earnings scan skip ${ticker}:`, e.message);
       }
       return null;
     });
