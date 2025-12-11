@@ -86,21 +86,24 @@ export default function AppLayout({
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-800 bg-slate-900/50">
           {user ? (
-            <div className="flex items-center gap-3 px-2">
+            <button 
+              onClick={onLogoutClick}
+              className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-slate-800 transition-all group"
+              data-testid="button-user-profile"
+            >
               <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
                 user.tier === 'PREMIUM' ? 'bg-gradient-to-tr from-amber-500 to-orange-600' : 'bg-gradient-to-tr from-cyan-600 to-blue-600'
               }`}>
                 {user.email.substring(0, 2).toUpperCase()}
               </div>
-              <div className="flex-1 overflow-hidden">
-                <div className="text-sm font-medium text-white truncate">{user.email.split('@')[0]}</div>
+              <div className="flex-1 overflow-hidden text-left">
+                <div className="text-sm font-medium text-white truncate group-hover:text-cyan-400 transition-colors">{user.email.split('@')[0]}</div>
                 <div className="text-[10px] flex items-center gap-1">
                   <span className={`h-1.5 w-1.5 rounded-full ${user.tier === 'PREMIUM' ? 'bg-amber-500' : 'bg-green-400'}`}></span>
                   <span className="opacity-70">{user.tier} OPERATIVE</span>
                 </div>
               </div>
-              <LogOut onClick={onLogoutClick} className="h-4 w-4 text-slate-500 hover:text-red-400 cursor-pointer" />
-            </div>
+            </button>
           ) : (
             <button 
               onClick={onLoginClick}
