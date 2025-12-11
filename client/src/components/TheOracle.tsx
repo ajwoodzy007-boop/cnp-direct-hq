@@ -218,27 +218,29 @@ export default function TheOracle() {
 
         {loading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-                <div className="flex justify-between items-start mb-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-64 flex flex-col justify-between animate-pulse">
+                <div className="flex justify-between items-start">
                   <div className="space-y-2">
-                    <Skeleton className="h-8 w-20" />
-                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-8 w-24 bg-slate-800" />
+                    <Skeleton className="h-4 w-16 bg-slate-800" />
                   </div>
-                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="h-6 w-24 rounded-full bg-slate-800" />
                 </div>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <Skeleton className="h-4 w-16" />
-                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-4 w-16 bg-slate-800" />
+                    <Skeleton className="h-4 w-16 bg-slate-800" />
                   </div>
-                  <Skeleton className="h-2 w-full rounded-full" />
                   <div className="flex justify-between">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-4 w-16" />
+                    <Skeleton className="h-4 w-16 bg-slate-800" />
+                    <Skeleton className="h-4 w-16 bg-slate-800" />
+                  </div>
+                  <div className="pt-2">
+                    <Skeleton className="h-1.5 w-full rounded-full bg-slate-800" />
                   </div>
                 </div>
-                <Skeleton className="h-10 w-full mt-4 rounded-lg" />
+                <Skeleton className="h-10 w-full rounded-lg bg-slate-800" />
               </div>
             ))}
           </div>
