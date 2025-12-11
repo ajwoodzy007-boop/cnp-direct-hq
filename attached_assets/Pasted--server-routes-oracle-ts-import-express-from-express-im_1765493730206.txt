@@ -1,0 +1,139 @@
+// server/routes/oracle.ts
+import express from 'express';
+import { runMarketScan } from '../lib/sentinel';
+import { query } from '../db';
+import yf from 'yahoo-finance2';
+
+const router = express.Router();
+
+// GET /daily: Run Scan & Auto-Save
+router.get('/daily', async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // 1. Check DB for today's picks
+    const existing = await query('SELECT * FROM predictions WHERE date = $1', [today]);
+    
+    if (existing.rows.length > 0) {
+      return res.json({ 
+        success: true, 
+        data: existing.rows.map(row => ({
+          ticker: row.ticker,
+          entryPrice: Number(row.entryPrice), // Ensure Number
+          signal: row.signal,
+          predictedPrice: Number(row.entryPrice) * 1.05,
+          confidence: 'High'
+        }))
+      });
+    }
+
+    // 2. Run Sentinel Engine
+    console.log("[Oracle] Scanning market...");
+    const scanResults = await runMarketScan();
+    
+    const topPicks = scanResults
+      .filter(s => s.signal.includes('BUY'))
+      .sort((a, b) => b.rsi - a.rsi)
+      .slice(0, 5);
+
+    // 3. Save to DB
+    for (const p of topPicks) {
+      await query(
+        `INSERT INTO predictions (ticker, "entryPrice", signal, date, status)
+         VALUES ($1, $2, $3, $4, 'ACTIVE')`,
+        [p.ticker, p.price, p.signal, today]
+      );
+    }
+
+    // 4. Return to frontend
+    res.json({ 
+      success: true, 
+      data: topPicks.map(p => ({
+        ticker: p.ticker,
+        entryPrice: p.price,
+        predictedPrice: p.price * 1.05,
+        confidence: 'High',
+        signal: p.signal
+      })) 
+    });
+
+  } catch (error) {
+    console.error("[Oracle] Scan Error:", error);
+    res.status(500).json({ success: false, error: "Oracle Malfunction" });
+  }
+});
+
+// GET /history: The Proof Log
+router.get('/history', async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM predictions ORDER BY date DESC LIMIT 50');
+    let history = result.rows;
+
+    if (history.length === 0) {
+      return res.json({ success: true, stats: { wins: 0, losses: 0, winRate: 0, streak: 0 }, history: [] });
+    }
+
+    // 1. Get Unique Tickers
+    const uniqueTickers = [...new Set(history.map(h => h.ticker))];
+    const quotes: Record<string, number> = {};
+
+    // 2. Bulk Fetch Prices (Parallel)
+    console.log(`[Oracle] Fetching live quotes for: ${uniqueTickers.join(', ')}`);
+    
+    await Promise.all(uniqueTickers.map(async (t) => {
+      try {
+        const q = await yf.quote(t);
+        quotes[t] = q.regularMarketPrice || 0;
+      } catch (e) {
+        console.warn(`[Oracle] Failed to fetch quote for ${t}`);
+        quotes[t] = 0;
+      }
+    }));
+
+    // 3. Grade the History
+    let wins = 0;
+    let losses = 0;
+    
+    const gradedHistory = history.map(h => {
+      const entry = Number(h.entryPrice);
+      const current = quotes[h.ticker] || entry; // Fallback to entry if fetch failed
+      
+      // Calculate Gain/Loss %
+      // If entry is 0 (bad data), profit is 0
+      const profitPercent = entry > 0 ? ((current - entry) / entry) * 100 : 0;
+      
+      console.log(`[Audit] ${h.ticker}: Entry ${entry} -> Now ${current} (${profitPercent.toFixed(2)}%)`);
+
+      if (profitPercent > 0.5) wins++;       // Win threshold > 0.5%
+      else if (profitPercent < -0.5) losses++; // Loss threshold < -0.5%
+
+      return {
+        ...h,
+        entry: entry, 
+        exit: current,
+        profitPercent
+      };
+    });
+
+    // 4. Calculate Win Rate
+    const total = wins + losses;
+    const winRate = total === 0 ? 0 : Math.round((wins / total) * 100);
+
+    res.json({
+      success: true,
+      stats: {
+        wins,
+        losses,
+        winRate,
+        streak: wins // Simplified streak logic
+      },
+      history: gradedHistory
+    });
+
+  } catch (error) {
+    console.error("[Oracle] History Error:", error);
+    res.status(500).json({ success: false, error: "History Log Failed" });
+  }
+});
+
+export default router;
