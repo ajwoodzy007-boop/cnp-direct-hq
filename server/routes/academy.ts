@@ -117,9 +117,10 @@ router.get('/full-report', requirePremium, async (req, res) => {
     });
 
     const report = JSON.parse(completion.choices[0].message.content || '{}');
-    fullCache = { timestamp: now, data: report };
+    const finalReport = { ...report, date: new Date().toLocaleDateString() };
+    fullCache = { timestamp: now, data: finalReport };
     
-    res.json({ success: true, data: report });
+    res.json({ success: true, data: finalReport });
 
   } catch (error) {
     console.error("Full Report Error:", error);
