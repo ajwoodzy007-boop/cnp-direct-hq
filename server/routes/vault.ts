@@ -106,6 +106,36 @@ router.post('/close', async (req, res) => {
   }
 });
 
+router.put('/edit', async (req, res) => {
+  const { id, ticker, price, type, shares, strike, expiry } = req.body;
+
+  let contractSymbol = null;
+
+  if (type !== 'SHARE' && strike && expiry) {
+    try {
+      const datePart = formatYahooDate(expiry);
+      const typePart = type === 'CALL' ? 'C' : 'P';
+      const strikePart = formatYahooStrike(Number(strike));
+      contractSymbol = `${ticker.toUpperCase()}${datePart}${typePart}${strikePart}`;
+    } catch (e) {
+      console.error("Symbol Gen Error", e);
+    }
+  }
+
+  try {
+    await query(
+      `UPDATE portfolio 
+       SET ticker = $1, type = $2, "entryPrice" = $3, shares = $4, "strikePrice" = $5, "expirationDate" = $6, "contractSymbol" = $7
+       WHERE id = $8`,
+      [ticker.toUpperCase(), type, price, shares, strike || null, expiry || null, contractSymbol, id]
+    );
+    res.json({ success: true, msg: "Position Updated" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to update trade" });
+  }
+});
+
 router.post('/optimize', requirePremium, async (req, res) => {
   try {
     const result = await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
