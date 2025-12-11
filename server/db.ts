@@ -23,7 +23,18 @@ export async function initDb() {
         status TEXT DEFAULT 'OPEN'
       );
     `);
-    console.log("PostgreSQL Database connected & ready.");
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS members (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        membership_tier TEXT DEFAULT 'FREE',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    
+    console.log("Database Upgraded: Members & Portfolio ready.");
   } catch (err) {
     console.error("DB Init Error:", err);
   } finally {
