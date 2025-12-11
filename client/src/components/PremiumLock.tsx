@@ -21,7 +21,7 @@ export default function PremiumLock({ featureName }: Props) {
       });
       const json = await res.json();
       if (json.url) {
-        window.location.href = json.url;
+        window.open(json.url, '_blank');
       } else {
         alert("Checkout failed to initialize.");
       }
