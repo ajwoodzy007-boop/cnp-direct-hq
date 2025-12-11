@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Plus, TrendingUp, ShieldCheck, PieChart, Activity, AlertCircle } from 'lucide-react';
+import { LayoutDashboard, Plus, Activity, PieChart, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 
 export default function TheVault() {
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  
   const [audit, setAudit] = useState<any>(null);
   const [auditing, setAuditing] = useState(false);
 
+  const [assetType, setAssetType] = useState('SHARE');
   const [newTicker, setNewTicker] = useState('');
   const [newPrice, setNewPrice] = useState('');
-  const [newShares, setNewShares] = useState('10');
+  const [newShares, setNewShares] = useState('1');
+  const [newStrike, setNewStrike] = useState('');
+  const [newExpiry, setNewExpiry] = useState('');
 
   const fetchPortfolio = async () => {
     try {
@@ -28,13 +30,18 @@ export default function TheVault() {
     await fetch('/api/vault/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticker: newTicker.toUpperCase(), price: newPrice, shares: newShares, type: 'SHARE' })
+      body: JSON.stringify({ 
+        ticker: newTicker.toUpperCase(), 
+        price: newPrice, 
+        shares: newShares, 
+        type: assetType,
+        strike: newStrike,
+        expiry: newExpiry
+      })
     });
     setShowAddModal(false);
     fetchPortfolio();
-    setNewTicker('');
-    setNewPrice('');
-    setNewShares('10');
+    setNewTicker(''); setNewPrice(''); setNewShares('1'); setNewStrike(''); setNewExpiry('');
   };
 
   const runOptimizer = async () => {
@@ -43,12 +50,12 @@ export default function TheVault() {
       const res = await fetch('/api/vault/optimize', { method: 'POST' });
       const json = await res.json();
       if (json.success) setAudit(json.data);
-      else alert(json.error || "Optimization failed. Upgrade to Premium?");
     } catch (e) { console.error(e); } finally { setAuditing(false); }
   };
 
+  const equities = positions.filter(p => p.type === 'SHARE');
+  const options = positions.filter(p => p.type !== 'SHARE');
   const totalEquity = positions.reduce((acc, p) => acc + (p.marketValue || 0), 0);
-  const totalGain = positions.reduce((acc, p) => acc + (p.gain || 0), 0);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -62,145 +69,210 @@ export default function TheVault() {
           <p className="text-slate-400 mt-2">Portfolio Tracking & AI Risk Management</p>
         </div>
         <div className="flex gap-3">
-          <button 
-            onClick={runOptimizer}
-            disabled={auditing || positions.length === 0}
-            className="bg-slate-800 hover:bg-slate-700 text-purple-400 border border-purple-500/30 px-4 py-2 rounded-lg flex items-center gap-2 font-bold transition-all disabled:opacity-50"
-            data-testid="button-ai-audit"
-          >
-            {auditing ? <Activity className="h-5 w-5 animate-spin" /> : <PieChart className="h-5 w-5" />}
-            {auditing ? 'Running Audit...' : 'AI Risk Audit'}
-          </button>
-          <button 
-            onClick={() => setShowAddModal(true)}
-            className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium"
-            data-testid="button-log-trade"
-          >
-            <Plus className="h-5 w-5" /> Log Trade
-          </button>
+           <button 
+             onClick={runOptimizer} 
+             disabled={auditing || positions.length === 0} 
+             className="bg-slate-800 text-purple-400 border border-purple-500/30 px-4 py-2 rounded-lg flex items-center gap-2 font-bold transition-all disabled:opacity-50"
+             data-testid="button-ai-audit"
+           >
+             {auditing ? <Activity className="h-5 w-5 animate-spin" /> : <PieChart className="h-5 w-5" />}
+             {auditing ? 'Analyzing Greeks...' : 'AI Risk Audit'}
+           </button>
+           <button 
+             onClick={() => setShowAddModal(true)} 
+             className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium"
+             data-testid="button-log-trade"
+           >
+             <Plus className="h-5 w-5" /> Log Trade
+           </button>
         </div>
       </div>
 
-      {/* AI AUDIT RESULT (Hidden until run) */}
+      {/* TOTALS */}
+      <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl flex items-center justify-between">
+        <div>
+           <div className="text-slate-500 text-xs font-bold uppercase mb-1">Total Net Liquidity</div>
+           <div className="text-3xl font-bold text-white" data-testid="text-total-equity">${totalEquity.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        </div>
+        <div className="text-right">
+           <div className="text-slate-500 text-xs font-bold uppercase mb-1">Active Contracts</div>
+           <div className="text-2xl font-bold text-amber-400" data-testid="text-options-count">{options.length}</div>
+        </div>
+      </div>
+
+      {/* AI AUDIT RESULT */}
       {audit && (
         <div className="bg-slate-900 border border-purple-500/30 rounded-xl p-6 animate-in slide-in-from-top-4">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <ShieldCheck className="text-purple-400 h-6 w-6" /> Sentinel Portfolio Audit
-              </h3>
-              <p className="text-slate-400 text-sm mt-1">{audit.analysis}</p>
-            </div>
-            <div className="text-center bg-slate-950 p-3 rounded-lg border border-slate-800">
-              <div className="text-[10px] text-slate-500 uppercase font-bold">Diversity Score</div>
-              <div className={`text-2xl font-bold ${Number(audit.diversityScore) > 70 ? 'text-green-400' : 'text-amber-400'}`} data-testid="text-diversity-score">
-                {audit.diversityScore}/100
-              </div>
-            </div>
+          <div className="flex justify-between items-start mb-4">
+             <h3 className="text-xl font-bold text-white flex items-center gap-2">
+               <Activity className="text-purple-400 h-6 w-6" /> Portfolio Intelligence
+             </h3>
+             <div className="text-2xl font-bold text-white" data-testid="text-diversity-score">{audit.diversityScore}/100 Score</div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Sector Allocation</h4>
-              <div className="space-y-2">
-                {audit.sectorExposure?.map((sec: any, i: number) => (
-                  <div key={i} className="flex items-center gap-3 text-sm">
-                    <div className="w-24 text-slate-300 truncate">{sec.sector}</div>
-                    <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-purple-500" style={{ width: `${sec.percent}%` }}></div>
-                    </div>
-                    <div className="text-white font-mono">{sec.percent}%</div>
-                  </div>
-                ))}
-              </div>
+          <p className="text-slate-300 mb-4">{audit.analysis}</p>
+          
+          {audit.optionsStrategy && (
+            <div className="bg-slate-950 p-4 rounded border border-slate-800 mb-4">
+               <div className="text-xs text-amber-500 uppercase font-bold mb-2">Options Risk Analysis</div>
+               <p className="text-sm text-slate-300 italic">"{audit.optionsStrategy}"</p>
             </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Rebalancing Suggestions</h4>
-              <div className="space-y-2">
-                {audit.suggestions?.map((sug: string, i: number) => (
-                  <div key={i} className="flex items-start gap-2 text-sm text-slate-300 bg-slate-950 p-2 rounded border border-slate-800">
-                    <AlertCircle className="h-4 w-4 text-purple-400 shrink-0 mt-0.5" />
-                    {sug}
-                  </div>
-                ))}
-              </div>
+          )}
+
+          <div className="space-y-2">
+            {audit.suggestions?.map((sug: string, i: number) => (
+               <div key={i} className="flex items-start gap-2 text-sm text-slate-400">
+                  <AlertCircle className="h-4 w-4 text-purple-500 shrink-0 mt-0.5" /> {sug}
+               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* OPTIONS TABLE */}
+      {options.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Clock className="text-amber-400 h-5 w-5" /> Active Options
+          </h3>
+          <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-slate-500 uppercase bg-slate-950">
+                  <tr>
+                    <th className="px-6 py-3">Contract</th>
+                    <th className="px-6 py-3">Strike</th>
+                    <th className="px-6 py-3">Expiry</th>
+                    <th className="px-6 py-3">Cost</th>
+                    <th className="px-6 py-3">Value</th>
+                    <th className="px-6 py-3">P/L %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {options.map((p) => (
+                    <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50" data-testid={`row-option-${p.id}`}>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-white">{p.ticker}</div>
+                        <div className={`text-xs font-bold ${p.type === 'CALL' ? 'text-green-400' : 'text-red-400'}`}>{p.type}</div>
+                      </td>
+                      <td className="px-6 py-4 text-slate-300">${p.strikePrice}</td>
+                      <td className="px-6 py-4 text-slate-300">{p.expirationDate}</td>
+                      <td className="px-6 py-4 text-slate-400">${(p.entryPrice * p.shares * 100).toFixed(0)}</td>
+                      <td className="px-6 py-4 text-white font-mono font-bold">${p.marketValue?.toLocaleString()}</td>
+                      <td className={`px-6 py-4 font-bold ${p.gainPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {p.gainPercent > 0 ? '+' : ''}{p.gainPercent?.toFixed(2)}%
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
       )}
 
-      {/* STATS & TABLE */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-          <div className="text-slate-500 text-xs font-bold uppercase mb-2">Total Equity</div>
-          <div className="text-3xl font-bold text-white" data-testid="text-total-equity">${totalEquity.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-          <div className="text-slate-500 text-xs font-bold uppercase mb-2">Total Gain/Loss</div>
-          <div className={`text-3xl font-bold ${totalGain >= 0 ? 'text-green-400' : 'text-red-400'}`} data-testid="text-total-gain">
-            {totalGain >= 0 ? '+' : ''}${totalGain.toLocaleString(undefined, {minimumFractionDigits: 2})}
+      {/* EQUITIES TABLE */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+          <TrendingUp className="text-cyan-400 h-5 w-5" /> Equities & ETFs
+        </h3>
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="text-xs text-slate-500 uppercase bg-slate-950">
+                <tr>
+                  <th className="px-6 py-3">Ticker</th>
+                  <th className="px-6 py-3">Entry</th>
+                  <th className="px-6 py-3">Current</th>
+                  <th className="px-6 py-3">Shares</th>
+                  <th className="px-6 py-3">Value</th>
+                  <th className="px-6 py-3">P/L %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {equities.map((p) => (
+                  <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50" data-testid={`row-equity-${p.id}`}>
+                    <td className="px-6 py-4 font-bold text-white">{p.ticker}</td>
+                    <td className="px-6 py-4 text-slate-400">${p.entryPrice?.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-white">${p.currentPrice?.toFixed(2)}</td>
+                    <td className="px-6 py-4 text-slate-400">{p.shares}</td>
+                    <td className="px-6 py-4 text-white font-mono">${p.marketValue?.toLocaleString()}</td>
+                    <td className={`px-6 py-4 font-bold ${p.gainPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {p.gainPercent > 0 ? '+' : ''}{p.gainPercent?.toFixed(2)}%
+                    </td>
+                  </tr>
+                ))}
+                {equities.length === 0 && (
+                  <tr><td colSpan={6} className="py-8 text-center text-slate-500">No share positions active.</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-          <div className="text-slate-500 text-xs font-bold uppercase mb-2">Open Positions</div>
-          <div className="text-3xl font-bold text-white" data-testid="text-position-count">{positions.length}</div>
-        </div>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-800 font-bold text-white">Active Holdings</div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-slate-500 uppercase bg-slate-950">
-              <tr>
-                <th className="px-6 py-3">Asset</th>
-                <th className="px-6 py-3">Entry</th>
-                <th className="px-6 py-3">Current</th>
-                <th className="px-6 py-3">Shares</th>
-                <th className="px-6 py-3">Value</th>
-                <th className="px-6 py-3">P/L %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {positions.map((p) => (
-                <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50" data-testid={`row-position-${p.id}`}>
-                  <td className="px-6 py-4 font-bold text-white">{p.ticker}</td>
-                  <td className="px-6 py-4 text-slate-400">${(p.averageCost || p.entryPrice || 0).toFixed(2)}</td>
-                  <td className="px-6 py-4 text-white">${p.currentPrice?.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-slate-400">{p.shares}</td>
-                  <td className="px-6 py-4 text-white font-mono">${p.marketValue?.toLocaleString()}</td>
-                  <td className={`px-6 py-4 font-bold ${p.gainPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    {p.gainPercent > 0 ? '+' : ''}{p.gainPercent?.toFixed(2)}%
-                  </td>
-                </tr>
-              ))}
-              {positions.length === 0 && !loading && (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-slate-500">Vault is empty. Log a trade to begin tracking.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* MODAL */}
+      {/* ADD MODAL */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md">
             <h3 className="text-xl font-bold text-white mb-4">Log New Position</h3>
             <form onSubmit={handleAddTrade} className="space-y-4">
+              
+              {/* Asset Type Toggle */}
+              <div className="flex bg-slate-950 p-1 rounded-lg mb-4 border border-slate-800">
+                {['SHARE', 'CALL', 'PUT'].map(t => (
+                  <button 
+                    key={t} type="button" onClick={() => setAssetType(t)}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded ${assetType === t ? 'bg-slate-700 text-white' : 'text-slate-500'}`}
+                    data-testid={`button-type-${t.toLowerCase()}`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
               <div>
                 <label className="text-xs text-slate-500 uppercase font-bold">Ticker</label>
                 <input 
                   className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white uppercase" 
                   value={newTicker} 
                   onChange={e => setNewTicker(e.target.value)} 
+                  placeholder="AAPL" 
                   required 
                   data-testid="input-new-ticker"
                 />
               </div>
+
+              {/* Conditional Option Fields */}
+              {assetType !== 'SHARE' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                     <label className="text-xs text-slate-500 uppercase font-bold">Strike Price</label>
+                     <input 
+                       type="number" 
+                       className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white" 
+                       value={newStrike} 
+                       onChange={e => setNewStrike(e.target.value)} 
+                       required 
+                       data-testid="input-strike"
+                     />
+                  </div>
+                  <div>
+                     <label className="text-xs text-slate-500 uppercase font-bold">Expiry Date</label>
+                     <input 
+                       type="date" 
+                       className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white" 
+                       value={newExpiry} 
+                       onChange={e => setNewExpiry(e.target.value)} 
+                       required 
+                       data-testid="input-expiry"
+                     />
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-slate-500 uppercase font-bold">Price</label>
+                  <label className="text-xs text-slate-500 uppercase font-bold">Entry Price</label>
                   <input 
                     type="number" 
                     step="0.01" 
@@ -212,7 +284,7 @@ export default function TheVault() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 uppercase font-bold">Shares</label>
+                  <label className="text-xs text-slate-500 uppercase font-bold">{assetType === 'SHARE' ? 'Shares' : 'Contracts'}</label>
                   <input 
                     type="number" 
                     className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white" 
@@ -223,21 +295,22 @@ export default function TheVault() {
                   />
                 </div>
               </div>
+
               <div className="flex gap-2 pt-4">
                 <button 
                   type="button" 
                   onClick={() => setShowAddModal(false)} 
                   className="flex-1 bg-slate-800 text-white py-2 rounded"
-                  data-testid="button-cancel-trade"
+                  data-testid="button-cancel"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   className="flex-1 bg-emerald-600 text-white py-2 rounded font-bold"
-                  data-testid="button-submit-trade"
+                  data-testid="button-log-trade-submit"
                 >
-                  Secure Asset
+                  Log Trade
                 </button>
               </div>
             </form>
