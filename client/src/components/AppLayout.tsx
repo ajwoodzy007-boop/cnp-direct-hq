@@ -43,7 +43,7 @@ export default function AppLayout({
       
       <aside 
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 transform transition-transform duration-300 ease-in-out
+          fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 border-r border-slate-800 shadow-2xl transform transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
           md:relative md:translate-x-0
         `}
@@ -65,7 +65,6 @@ export default function AppLayout({
               <button
                 key={item.id}
                 onClick={() => handleNavClick(item.id)}
-                data-testid={`nav-${item.id}`}
                 className={`
                   w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all group
                   ${isActive 
@@ -99,17 +98,12 @@ export default function AppLayout({
                   <span className="opacity-70">{user.tier} OPERATIVE</span>
                 </div>
               </div>
-              <LogOut 
-                onClick={onLogoutClick} 
-                className="h-4 w-4 text-slate-500 hover:text-red-400 cursor-pointer" 
-                data-testid="button-logout"
-              />
+              <LogOut onClick={onLogoutClick} className="h-4 w-4 text-slate-500 hover:text-red-400 cursor-pointer" />
             </div>
           ) : (
             <button 
               onClick={onLoginClick}
               className="w-full bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 hover:border-cyan-500/30 font-bold py-2 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
-              data-testid="button-sidebar-login"
             >
               <LogIn className="h-4 w-4" />
               Sign In / Join
@@ -125,8 +119,8 @@ export default function AppLayout({
             <ShieldCheck className="text-cyan-500 h-6 w-6" />
             <span className="font-bold text-white">CNP DIRECT</span>
           </div>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 p-2" data-testid="button-toggle-sidebar">
-            <Menu />
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 p-2 hover:text-white">
+            <Menu className="h-6 w-6" />
           </button>
         </header>
 
@@ -151,7 +145,7 @@ export default function AppLayout({
 
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm"
           onClick={() => setSidebarOpen(false)}
         />
       )}
