@@ -15,15 +15,28 @@ export async function initDb() {
     await client.query(`
       CREATE TABLE IF NOT EXISTS portfolio (
         id TEXT PRIMARY KEY,
+        "userId" INTEGER,
         ticker TEXT NOT NULL,
         type TEXT NOT NULL,
         "entryPrice" REAL NOT NULL, 
         shares REAL NOT NULL,
         "dateOpened" TEXT NOT NULL,
         status TEXT DEFAULT 'OPEN',
-        "userId" INTEGER
+        "strikePrice" REAL,
+        "expirationDate" TEXT,
+        "contractSymbol" TEXT
       );
     `);
+    
+    await client.query(`
+      ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS "strikePrice" REAL;
+    `).catch(() => {});
+    await client.query(`
+      ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS "expirationDate" TEXT;
+    `).catch(() => {});
+    await client.query(`
+      ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS "contractSymbol" TEXT;
+    `).catch(() => {});
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
@@ -35,7 +48,7 @@ export async function initDb() {
       );
     `);
     
-    console.log("🗄️  Database Ready: Users & Portfolio tables active.");
+    console.log("🗄️  Database Ready: Options Support Active.");
   } catch (err) {
     console.error("DB Init Error:", err);
   } finally {
