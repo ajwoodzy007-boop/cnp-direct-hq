@@ -1,0 +1,144 @@
+import express from 'express';
+import yf from 'yahoo-finance2';
+import OpenAI from 'openai';
+import { query } from '../db';
+import { requirePremium } from '../middleware/premium';
+
+const router = express.Router();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// HELPER: Format Date for Yahoo Symbol (YYYY-MM-DD -> YYMMDD)
+function formatYahooDate(dateStr: string) {
+  const date = new Date(dateStr);
+  const y = date.getFullYear().toString().substr(2, 2);
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = (date.getDate() + 1).toString().padStart(2, '0'); // Fix timezone offset issues
+  return `${y}${m}${d}`;
+}
+
+// HELPER: Format Strike for Yahoo Symbol (150 -> 00150000)
+function formatYahooStrike(strike: number) {
+  const str = (strike * 1000).toString();
+  return str.padStart(8, '0');
+}
+
+// GET: Fetch Portfolio
+router.get('/', async (req, res) => {
+  try {
+    // 1. Get Open Positions
+    const result = await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
+    const portfolio = result.rows;
+    
+    // 2. Fetch Live Prices (Stocks AND Options)
+    const symbols = portfolio.map((p: any) => p.type === 'SHARE' ? p.ticker : p.contractSymbol);
+    const uniqueSymbols = [...new Set(symbols.filter(s => s))]; // Remove nulls
+
+    const quotes: Record<string, number> = {};
+    
+    // Fetch in batches (Yahoo limit)
+    for (const sym of uniqueSymbols) {
+      try {
+        const q = await yf.quote(sym);
+        quotes[sym] = q.regularMarketPrice || 0;
+      } catch (e) {
+        quotes[sym] = 0; // Asset might be expired or invalid
+      }
+    }
+
+    // 3. Enrich Data
+    const enriched = portfolio.map((p: any) => {
+      // Use contractSymbol for options, ticker for shares
+      const lookupSymbol = p.type === 'SHARE' ? p.ticker : p.contractSymbol;
+      const currentPrice = quotes[lookupSymbol] || 0;
+      
+      const marketValue = currentPrice * p.shares * (p.type === 'SHARE' ? 1 : 100); // Options = 100x
+      const costBasis = p.entryPrice * p.shares * (p.type === 'SHARE' ? 1 : 100);
+      
+      const gain = marketValue - costBasis;
+      const gainPercent = costBasis > 0 ? (gain / costBasis) * 100 : 0;
+
+      return { ...p, currentPrice, marketValue, gain, gainPercent };
+    });
+
+    res.json({ success: true, data: enriched });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, error: "Vault Database Error" });
+  }
+});
+
+// POST: Add Trade
+router.post('/add', async (req, res) => {
+  const { ticker, price, type, shares, strike, expiry } = req.body;
+  const id = Math.random().toString(36).substr(2, 9);
+  const dateOpened = new Date().toISOString().split('T')[0];
+
+  let contractSymbol = null;
+
+  // Generate Yahoo Option Symbol if it's an option
+  if (type !== 'SHARE' && strike && expiry) {
+    try {
+      const datePart = formatYahooDate(expiry);
+      const typePart = type === 'CALL' ? 'C' : 'P';
+      const strikePart = formatYahooStrike(Number(strike));
+      contractSymbol = `${ticker.toUpperCase()}${datePart}${typePart}${strikePart}`;
+    } catch (e) {
+      console.error("Symbol Gen Error", e);
+    }
+  }
+
+  try {
+    await query(
+      `INSERT INTO portfolio (id, ticker, type, "entryPrice", shares, "dateOpened", status, "strikePrice", "expirationDate", "contractSymbol")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [id, ticker.toUpperCase(), type, price, shares, dateOpened, 'OPEN', strike || null, expiry || null, contractSymbol]
+    );
+    res.json({ success: true, msg: "Asset Secured" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to save trade" });
+  }
+});
+
+// POST: AI Optimize (Updated for Options)
+router.post('/optimize', requirePremium, async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
+    const portfolio = result.rows;
+
+    if (portfolio.length === 0) return res.json({ success: false, error: "Portfolio is empty." });
+
+    // Format data specifically for the AI
+    const holdings = portfolio.map((p: any) => {
+      if (p.type === 'SHARE') return `Stock: ${p.ticker} ($${p.marketValue})`;
+      return `Option: ${p.ticker} ${p.type} $${p.strikePrice} Strike, Exp: ${p.expirationDate} ($${p.marketValue})`;
+    }).join('\n');
+
+    const prompt = `
+      Analyze this portfolio of Stocks and Options:
+      ${holdings}
+      
+      Output JSON:
+      {
+        "diversityScore": "1-100",
+        "analysis": "Summary of risk exposure (Greeks, Sector, Concentration).",
+        "optionsStrategy": "Critique the option positions (e.g. 'AAPL Calls are expiring soon, beware Theta decay').",
+        "suggestions": ["Specific actions"]
+      }
+    `;
+
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "system", content: prompt }],
+      model: "gpt-4o",
+      response_format: { type: "json_object" }
+    });
+
+    const advice = JSON.parse(completion.choices[0].message.content || '{}');
+    res.json({ success: true, data: advice });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Optimization Failed" });
+  }
+});
+
+export default router;

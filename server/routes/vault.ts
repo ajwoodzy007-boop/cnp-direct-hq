@@ -8,6 +8,19 @@ const router = express.Router();
 const yf = new YahooFinance();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
+function formatYahooDate(dateStr: string) {
+  const date = new Date(dateStr);
+  const y = date.getFullYear().toString().substr(2, 2);
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  const d = (date.getDate() + 1).toString().padStart(2, '0');
+  return `${y}${m}${d}`;
+}
+
+function formatYahooStrike(strike: number) {
+  const str = (strike * 1000).toString();
+  return str.padStart(8, '0');
+}
+
 router.get('/', async (req, res) => {
   try {
     const result = await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
@@ -16,29 +29,36 @@ router.get('/', async (req, res) => {
     if (portfolio.length === 0) {
       return res.json({ success: true, data: [] });
     }
-    
-    const uniqueTickers = Array.from(new Set(portfolio.map((p: any) => p.ticker)));
+
+    const symbols = portfolio.map((p: any) => p.type === 'SHARE' ? p.ticker : p.contractSymbol);
+    const uniqueSymbols = Array.from(new Set(symbols.filter((s: any) => s)));
+
     const quotes: Record<string, number> = {};
     
-    for (const t of uniqueTickers) {
+    for (const sym of uniqueSymbols) {
       try {
-        const q = await yf.quote(t as string);
-        quotes[t as string] = q.regularMarketPrice || 0;
+        const q = await yf.quote(sym as string);
+        quotes[sym as string] = q.regularMarketPrice || 0;
       } catch (e) {
-        quotes[t as string] = 0;
+        quotes[sym as string] = 0;
       }
     }
 
-    const enrichedPortfolio = portfolio.map((p: any) => {
-      const currentPrice = quotes[p.ticker] || p.entryPrice;
-      const marketValue = currentPrice * p.shares;
-      const gain = marketValue - (p.entryPrice * p.shares);
-      const gainPercent = ((currentPrice - p.entryPrice) / p.entryPrice) * 100;
+    const enriched = portfolio.map((p: any) => {
+      const lookupSymbol = p.type === 'SHARE' ? p.ticker : p.contractSymbol;
+      const currentPrice = quotes[lookupSymbol] || 0;
+      
+      const multiplier = p.type === 'SHARE' ? 1 : 100;
+      const marketValue = currentPrice * p.shares * multiplier;
+      const costBasis = p.entryPrice * p.shares * multiplier;
+      
+      const gain = marketValue - costBasis;
+      const gainPercent = costBasis > 0 ? (gain / costBasis) * 100 : 0;
 
       return { ...p, currentPrice, marketValue, gain, gainPercent };
     });
 
-    res.json({ success: true, data: enrichedPortfolio });
+    res.json({ success: true, data: enriched });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, error: "Vault Database Error" });
@@ -46,17 +66,30 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/add', async (req, res) => {
-  const { ticker, price, type, shares } = req.body;
+  const { ticker, price, type, shares, strike, expiry } = req.body;
   const id = Math.random().toString(36).substr(2, 9);
-  const date = new Date().toISOString().split('T')[0];
+  const dateOpened = new Date().toISOString().split('T')[0];
+
+  let contractSymbol = null;
+
+  if (type !== 'SHARE' && strike && expiry) {
+    try {
+      const datePart = formatYahooDate(expiry);
+      const typePart = type === 'CALL' ? 'C' : 'P';
+      const strikePart = formatYahooStrike(Number(strike));
+      contractSymbol = `${ticker.toUpperCase()}${datePart}${typePart}${strikePart}`;
+    } catch (e) {
+      console.error("Symbol Gen Error", e);
+    }
+  }
 
   try {
     await query(
-      `INSERT INTO portfolio (id, ticker, type, "entryPrice", shares, "dateOpened", status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [id, ticker.toUpperCase(), type || 'SHARE', price, shares, date, 'OPEN']
+      `INSERT INTO portfolio (id, ticker, type, "entryPrice", shares, "dateOpened", status, "strikePrice", "expirationDate", "contractSymbol")
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [id, ticker.toUpperCase(), type || 'SHARE', price, shares, dateOpened, 'OPEN', strike || null, expiry || null, contractSymbol]
     );
-    res.json({ success: true, msg: "Asset Secured in Vault" });
+    res.json({ success: true, msg: "Asset Secured" });
   } catch (e) {
     console.error(e);
     res.status(500).json({ success: false, error: "Failed to save trade" });
@@ -82,17 +115,22 @@ router.post('/optimize', requirePremium, async (req, res) => {
       return res.json({ success: false, error: "Portfolio is empty." });
     }
 
-    const holdings = portfolio.map((p: any) => `${p.ticker} (${p.shares} shares @ $${p.entryPrice})`).join(', ');
+    const holdings = portfolio.map((p: any) => {
+      if (p.type === 'SHARE') return `Stock: ${p.ticker} (${p.shares} shares @ $${p.entryPrice})`;
+      return `Option: ${p.ticker} ${p.type} $${p.strikePrice} Strike, Exp: ${p.expirationDate} (${p.shares} contracts @ $${p.entryPrice})`;
+    }).join('\n');
 
     const prompt = `
-      You are a Portfolio Risk Manager. Analyze this portfolio: [${holdings}].
+      Analyze this portfolio of Stocks and Options:
+      ${holdings}
       
-      Output strictly JSON:
+      Output JSON:
       {
         "diversityScore": "1-100",
         "sectorExposure": [ {"sector": "Name", "percent": "Number"} ],
-        "analysis": "2 sentence summary of risk.",
-        "suggestions": [ "Specific action to rebalance (e.g. Reduce Tech exposure)" ]
+        "analysis": "Summary of risk exposure (Greeks, Sector, Concentration).",
+        "optionsStrategy": "Critique the option positions (e.g. 'AAPL Calls are expiring soon, beware Theta decay').",
+        "suggestions": ["Specific actions"]
       }
     `;
 
@@ -103,7 +141,6 @@ router.post('/optimize', requirePremium, async (req, res) => {
     });
 
     const advice = JSON.parse(completion.choices[0].message.content || '{}');
-    
     res.json({ success: true, data: advice });
 
   } catch (error: any) {
