@@ -1,0 +1,87 @@
+// ... existing imports ...
+
+// 1. EARNINGS SCANNER (Checks a watchlist for upcoming dates)
+router.get('/earnings-scanner', requirePremium, async (req, res) => {
+  const watchlist = ['NVDA', 'TSLA', 'NFLX', 'AMD', 'META', 'AMZN', 'GOOGL', 'MSFT', 'AAPL', 'COIN', 'MSTR', 'CRWD'];
+  
+  try {
+    const upcoming = [];
+    
+    // Fetch data in parallel
+    const promises = watchlist.map(async (ticker) => {
+      try {
+        const summary = await yf.quoteSummary(ticker, { modules: ['calendarEvents', 'price'] });
+        const events = summary.calendarEvents;
+        
+        if (events && events.earnings && events.earnings.earningsDate) {
+          const date = new Date(events.earnings.earningsDate[0]);
+          const now = new Date();
+          const diffTime = date.getTime() - now.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+          // Only return if earnings are within next 21 days
+          if (diffDays >= 0 && diffDays <= 21) {
+            return {
+              ticker,
+              date: date.toLocaleDateString(),
+              daysAway: diffDays,
+              price: summary.price?.regularMarketPrice
+            };
+          }
+        }
+      } catch (e) {
+        // limit errors for individual tickers
+      }
+      return null;
+    });
+
+    const results = await Promise.all(promises);
+    const cleanList = results.filter(r => r !== null).sort((a: any, b: any) => a.daysAway - b.daysAway);
+    
+    res.json({ success: true, data: cleanList });
+
+  } catch (error) {
+    console.error("Earnings Scan Error:", error);
+    res.status(500).json({ success: false, error: "Scanner Failed" });
+  }
+});
+
+// 2. EARNINGS STRATEGY GENERATOR
+router.post('/earnings-play', requirePremium, async (req, res) => {
+  const { ticker, price, date } = req.body;
+
+  try {
+    const prompt = `
+      Act as a Derivatives Specialist. Generate an 'Earnings Play' for ${ticker}.
+      Current Price: $${price}
+      Earnings Date: ${date}
+
+      Analyze the implied volatility (IV) crush potential.
+      
+      Output strict JSON:
+      {
+        "strategy": "Name (e.g. Long Straddle, Iron Condor)",
+        "bias": "Directional bias or Neutral?",
+        "impliedMove": "Estimated % move based on current pricing",
+        "rationale": "Why this strategy? (e.g. 'Market expects 5% move, stock usually moves 8%')",
+        "setup": {
+          "leg1": "Description of Leg 1",
+          "leg2": "Description of Leg 2"
+        },
+        "risk": "High/Med/Low"
+      }
+    `;
+
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "system", content: prompt }],
+      model: "gpt-4o",
+      response_format: { type: "json_object" }
+    });
+
+    const play = JSON.parse(completion.choices[0].message.content || '{}');
+    res.json({ success: true, data: play });
+
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Strategy Generation Failed" });
+  }
+});
