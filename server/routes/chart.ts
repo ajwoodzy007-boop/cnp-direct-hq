@@ -1,7 +1,8 @@
 import express from 'express';
-import yf from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 
 const router = express.Router();
+const yf = new YahooFinance();
 
 router.get('/', async (req, res) => {
   const { ticker } = req.query;
@@ -11,35 +12,40 @@ router.get('/', async (req, res) => {
   }
 
   try {
-    // Use chart() API (v3) instead of historical()
+    console.log(`[Chart API] Fetching history for: ${ticker}`);
+
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 1);
-    
-    const result = await yf.chart(ticker.toUpperCase(), {
+    startDate.setDate(endDate.getDate() - 30);
+
+    const chartData = await yf.chart(ticker.toUpperCase(), { 
       period1: startDate,
       period2: endDate,
-      interval: '1d'
+      interval: '1d' 
     }) as any;
 
-    const quotes = result.quotes || [];
+    const quotes = chartData?.quotes || [];
     
-    // Format for Recharts
-    const chartData = quotes.map((day: any) => ({
+    if (!quotes || quotes.length === 0) {
+      console.warn(`[Chart API] No history found for ${ticker}`);
+      return res.status(404).json({ success: false, error: "No history found" });
+    }
+
+    const data = quotes.map((day: any) => ({
       date: new Date(day.date).toISOString().split('T')[0].slice(5),
       price: day.close
     })).filter((d: any) => d.price != null);
 
-    // Determine trend
-    const start = chartData[0]?.price || 0;
-    const end = chartData[chartData.length - 1]?.price || 0;
-    const trend = end >= start ? 'up' : 'down';
+    const startPrice = data[0]?.price || 0;
+    const endPrice = data[data.length - 1]?.price || 0;
+    const trend = endPrice >= startPrice ? 'up' : 'down';
 
-    res.json({ success: true, data: chartData, trend });
+    console.log(`[Chart API] Success: Sent ${data.length} candles for ${ticker}`);
+    res.json({ success: true, data, trend });
 
-  } catch (error) {
-    console.error('Chart fetch error:', error);
-    res.status(500).json({ success: false, error: "Chart data unavailable" });
+  } catch (error: any) {
+    console.error(`[Chart API] CRASH on ${ticker}:`, error.message);
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
