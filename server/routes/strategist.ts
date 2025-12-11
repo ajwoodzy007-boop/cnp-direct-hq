@@ -1,9 +1,10 @@
 import express from 'express';
-import YahooFinance from 'yahoo-finance2';
+import OpenAI from 'openai';
+import yf from 'yahoo-finance2';
 import { requirePremium } from '../middleware/premium';
 
 const router = express.Router();
-const yf = new YahooFinance();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 function generateOptionPlay(ticker: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') {
   const strikeRound = (num: number) => Math.round(num);
@@ -45,6 +46,7 @@ function generateOptionPlay(ticker: string, price: number, sentiment: 'BULLISH' 
   };
 }
 
+// GET: Quick analyze (existing)
 router.get('/analyze', requirePremium, async (req, res) => {
   const { ticker } = req.query;
   
@@ -75,6 +77,63 @@ router.get('/analyze', requirePremium, async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ success: false, error: "Strategist Calculation Failed" });
+  }
+});
+
+// POST: AI-Powered Playbook Generation
+router.post('/playbook', requirePremium, async (req, res) => {
+  const { ticker, capital, riskProfile } = req.body;
+
+  if (!ticker) {
+    return res.status(400).json({ success: false, error: "Ticker required" });
+  }
+
+  try {
+    // 1. Get Real-Time Data
+    const quote = await yf.quote(ticker) as any;
+    const price = quote.regularMarketPrice;
+    
+    // 2. The Prompt: Ask the AI for a structured battle plan
+    const prompt = `
+      Act as an elite Options Strategist. Create a trading playbook for ${ticker} (Price: $${price}).
+      
+      User Profile:
+      - Capital Available: $${capital || 10000}
+      - Risk Tolerance: ${riskProfile || 'Moderate'}
+      
+      Output strictly JSON with these fields:
+      {
+        "strategyName": "Name (e.g. Iron Condor, Long Call)",
+        "thesis": "Why this trade? (Market conditions)",
+        "setup": {
+          "entryZone": "Price range to enter",
+          "profitTarget": "Price to sell",
+          "stopLoss": "Price to bail"
+        },
+        "legs": [
+          {"action": "Buy/Sell", "type": "Call/Put", "strike": "Strike Price", "expiry": "Date/Term"}
+        ],
+        "greeks": {
+          "delta": "Value & Explanation",
+          "theta": "Value & Explanation"
+        },
+        "riskScore": "1-10 (10 is high risk)"
+      }
+    `;
+
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "system", content: prompt }],
+      model: "gpt-4o",
+      response_format: { type: "json_object" }
+    });
+
+    const playbook = JSON.parse(completion.choices[0].message.content || '{}');
+    
+    res.json({ success: true, data: { ...playbook, currentPrice: price } });
+
+  } catch (error: any) {
+    console.error("Strategist Error:", error);
+    res.status(500).json({ success: false, error: "Strategy Generation Failed" });
   }
 });
 
