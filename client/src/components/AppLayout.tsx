@@ -7,16 +7,20 @@ import {
   LayoutDashboard, 
   Menu,
   ShieldCheck,
-  LogOut
+  LogOut,
+  LogIn
 } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
   currentTab: string;
   setTab: (tab: string) => void;
+  user: { email: string; tier: string } | null;
+  onLoginClick: () => void;
+  onLogoutClick: () => void;
 }
 
-export default function AppLayout({ children, currentTab, setTab }: LayoutProps) {
+export default function AppLayout({ children, currentTab, setTab, user, onLoginClick, onLogoutClick }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const navItems = [
@@ -74,16 +78,36 @@ export default function AppLayout({ children, currentTab, setTab }: LayoutProps)
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-800 bg-slate-900/50">
-          <div className="flex items-center gap-3 px-2">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center text-xs font-bold text-white">
-              JD
+          {user ? (
+            <div className="flex items-center gap-3 px-2">
+              <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                user.tier === 'PREMIUM' ? 'bg-gradient-to-tr from-amber-500 to-orange-600' : 'bg-gradient-to-tr from-cyan-600 to-blue-600'
+              }`}>
+                {user.email.substring(0, 2).toUpperCase()}
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <div className="text-sm font-medium text-white truncate">{user.email.split('@')[0]}</div>
+                <div className="text-[10px] flex items-center gap-1">
+                  <span className={`h-1.5 w-1.5 rounded-full ${user.tier === 'PREMIUM' ? 'bg-amber-500' : 'bg-green-400'}`}></span>
+                  <span className="opacity-70">{user.tier} OPERATIVE</span>
+                </div>
+              </div>
+              <LogOut 
+                onClick={onLogoutClick} 
+                className="h-4 w-4 text-slate-500 hover:text-red-400 cursor-pointer" 
+                data-testid="button-logout"
+              />
             </div>
-            <div className="flex-1">
-              <div className="text-sm font-medium text-white">John Doe</div>
-              <div className="text-xs text-green-400">● Systems Online</div>
-            </div>
-            <LogOut className="h-4 w-4 text-slate-500 hover:text-red-400 cursor-pointer" />
-          </div>
+          ) : (
+            <button 
+              onClick={onLoginClick}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 hover:border-cyan-500/30 font-bold py-2 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
+              data-testid="button-sidebar-login"
+            >
+              <LogIn className="h-4 w-4" />
+              Sign In / Join
+            </button>
+          )}
         </div>
       </aside>
 

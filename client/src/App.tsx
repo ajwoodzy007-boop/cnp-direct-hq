@@ -24,7 +24,7 @@ interface User {
   tier: 'FREE' | 'PREMIUM';
 }
 
-function MainDashboard({ user }: { user: User | null }) {
+function MainDashboard({ user, onLogout }: { user: User | null; onLogout: () => void }) {
   const [currentTab, setTab] = useState('radar');
 
   const renderContent = () => {
@@ -42,23 +42,29 @@ function MainDashboard({ user }: { user: User | null }) {
   };
 
   return (
-    <AppLayout currentTab={currentTab} setTab={setTab}>
+    <AppLayout 
+      currentTab={currentTab} 
+      setTab={setTab}
+      user={user}
+      onLoginClick={() => {}}
+      onLogoutClick={onLogout}
+    >
       {renderContent()}
     </AppLayout>
   );
 }
 
-function AuthenticatedRoutes({ user }: { user: User | null }) {
+function AuthenticatedRoutes({ user, onLogout }: { user: User | null; onLogout: () => void }) {
   return (
     <Switch>
       <Route path="/">
-        <MainDashboard user={user} />
+        <MainDashboard user={user} onLogout={onLogout} />
       </Route>
       <Route path="/pricing" component={Pricing} />
       <Route path="/checkout/success" component={CheckoutSuccess} />
       <Route path="/checkout/cancel" component={CheckoutCancel} />
       <Route>
-        <MainDashboard user={user} />
+        <MainDashboard user={user} onLogout={onLogout} />
       </Route>
     </Switch>
   );
@@ -90,6 +96,12 @@ export default function App() {
     );
   }
 
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    setUser(null);
+    setIsAuthenticated(false);
+  };
+
   if (!isAuthenticated) {
     return <AuthPage onLogin={(userData) => {
       setUser(userData);
@@ -103,7 +115,7 @@ export default function App() {
         <TooltipProvider>
           <Toaster />
           <SonnerToaster position="top-right" richColors />
-          <AuthenticatedRoutes user={user} />
+          <AuthenticatedRoutes user={user} onLogout={handleLogout} />
         </TooltipProvider>
       </SettingsProvider>
     </QueryClientProvider>
