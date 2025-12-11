@@ -1,10 +1,12 @@
 import express from 'express';
 import YahooFinance from 'yahoo-finance2';
+import OpenAI from 'openai';
 import { query } from '../db';
 import { requirePremium } from '../middleware/premium';
 
 const router = express.Router();
 const yf = new YahooFinance();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 router.get('/', async (req, res) => {
   try {
@@ -71,55 +73,41 @@ router.post('/close', async (req, res) => {
   }
 });
 
-router.get('/optimize', requirePremium, async (req, res) => {
+router.post('/optimize', requirePremium, async (req, res) => {
   try {
     const result = await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
     const portfolio = result.rows;
 
     if (portfolio.length === 0) {
-      return res.json({ success: true, data: { suggestions: [], message: "No positions to optimize" } });
+      return res.json({ success: false, error: "Portfolio is empty." });
     }
 
-    const suggestions = [];
-    const tickers = portfolio.map((p: any) => p.ticker);
-    const tickerCounts = tickers.reduce((acc: any, t: string) => {
-      acc[t] = (acc[t] || 0) + 1;
-      return acc;
-    }, {});
+    const holdings = portfolio.map((p: any) => `${p.ticker} (${p.shares} shares @ $${p.entryPrice})`).join(', ');
 
-    for (const [ticker, count] of Object.entries(tickerCounts)) {
-      if ((count as number) > 1) {
-        suggestions.push({
-          type: 'CONSOLIDATE',
-          ticker,
-          message: `Consider consolidating ${count} positions in ${ticker}`
-        });
+    const prompt = `
+      You are a Portfolio Risk Manager. Analyze this portfolio: [${holdings}].
+      
+      Output strictly JSON:
+      {
+        "diversityScore": "1-100",
+        "sectorExposure": [ {"sector": "Name", "percent": "Number"} ],
+        "analysis": "2 sentence summary of risk.",
+        "suggestions": [ "Specific action to rebalance (e.g. Reduce Tech exposure)" ]
       }
-    }
+    `;
 
-    const totalValue = portfolio.reduce((sum: number, p: any) => sum + (p.entryPrice * p.shares), 0);
-    for (const p of portfolio) {
-      const positionValue = p.entryPrice * p.shares;
-      const weight = (positionValue / totalValue) * 100;
-      if (weight > 25) {
-        suggestions.push({
-          type: 'OVERWEIGHT',
-          ticker: p.ticker,
-          weight: weight.toFixed(1),
-          message: `${p.ticker} is ${weight.toFixed(1)}% of portfolio - consider rebalancing`
-        });
-      }
-    }
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "system", content: prompt }],
+      model: "gpt-4o",
+      response_format: { type: "json_object" }
+    });
 
-    if (tickers.length < 5) {
-      suggestions.push({
-        type: 'DIVERSIFY',
-        message: `Only ${tickers.length} positions - consider adding more for diversification`
-      });
-    }
+    const advice = JSON.parse(completion.choices[0].message.content || '{}');
+    
+    res.json({ success: true, data: advice });
 
-    res.json({ success: true, data: { suggestions, portfolioSize: portfolio.length } });
-  } catch (error) {
+  } catch (error: any) {
+    console.error("Optimizer Error:", error);
     res.status(500).json({ success: false, error: "Optimization Failed" });
   }
 });
