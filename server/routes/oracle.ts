@@ -2,50 +2,83 @@ import express from 'express';
 import { runMarketScan } from '../lib/sentinel';
 import { requirePremium } from '../middleware/premium';
 import { db } from '../db';
-import { userPortfolio } from '@shared/schema';
-import { desc } from 'drizzle-orm';
+import { predictions, userPortfolio } from '@shared/schema';
+import { desc, eq, sql } from 'drizzle-orm';
+import yahooFinance from 'yahoo-finance2';
 
 const router = express.Router();
 
-let dailyCache: { date: string; picks: any[] } = { date: '', picks: [] };
+// Helper to get today's date in YYYY-MM-DD format
+function getTodayDate(): string {
+  return new Date().toISOString().split('T')[0];
+}
 
+// GET /daily: Run Scan & Auto-Save to History
 router.get('/daily', async (req, res) => {
   try {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDate();
 
-    if (dailyCache.date === today && dailyCache.picks.length > 0) {
-      return res.json({ success: true, fromCache: true, data: dailyCache.picks });
+    // 1. Check if we already generated picks for TODAY in DB
+    const existing = await db.select().from(predictions)
+      .where(sql`DATE(${predictions.predictionDate}) = ${today}`);
+
+    if (existing.length > 0) {
+      // Return saved picks (don't re-scan and change them mid-day)
+      return res.json({
+        success: true,
+        fromCache: true,
+        data: existing.map(row => ({
+          ticker: row.ticker,
+          entryPrice: row.entryPrice,
+          predictedPrice: row.entryPrice * 1.05,
+          signal: row.signalType,
+          confidence: row.signalType === 'MOMENTUM BUY' ? 'High' : 'Med',
+          outcome: row.outcome || 'pending'
+        }))
+      });
     }
 
+    // 2. Run Sentinel Engine for new picks
     const scanResults = await runMarketScan();
 
+    // Filter for Top 5 BUY signals
     const topPicks = scanResults
       .filter(s => s.signal.includes('BUY'))
       .sort((a, b) => b.rsi - a.rsi)
       .slice(0, 5);
 
+    // 3. AUTO-SAVE to database (The "Paper Trail")
+    for (const p of topPicks) {
+      await db.insert(predictions).values({
+        ticker: p.ticker,
+        signalType: p.signal,
+        entryPrice: p.price
+      });
+    }
+
+    // 4. Return formatted picks
     const formattedPicks = topPicks.map(p => ({
       ticker: p.ticker,
       entryPrice: p.price,
       predictedPrice: p.price * 1.05,
-      outcome: 'pending',
+      signal: p.signal,
       confidence: p.signal === 'MOMENTUM BUY' ? 'High' : 'Med',
-      signal: p.signal
+      outcome: 'pending'
     }));
-
-    dailyCache = { date: today, picks: formattedPicks };
 
     res.json({ success: true, fromCache: false, data: formattedPicks });
 
   } catch (error) {
+    console.error("Oracle Daily Error:", error);
     res.status(500).json({ success: false, error: "Oracle Malfunction" });
   }
 });
 
+// GET /signals: Live trading signals (Premium)
 router.get('/signals', requirePremium, async (req, res) => {
   try {
     const scanResults = await runMarketScan();
-    
+
     const signals = scanResults
       .filter(s => s.signal !== 'WAIT')
       .map(s => ({
@@ -62,27 +95,77 @@ router.get('/signals', requirePremium, async (req, res) => {
   }
 });
 
+// GET /history: The "Proof Log" with graded predictions
 router.get('/history', async (req, res) => {
   try {
-    const trades = await db.select().from(userPortfolio).orderBy(desc(userPortfolio.id));
-    
-    const closedTrades = trades.filter((t: any) => t.status === 'CLOSED');
+    // 1. Get all past predictions (last 50)
+    const allPredictions = await db.select().from(predictions)
+      .orderBy(desc(predictions.predictionDate))
+      .limit(50);
 
+    if (allPredictions.length === 0) {
+      return res.json({
+        success: true,
+        stats: { wins: 0, losses: 0, winRate: 0, streak: 0 },
+        history: []
+      });
+    }
+
+    // 2. Get unique tickers and batch fetch current prices
+    const uniqueTickers = Array.from(new Set(allPredictions.map(p => p.ticker)));
+    const quotes: Record<string, number> = {};
+
+    // Batch fetch quotes (more efficient)
+    await Promise.all(
+      uniqueTickers.map(async (ticker) => {
+        try {
+          const q = await yahooFinance.quote(ticker) as any;
+          quotes[ticker] = q?.regularMarketPrice || 0;
+        } catch {
+          quotes[ticker] = 0;
+        }
+      })
+    );
+
+    // 3. Grade predictions and calculate stats
     let wins = 0;
     let losses = 0;
     let currentStreak = 0;
+    let tempStreak = 0;
 
-    closedTrades.forEach((trade: any) => {
-      const profit = (trade.currentPrice - trade.entryPrice) * trade.shares;
-      if (profit > 0) {
+    const gradedHistory = allPredictions.map((p, idx) => {
+      const currentPrice = p.outcomePrice || quotes[p.ticker] || p.entryPrice;
+      const profitPercent = ((currentPrice - p.entryPrice) / p.entryPrice) * 100;
+
+      // Define Win/Loss thresholds
+      const isWin = profitPercent > 1.0;
+      const isLoss = profitPercent < -1.0;
+
+      if (isWin) {
         wins++;
-        currentStreak++;
-      } else {
+        tempStreak++;
+      } else if (isLoss) {
         losses++;
-        currentStreak = 0;
+        tempStreak = 0;
       }
+
+      // Track streak from most recent trades
+      if (idx < 10) {
+        currentStreak = tempStreak;
+      }
+
+      return {
+        ticker: p.ticker,
+        type: p.signalType,
+        date: p.predictionDate,
+        entry: p.entryPrice,
+        exit: currentPrice,
+        profitPercent,
+        outcome: isWin ? 'WIN' : isLoss ? 'LOSS' : 'PENDING'
+      };
     });
 
+    // 4. Calculate win rate (excluding pending)
     const total = wins + losses;
     const winRate = total === 0 ? 0 : Math.round((wins / total) * 100);
 
@@ -94,14 +177,7 @@ router.get('/history', async (req, res) => {
         winRate,
         streak: currentStreak
       },
-      history: closedTrades.map((t: any) => ({
-        ticker: t.ticker,
-        type: t.type,
-        date: t.dateOpened,
-        entry: t.entryPrice,
-        exit: t.currentPrice,
-        profitPercent: ((t.currentPrice - t.entryPrice) / t.entryPrice) * 100
-      }))
+      history: gradedHistory
     });
 
   } catch (error) {
