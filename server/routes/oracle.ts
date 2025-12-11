@@ -48,7 +48,7 @@ router.get('/daily', async (req, res) => {
     // - Prioritize MOMENTUM BUY over VALUE BUY
     const seenTickers = new Set<string>();
     
-    const scoredPicks = scanResults
+    const allQualified = scanResults
       .filter(s => s.signal.includes('BUY'))
       .filter(s => s.rsi >= 45 && s.rsi <= 70) // Optimal RSI range
       .filter(s => (s.sentimentScore || 0) >= 0.05) // Positive sentiment
@@ -63,15 +63,44 @@ router.get('/daily', async (req, res) => {
           (Math.min((s.rvol || 1), 5) * 5) // RVOL weight (capped)
         )
       }))
-      .sort((a, b) => b.score - a.score) // Sort by composite score
-      .filter(s => {
-        if (seenTickers.has(s.ticker)) return false;
-        seenTickers.add(s.ticker);
-        return true;
-      })
-      .slice(0, 7); // 7 unique high-quality picks per day
+      .sort((a, b) => b.score - a.score);
     
-    const topPicks = scoredPicks;
+    // Separate into price tiers: under $30 and $30+
+    const lowPriceStocks = allQualified.filter(s => s.price < 30);
+    const regularStocks = allQualified.filter(s => s.price >= 30);
+    
+    // Ensure at least 2 low-price picks (under $30)
+    const selectedLowPrice: typeof allQualified = [];
+    const selectedRegular: typeof allQualified = [];
+    
+    for (const s of lowPriceStocks) {
+      if (!seenTickers.has(s.ticker) && selectedLowPrice.length < 2) {
+        seenTickers.add(s.ticker);
+        selectedLowPrice.push(s);
+      }
+    }
+    
+    // Fill remaining spots with regular stocks (up to 10 total)
+    const remainingSlots = 10 - selectedLowPrice.length;
+    for (const s of regularStocks) {
+      if (!seenTickers.has(s.ticker) && selectedRegular.length < remainingSlots) {
+        seenTickers.add(s.ticker);
+        selectedRegular.push(s);
+      }
+    }
+    
+    // If we need more low-price stocks to hit 10, add them
+    for (const s of lowPriceStocks) {
+      if (!seenTickers.has(s.ticker) && (selectedLowPrice.length + selectedRegular.length) < 10) {
+        seenTickers.add(s.ticker);
+        selectedLowPrice.push(s);
+      }
+    }
+    
+    // Combine and sort by score for final ranking
+    const topPicks = [...selectedLowPrice, ...selectedRegular]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10); // 10 unique picks per day
 
     // 3. AUTO-SAVE to database (The "Paper Trail")
     for (const p of topPicks) {
