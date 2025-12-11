@@ -228,17 +228,29 @@ function startPredictionScheduler() {
     if (isWeekday && hour === 16 && minute === 15) {
       log("Finalizing daily predictions at 4:15 PM ET", "scheduler");
       try {
-        // Get today's predictions with live prices
+        // Call the Oracle finalization endpoint
+        const finalizeResponse = await fetch(`http://localhost:${port}/api/oracle/finalize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        
+        if (finalizeResponse.ok) {
+          const result = await finalizeResponse.json();
+          log(`Finalized ${result.finalized} Oracle predictions with closing prices`, "scheduler");
+        } else {
+          log("Failed to finalize Oracle predictions", "scheduler");
+        }
+        
+        // Also finalize the top10 run if it exists
         const response = await fetch(`http://localhost:${port}/api/market/top10-today`);
         if (response.ok) {
           const data = await response.json();
           const picks = data.data?.picks || [];
           
           if (picks.length > 0) {
-            // Build entries with close data
             const entries = picks.map((pick: any) => {
               const entryPrice = pick.openPrice || pick.price;
-              const closePrice = pick.price; // Current price is close price at 4:15 PM
+              const closePrice = pick.price;
               const closePnl = ((closePrice - entryPrice) / entryPrice) * 100;
               return {
                 ticker: pick.ticker,
@@ -250,16 +262,13 @@ function startPredictionScheduler() {
               };
             });
             
-            // Finalize the run
-            const finalizeResponse = await fetch(`http://localhost:${port}/api/top10/finalize-run`, {
+            const top10Response = await fetch(`http://localhost:${port}/api/top10/finalize-run`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ date: getETDateString(), entries }),
             });
-            if (finalizeResponse.ok) {
-              log(`Finalized ${entries.length} predictions`, "scheduler");
-            } else {
-              log("Failed to finalize predictions", "scheduler");
+            if (top10Response.ok) {
+              log(`Finalized ${entries.length} top10 predictions`, "scheduler");
             }
           }
         }

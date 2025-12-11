@@ -74,6 +74,67 @@ router.get('/daily', async (req, res) => {
   }
 });
 
+// POST /finalize: Record closing prices and outcomes for today's predictions
+router.post('/finalize', async (req, res) => {
+  try {
+    const today = getTodayDate();
+    
+    // 1. Get today's unfinalized predictions
+    const todaysPredictions = await db.select().from(predictions)
+      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND ${predictions.outcome} IS NULL`);
+    
+    if (todaysPredictions.length === 0) {
+      return res.json({ success: true, message: 'No predictions to finalize', finalized: 0 });
+    }
+    
+    // 2. Fetch current (closing) prices for each ticker
+    const uniqueTickers = Array.from(new Set(todaysPredictions.map(p => p.ticker)));
+    const closingPrices: Record<string, number> = {};
+    
+    await Promise.all(
+      uniqueTickers.map(async (ticker) => {
+        try {
+          const q = await yahooFinance.quote(ticker) as any;
+          closingPrices[ticker] = q?.regularMarketPrice || 0;
+        } catch {
+          closingPrices[ticker] = 0;
+        }
+      })
+    );
+    
+    // 3. Update each prediction with outcome
+    let finalized = 0;
+    for (const pred of todaysPredictions) {
+      const closePrice = closingPrices[pred.ticker];
+      if (closePrice <= 0) continue;
+      
+      const profitPercent = ((closePrice - pred.entryPrice) / pred.entryPrice) * 100;
+      const outcome = profitPercent > 0.5 ? 'win' : profitPercent < -0.5 ? 'loss' : 'neutral';
+      
+      await db.update(predictions)
+        .set({
+          outcomePrice: closePrice,
+          outcome: outcome,
+          outcomeDate: new Date()
+        })
+        .where(eq(predictions.id, pred.id));
+      
+      finalized++;
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `Finalized ${finalized} predictions`,
+      finalized,
+      date: today
+    });
+    
+  } catch (error) {
+    console.error("Finalize Error:", error);
+    res.status(500).json({ success: false, error: "Finalization Failed" });
+  }
+});
+
 // GET /signals: Live trading signals (Premium)
 router.get('/signals', requirePremium, async (req, res) => {
   try {
