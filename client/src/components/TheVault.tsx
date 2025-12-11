@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Plus, Activity, PieChart, TrendingUp, Clock, AlertCircle, Pencil, Trash2, X } from 'lucide-react';
+import Skeleton from './Skeleton';
 
 export default function TheVault() {
   const [positions, setPositions] = useState<any[]>([]);
@@ -182,7 +183,18 @@ export default function TheVault() {
                   </tr>
                 </thead>
                 <tbody>
-                  {options.map((p) => (
+                  {loading ? (
+                    [1, 2, 3].map((i) => (
+                      <tr key={i} className="border-b border-slate-800">
+                        <td className="px-6 py-4"><Skeleton className="h-6 w-16" /></td>
+                        <td className="px-6 py-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                        <td className="px-6 py-4"><Skeleton className="h-4 w-16" /></td>
+                        <td className="px-6 py-4"><Skeleton className="h-6 w-20" /></td>
+                      </tr>
+                    ))
+                  ) : options.map((p) => (
                     <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50" data-testid={`row-option-${p.id}`}>
                       <td className="px-6 py-4">
                         <div className="font-bold text-white">{p.ticker}</div>
@@ -240,7 +252,18 @@ export default function TheVault() {
                 </tr>
               </thead>
               <tbody>
-                {equities.map((p) => (
+                {loading ? (
+                  [1, 2, 3, 4, 5].map((i) => (
+                    <tr key={i} className="border-b border-slate-800">
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-16" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-20" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-12" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-4 w-16" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-6 w-20" /></td>
+                    </tr>
+                  ))
+                ) : equities.map((p) => (
                   <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50" data-testid={`row-equity-${p.id}`}>
                     <td className="px-6 py-4 font-bold text-white">{p.ticker}</td>
                     <td className="px-6 py-4 text-slate-400">${p.entryPrice?.toFixed(2)}</td>
@@ -269,7 +292,7 @@ export default function TheVault() {
                     </td>
                   </tr>
                 ))}
-                {equities.length === 0 && (
+                {!loading && equities.length === 0 && (
                   <tr><td colSpan={6} className="py-8 text-center text-slate-500">No share positions active.</td></tr>
                 )}
               </tbody>
