@@ -13,6 +13,7 @@ import strategistRouter from "./routes/strategist";
 import vaultRouter from "./routes/vault";
 import chartRouter from "./routes/chart";
 import stripeRouter from "./routes/stripe";
+import aiRouter from "./routes/ai";
 
 // Cache for daily predictions - regenerated at 7:30 AM ET each weekday
 interface DailyPredictionsCache {
@@ -109,6 +110,7 @@ export async function registerRoutes(
   
   // Stripe checkout routes
   app.use("/api/stripe", stripeRouter);
+  app.use("/api/ai", aiRouter);
 
   // GET /api/market/scan - Scan market for gainers/losers
   app.get("/api/market/scan", async (req, res) => {
