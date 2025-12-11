@@ -8,6 +8,7 @@ import {
   ResponsiveContainer,
   CartesianGrid 
 } from 'recharts';
+import Skeleton from './Skeleton';
 
 interface ChartProps {
   ticker: string;
@@ -53,8 +54,19 @@ export default function StockChart({ ticker }: ChartProps) {
   );
 
   if (loading) return (
-    <div className="h-64 w-full flex items-center justify-center bg-slate-950/30 rounded-lg animate-pulse">
-      <span className="text-slate-600 text-xs font-mono">LOADING DATA...</span>
+    <div className="h-72 w-full bg-slate-950/30 rounded-lg p-4 border border-slate-800 relative overflow-hidden">
+      <div className="absolute left-0 top-0 bottom-0 w-8 flex flex-col justify-between py-4 px-1">
+        <Skeleton className="h-3 w-6" />
+        <Skeleton className="h-3 w-6" />
+        <Skeleton className="h-3 w-6" />
+      </div>
+      <div className="ml-10 h-full flex items-end gap-2">
+        <Skeleton className="h-[40%] w-full rounded-t opacity-20" />
+        <Skeleton className="h-[60%] w-full rounded-t opacity-40" />
+        <Skeleton className="h-[80%] w-full rounded-t opacity-60" />
+        <Skeleton className="h-[50%] w-full rounded-t opacity-30" />
+        <Skeleton className="h-[70%] w-full rounded-t opacity-50" />
+      </div>
     </div>
   );
 
