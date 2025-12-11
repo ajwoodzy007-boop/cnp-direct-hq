@@ -1,99 +1,72 @@
 import express from 'express';
-import yf from 'yahoo-finance2';
-import { storage } from '../storage';
+import YahooFinance from 'yahoo-finance2';
+import { query } from '../db';
 
 const router = express.Router();
+const yf = new YahooFinance();
 
-// GET: Fetch Portfolio with Live Prices
 router.get('/', async (req, res) => {
   try {
-    const userId = (req.query.userId as string) || 'demo';
-    const portfolio = await storage.getUserPortfolio(userId);
+    const result = await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
+    const portfolio = result.rows;
     
     if (portfolio.length === 0) {
       return res.json({ success: true, data: [] });
     }
     
-    // Get live prices for all positions
-    const tickers = portfolio.map(p => p.ticker);
-    const uniqueTickers = Array.from(new Set(tickers));
-    
+    const uniqueTickers = Array.from(new Set(portfolio.map((p: any) => p.ticker)));
     const quotes: Record<string, number> = {};
+    
     for (const t of uniqueTickers) {
       try {
-        const q = await yf.quote(t) as any;
-        quotes[t] = q.regularMarketPrice || 0;
+        const q = await yf.quote(t as string);
+        quotes[t as string] = q.regularMarketPrice || 0;
       } catch (e) {
-        quotes[t] = 0;
+        quotes[t as string] = 0;
       }
     }
 
-    // Calculate P/L for each position
-    const enrichedPortfolio = portfolio.map(p => {
-      const currentPrice = quotes[p.ticker] || p.currentPrice || p.averageCost;
+    const enrichedPortfolio = portfolio.map((p: any) => {
+      const currentPrice = quotes[p.ticker] || p.entryPrice;
       const marketValue = currentPrice * p.shares;
-      const costBasis = p.averageCost * p.shares;
-      const gain = marketValue - costBasis;
-      const gainPercent = ((currentPrice - p.averageCost) / p.averageCost) * 100;
+      const gain = marketValue - (p.entryPrice * p.shares);
+      const gainPercent = ((currentPrice - p.entryPrice) / p.entryPrice) * 100;
 
-      return { 
-        ...p, 
-        currentPrice, 
-        marketValue, 
-        gain, 
-        gainPercent,
-        type: 'SHARE' as const,
-        status: 'OPEN' as const
-      };
+      return { ...p, currentPrice, marketValue, gain, gainPercent };
     });
 
     res.json({ success: true, data: enrichedPortfolio });
   } catch (error) {
-    console.error('Vault fetch error:', error);
-    res.status(500).json({ success: false, error: "Vault Locked" });
+    console.error(error);
+    res.status(500).json({ success: false, error: "Vault Database Error" });
   }
 });
 
-// POST: Add a new position
 router.post('/add', async (req, res) => {
+  const { ticker, price, type, shares } = req.body;
+  const id = Math.random().toString(36).substr(2, 9);
+  const date = new Date().toISOString().split('T')[0];
+
   try {
-    const { ticker, price, shares, userId = 'demo' } = req.body;
-    
-    if (!ticker || !price || !shares) {
-      return res.status(400).json({ success: false, error: 'Missing required fields' });
-    }
-    
-    const position = await storage.addToUserPortfolio({
-      userId,
-      ticker: ticker.toUpperCase(),
-      shares: Number(shares),
-      averageCost: Number(price),
-      currentPrice: Number(price),
-    });
-    
-    res.json({ success: true, msg: "Asset Secured in Vault", data: position });
-  } catch (error) {
-    console.error('Vault add error:', error);
-    res.status(500).json({ success: false, error: "Failed to add position" });
+    await query(
+      `INSERT INTO portfolio (id, ticker, type, "entryPrice", shares, "dateOpened", status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [id, ticker.toUpperCase(), type || 'SHARE', price, shares, date, 'OPEN']
+    );
+    res.json({ success: true, msg: "Asset Secured in Vault" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ success: false, error: "Failed to save trade" });
   }
 });
 
-// DELETE: Remove a position
-router.delete('/:ticker', async (req, res) => {
+router.post('/close', async (req, res) => {
+  const { id } = req.body;
   try {
-    const { ticker } = req.params;
-    const userId = (req.query.userId as string) || 'demo';
-    
-    const removed = await storage.removeFromUserPortfolio(userId, ticker.toUpperCase());
-    
-    if (removed) {
-      res.json({ success: true, msg: "Position closed" });
-    } else {
-      res.status(404).json({ success: false, error: "Position not found" });
-    }
-  } catch (error) {
-    console.error('Vault delete error:', error);
-    res.status(500).json({ success: false, error: "Failed to remove position" });
+    await query('DELETE FROM portfolio WHERE id = $1', [id]);
+    res.json({ success: true, msg: "Position Closed" });
+  } catch (e) {
+    res.status(500).json({ success: false, error: "Could not close trade" });
   }
 });
 
