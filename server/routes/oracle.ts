@@ -41,11 +41,17 @@ router.get('/daily', async (req, res) => {
     // 2. Run Sentinel Engine for new picks
     const scanResults = await runMarketScan();
 
-    // Filter for Top 5 BUY signals
+    // Filter for BUY signals and ensure unique tickers (5-10 per day)
+    const seenTickers = new Set<string>();
     const topPicks = scanResults
       .filter(s => s.signal.includes('BUY'))
       .sort((a, b) => b.rsi - a.rsi)
-      .slice(0, 5);
+      .filter(s => {
+        if (seenTickers.has(s.ticker)) return false;
+        seenTickers.add(s.ticker);
+        return true;
+      })
+      .slice(0, 7); // 5-10 unique picks per day
 
     // 3. AUTO-SAVE to database (The "Paper Trail")
     for (const p of topPicks) {
