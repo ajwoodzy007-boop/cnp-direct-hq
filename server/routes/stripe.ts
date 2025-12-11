@@ -88,7 +88,6 @@ router.post('/create-portal-session', async (req, res) => {
 
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      configuration: 'bpc_1SdGEu0frj5koTyzUnLskywj',
       return_url: `${DOMAIN}/`,
     });
 
