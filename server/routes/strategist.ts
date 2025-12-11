@@ -1,5 +1,6 @@
 import express from 'express';
 import YahooFinance from 'yahoo-finance2';
+import { requirePremium } from '../middleware/premium';
 
 const router = express.Router();
 const yf = new YahooFinance();
@@ -44,7 +45,7 @@ function generateOptionPlay(ticker: string, price: number, sentiment: 'BULLISH' 
   };
 }
 
-router.get('/analyze', async (req, res) => {
+router.get('/analyze', requirePremium, async (req, res) => {
   const { ticker } = req.query;
   
   if (!ticker || typeof ticker !== 'string') {
