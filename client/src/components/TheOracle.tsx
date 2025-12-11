@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info, Zap } from 'lucide-react';
+import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info, Zap, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import PremiumLock from './PremiumLock';
@@ -34,8 +34,42 @@ export default function TheOracle() {
   const [signalsLocked, setSignalsLocked] = useState(false);
   const [signalsLoading, setSignalsLoading] = useState(false);
   const [liveSignals, setLiveSignals] = useState<any[]>([]);
+  
+  const [aiReport, setAiReport] = useState<any>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const stats = { wins: 12, losses: 4, winRate: 75, streak: 3 };
+  
+  const generateAiReport = async (pick: PickData) => {
+    setAnalyzing(true);
+    setAiReport(null);
+    try {
+      const res = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticker: pick.ticker,
+          price: pick.entryPrice,
+          rsi: pick.rsi || 50,
+          trend: pick.signal
+        })
+      });
+      const json = await res.json();
+      if (json.success) setAiReport(json.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+  
+  useEffect(() => {
+    if (selectedPick) {
+      generateAiReport(selectedPick);
+    } else {
+      setAiReport(null);
+    }
+  }, [selectedPick]);
 
   const fetchSignals = async () => {
     setShowSignals(true);
@@ -317,15 +351,52 @@ export default function TheOracle() {
 
             <div className="p-6 space-y-6">
               
-              <div className="bg-cyan-950/30 border border-cyan-500/20 p-4 rounded-lg flex items-start gap-4">
-                <AlertTriangle className="text-cyan-400 h-6 w-6 shrink-0 mt-1" />
-                <div>
-                  <div className="font-bold text-cyan-100">AI Recommendation: {selectedPick.signal}</div>
-                  <p className="text-sm text-cyan-200/70 mt-1 leading-relaxed">
-                    {selectedPick.aiReasoning || `The Sentinel Engine has detected a high-probability setup based on ${selectedPick.signal.includes('MOMENTUM') ? ' accelerating volume and breakout price action.' : ' oversold conditions and resilient sentiment.'}`}
-                  </p>
+              {analyzing ? (
+                <div className="flex flex-col items-center justify-center h-32 space-y-4">
+                  <Loader2 className="h-10 w-10 text-cyan-500 animate-spin" />
+                  <div className="text-sm text-cyan-400 animate-pulse">Establishing Uplink to Sentinel Core...</div>
                 </div>
-              </div>
+              ) : aiReport ? (
+                <div className={`border p-4 rounded-lg flex items-start gap-4 ${
+                  aiReport.verdict?.includes('BUY') 
+                    ? 'bg-green-500/10 border-green-500/20' 
+                    : aiReport.verdict?.includes('SELL')
+                    ? 'bg-red-500/10 border-red-500/20'
+                    : 'bg-cyan-950/30 border-cyan-500/20'
+                }`}>
+                  <AlertTriangle className={`h-6 w-6 shrink-0 mt-1 ${
+                    aiReport.verdict?.includes('BUY') ? 'text-green-400' : 
+                    aiReport.verdict?.includes('SELL') ? 'text-red-400' : 'text-cyan-400'
+                  }`} />
+                  <div>
+                    <div className={`font-bold ${
+                      aiReport.verdict?.includes('BUY') ? 'text-green-400' : 
+                      aiReport.verdict?.includes('SELL') ? 'text-red-400' : 'text-cyan-100'
+                    }`}>
+                      AI Verdict: {aiReport.verdict}
+                    </div>
+                    <p className="text-sm text-slate-300 mt-2 leading-relaxed">
+                      {aiReport.summary}
+                    </p>
+                    {aiReport.risk && (
+                      <div className="mt-3 pt-3 border-t border-slate-700">
+                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Downside Risk</div>
+                        <p className="text-sm text-slate-400 italic">"{aiReport.risk}"</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-cyan-950/30 border border-cyan-500/20 p-4 rounded-lg flex items-start gap-4">
+                  <AlertTriangle className="text-cyan-400 h-6 w-6 shrink-0 mt-1" />
+                  <div>
+                    <div className="font-bold text-cyan-100">AI Recommendation: {selectedPick.signal}</div>
+                    <p className="text-sm text-cyan-200/70 mt-1 leading-relaxed">
+                      {selectedPick.aiReasoning || `The Sentinel Engine has detected a high-probability setup based on ${selectedPick.signal.includes('MOMENTUM') ? ' accelerating volume and breakout price action.' : ' oversold conditions and resilient sentiment.'}`}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
