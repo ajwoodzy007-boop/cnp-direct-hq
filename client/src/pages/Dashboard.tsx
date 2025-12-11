@@ -3,6 +3,7 @@ import AppLayout from '@/components/AppLayout';
 import MarketRadar from '@/components/MarketRadar';
 import TheOracle from '@/components/TheOracle';
 import TheStrategist from '@/components/TheStrategist';
+import TheVault from '@/components/TheVault';
 
 const ComingSoon = ({ title }: { title: string }) => (
   <div className="flex flex-col items-center justify-center h-[50vh] text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
@@ -23,7 +24,7 @@ export default function Dashboard() {
       case 'strategist':
         return <TheStrategist />;
       case 'vault':
-        return <ComingSoon title="The Vault (Portfolio)" />;
+        return <TheVault />;
       case 'academy':
         return <ComingSoon title="The Academy (Education)" />;
       default:
