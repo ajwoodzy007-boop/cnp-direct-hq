@@ -16,6 +16,7 @@ import TheOracle from './components/TheOracle';
 import TheStrategist from './components/TheStrategist';
 import TheVault from './components/TheVault';
 import TheAcademy from './components/TheAcademy';
+import SettingsModal from './components/SettingsModal';
 import Pricing from "@/pages/Pricing";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
@@ -25,6 +26,7 @@ function MainDashboard() {
   const [user, setUser] = useState<{ email: string; tier: string } | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'terms' | 'privacy' | 'risk' | null>(null);
 
   useEffect(() => {
@@ -99,16 +101,26 @@ function MainDashboard() {
   }
 
   return (
-    <AppLayout 
-      currentTab={currentTab} 
-      setTab={setTab} 
-      user={user}
-      onLoginClick={() => setShowAuthModal(true)}
-      onLogoutClick={handleLogout}
-      onLegalClick={(page) => setLegalPage(page)}
-    >
-      {renderContent()}
-    </AppLayout>
+    <>
+      <AppLayout 
+        currentTab={currentTab} 
+        setTab={setTab} 
+        user={user}
+        onLoginClick={() => setShowAuthModal(true)}
+        onLogoutClick={() => setShowSettings(true)}
+        onLegalClick={(page) => setLegalPage(page)}
+      >
+        {renderContent()}
+      </AppLayout>
+      
+      {showSettings && user && (
+        <SettingsModal 
+          user={user} 
+          onClose={() => setShowSettings(false)} 
+          onLogout={handleLogout} 
+        />
+      )}
+    </>
   );
 }
 
