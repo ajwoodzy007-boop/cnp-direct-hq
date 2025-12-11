@@ -97,7 +97,7 @@ export default function MarketRadar() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-4 md:gap-6 shrink-0">
                 <div className="hidden md:flex gap-6">
                   <div className="text-center">
                     <div className="text-xs text-slate-500 uppercase flex items-center gap-1"><Activity className="h-3 w-3" /> RSI</div>
