@@ -4,13 +4,7 @@ import MarketRadar from '@/components/MarketRadar';
 import TheOracle from '@/components/TheOracle';
 import TheStrategist from '@/components/TheStrategist';
 import TheVault from '@/components/TheVault';
-
-const ComingSoon = ({ title }: { title: string }) => (
-  <div className="flex flex-col items-center justify-center h-[50vh] text-slate-500 border-2 border-dashed border-slate-800 rounded-xl">
-    <h2 className="text-2xl font-bold text-slate-400">{title}</h2>
-    <p>Module Initializing...</p>
-  </div>
-);
+import TheAcademy from '@/components/TheAcademy';
 
 export default function Dashboard() {
   const [currentTab, setTab] = useState('radar');
@@ -26,7 +20,7 @@ export default function Dashboard() {
       case 'vault':
         return <TheVault />;
       case 'academy':
-        return <ComingSoon title="The Academy (Education)" />;
+        return <TheAcademy />;
       default:
         return <MarketRadar />;
     }
