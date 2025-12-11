@@ -3,10 +3,11 @@ import { Shield, UserPlus, LogIn } from 'lucide-react';
 
 interface Props {
   featureName: string;
+  description: string;
   onLoginClick: () => void;
 }
 
-export default function AuthLock({ featureName, onLoginClick }: Props) {
+export default function AuthLock({ featureName, description, onLoginClick }: Props) {
   return (
     <div className="h-full w-full flex items-center justify-center p-8 animate-in fade-in duration-500">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-10 max-w-2xl text-center relative overflow-hidden shadow-2xl">
@@ -21,8 +22,8 @@ export default function AuthLock({ featureName, onLoginClick }: Props) {
           <h2 className="text-3xl font-bold text-white mb-3">
             Member Access Required
           </h2>
-          <p className="text-slate-400 mb-8 max-w-md mx-auto">
-            <span className="text-cyan-400 font-bold">{featureName}</span> allows you to track trades and save data. You must be logged in to access this secure terminal.
+          <p className="text-slate-400 mb-8 max-w-md mx-auto leading-relaxed">
+            <span className="text-cyan-400 font-bold">{featureName}</span> {description}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -43,6 +44,10 @@ export default function AuthLock({ featureName, onLoginClick }: Props) {
               Login
             </button>
           </div>
+          
+          <p className="text-xs text-slate-500 mt-6">
+            Join 1,200+ Operatives using Sentinel OS
+          </p>
         </div>
       </div>
     </div>

@@ -55,15 +55,15 @@ function MainDashboard() {
       case 'academy': 
         return <TheAcademy />;
       case 'oracle':
-        if (!user) return <AuthLock featureName="The Oracle" onLoginClick={() => setShowAuthModal(true)} />;
+        if (!user) return <AuthLock featureName="The Oracle" description="delivers AI-powered daily predictions and real-time trading signals. Create a free account to unlock." onLoginClick={() => setShowAuthModal(true)} />;
         if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Oracle" />;
         return <TheOracle />;
       case 'strategist':
-        if (!user) return <AuthLock featureName="The Strategist" onLoginClick={() => setShowAuthModal(true)} />;
+        if (!user) return <AuthLock featureName="The Strategist" description="provides AI-generated options playbooks and execution algorithms. Sign in to access." onLoginClick={() => setShowAuthModal(true)} />;
         if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Strategist" />;
         return <TheStrategist />;
       case 'vault':
-        if (!user) return <AuthLock featureName="The Vault" onLoginClick={() => setShowAuthModal(true)} />;
+        if (!user) return <AuthLock featureName="The Vault" description="lets you track trades and monitor your portfolio performance. Log in to save your data." onLoginClick={() => setShowAuthModal(true)} />;
         return <TheVault />;
       default: return <MarketRadar />;
     }
