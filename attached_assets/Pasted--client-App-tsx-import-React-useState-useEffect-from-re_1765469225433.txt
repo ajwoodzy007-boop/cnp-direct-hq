@@ -1,0 +1,121 @@
+// client/App.tsx
+import React, { useState, useEffect } from 'react';
+import AppLayout from './components/AppLayout';
+import AuthPage from './components/AuthPage';
+import AuthLock from './components/AuthLock';       // <--- NEW
+import PremiumLock from './components/PremiumLock'; // <--- EXISTING
+
+// Components
+import MarketRadar from './components/MarketRadar';
+import TheOracle from './components/TheOracle';
+import TheStrategist from './components/TheStrategist';
+import TheVault from './components/TheVault';
+import TheAcademy from './components/TheAcademy';
+
+export default function App() {
+  const [currentTab, setTab] = useState('radar');
+  const [user, setUser] = useState<{ email: string; tier: string } | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false); // Controls the Login Popup
+
+  // 1. Check Login on Load (Don't block app if fails)
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(json => {
+        if (json.authenticated) setUser(json.user);
+        setLoadingUser(false);
+      })
+      .catch(() => setLoadingUser(false));
+  }, []);
+
+  // 2. Logout Handler
+  const handleLogout = () => {
+    fetch('/api/auth/logout', { method: 'POST' }).then(() => {
+      setUser(null);
+      setTab('radar'); // Send them back to safe zone
+    });
+  };
+
+  // 3. Render Logic (The Gatekeeper)
+  const renderContent = () => {
+    switch (currentTab) {
+      
+      // --- PUBLIC TABS (Guests Allowed) ---
+      case 'radar': 
+        return <MarketRadar />;
+      case 'academy': 
+        return <TheAcademy />;
+
+      // --- MEMBER TABS (Login Required) ---
+      case 'oracle': // Free Members can see this (Example) or lock it? 
+                     // Let's say Oracle is PREMIUM.
+        if (!user) return <AuthLock featureName="The Oracle" onLoginClick={() => setShowAuthModal(true)} />;
+        if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Oracle" />;
+        return <TheOracle />;
+
+      case 'strategist': // PREMIUM ONLY
+        if (!user) return <AuthLock featureName="The Strategist" onLoginClick={() => setShowAuthModal(true)} />;
+        if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Strategist" />;
+        return <TheStrategist />;
+
+      case 'vault': // FREE MEMBERS ALLOWED (But must be logged in to save data)
+        if (!user) return <AuthLock featureName="The Vault" onLoginClick={() => setShowAuthModal(true)} />;
+        // Vault is usually free for basic tracking
+        return <TheVault />;
+
+      default: return <MarketRadar />;
+    }
+  };
+
+  if (loadingUser) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-cyan-500">Initializing Sentinel OS...</div>;
+
+  // 4. IF AUTH MODAL IS OPEN, SHOW IT OVERLAYING THE APP
+  if (showAuthModal) {
+    return (
+      <div className="relative">
+        {/* The App is hidden/blurred behind */}
+        <div className="absolute inset-0 filter blur-sm h-screen overflow-hidden">
+           <AppLayout 
+             currentTab={currentTab} 
+             setTab={() => {}} // Disable nav while logging in
+             user={user} 
+             onLoginClick={() => {}} 
+             onLogoutClick={() => {}}
+           >
+             {renderContent()}
+           </AppLayout>
+        </div>
+        {/* The Login Screen on top */}
+        <div className="absolute inset-0 z-50">
+          <AuthPage 
+            onLogin={(u) => {
+              setUser(u);
+              setShowAuthModal(false);
+            }} 
+          />
+          {/* Close Button (X) if they want to stay Guest */}
+          <button 
+            onClick={() => setShowAuthModal(false)}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold"
+          >
+            CLOSE [X]
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 5. STANDARD APP VIEW
+  return (
+    <AppLayout 
+      currentTab={currentTab} 
+      setTab={setTab} 
+      user={user}
+      onLoginClick={() => setShowAuthModal(true)}
+      onLogoutClick={handleLogout}
+    >
+      {renderContent()}
+    </AppLayout>
+  );
+}

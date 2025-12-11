@@ -13,6 +13,7 @@ import TheStrategist from './components/TheStrategist';
 import TheVault from './components/TheVault';
 import TheAcademy from './components/TheAcademy';
 import AuthPage from './components/AuthPage';
+import AuthLock from './components/AuthLock';
 import PremiumLock from './components/PremiumLock';
 import Pricing from "@/pages/Pricing";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
@@ -24,71 +25,51 @@ interface User {
   tier: 'FREE' | 'PREMIUM';
 }
 
-function MainDashboard({ user, onLogout }: { user: User | null; onLogout: () => void }) {
+function MainDashboard() {
   const [currentTab, setTab] = useState('radar');
-
-  const renderContent = () => {
-    switch (currentTab) {
-      case 'radar': return <MarketRadar />;
-      case 'academy': return <TheAcademy />;
-      case 'strategist':
-        return user?.tier === 'PREMIUM' ? <TheStrategist /> : <PremiumLock featureName="The Strategist" />;
-      case 'oracle':
-        return user?.tier === 'PREMIUM' ? <TheOracle /> : <PremiumLock featureName="The Oracle" />;
-      case 'vault':
-        return user?.tier === 'PREMIUM' ? <TheVault /> : <PremiumLock featureName="The Vault" />;
-      default: return <MarketRadar />;
-    }
-  };
-
-  return (
-    <AppLayout 
-      currentTab={currentTab} 
-      setTab={setTab}
-      user={user}
-      onLoginClick={() => {}}
-      onLogoutClick={onLogout}
-    >
-      {renderContent()}
-    </AppLayout>
-  );
-}
-
-function AuthenticatedRoutes({ user, onLogout }: { user: User | null; onLogout: () => void }) {
-  return (
-    <Switch>
-      <Route path="/">
-        <MainDashboard user={user} onLogout={onLogout} />
-      </Route>
-      <Route path="/pricing" component={Pricing} />
-      <Route path="/checkout/success" component={CheckoutSuccess} />
-      <Route path="/checkout/cancel" component={CheckoutCancel} />
-      <Route>
-        <MainDashboard user={user} onLogout={onLogout} />
-      </Route>
-    </Switch>
-  );
-}
-
-export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
   const [user, setUser] = useState<User | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
       .then(res => res.json())
       .then(json => {
-        if (json.authenticated) {
-          setIsAuthenticated(true);
-          setUser(json.user);
-        }
-        setCheckingAuth(false);
+        if (json.authenticated) setUser(json.user);
+        setLoadingUser(false);
       })
-      .catch(() => setCheckingAuth(false));
+      .catch(() => setLoadingUser(false));
   }, []);
 
-  if (checkingAuth) {
+  const handleLogout = () => {
+    fetch('/api/auth/logout', { method: 'POST' }).then(() => {
+      setUser(null);
+      setTab('radar');
+    });
+  };
+
+  const renderContent = () => {
+    switch (currentTab) {
+      case 'radar': 
+        return <MarketRadar />;
+      case 'academy': 
+        return <TheAcademy />;
+      case 'oracle':
+        if (!user) return <AuthLock featureName="The Oracle" onLoginClick={() => setShowAuthModal(true)} />;
+        if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Oracle" />;
+        return <TheOracle />;
+      case 'strategist':
+        if (!user) return <AuthLock featureName="The Strategist" onLoginClick={() => setShowAuthModal(true)} />;
+        if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Strategist" />;
+        return <TheStrategist />;
+      case 'vault':
+        if (!user) return <AuthLock featureName="The Vault" onLoginClick={() => setShowAuthModal(true)} />;
+        return <TheVault />;
+      default: return <MarketRadar />;
+    }
+  };
+
+  if (loadingUser) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
         <div className="text-cyan-500 animate-pulse font-mono text-sm">Initializing Sentinel OS...</div>
@@ -96,26 +77,66 @@ export default function App() {
     );
   }
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    setUser(null);
-    setIsAuthenticated(false);
-  };
-
-  if (!isAuthenticated) {
-    return <AuthPage onLogin={(userData) => {
-      setUser(userData);
-      setIsAuthenticated(true);
-    }} />;
+  if (showAuthModal) {
+    return (
+      <div className="relative">
+        <div className="absolute inset-0 filter blur-sm h-screen overflow-hidden">
+          <AppLayout 
+            currentTab={currentTab} 
+            setTab={() => {}}
+            user={user} 
+            onLoginClick={() => {}} 
+            onLogoutClick={() => {}}
+          >
+            {renderContent()}
+          </AppLayout>
+        </div>
+        <div className="absolute inset-0 z-50">
+          <AuthPage 
+            onLogin={(u) => {
+              setUser(u);
+              setShowAuthModal(false);
+            }} 
+          />
+          <button 
+            onClick={() => setShowAuthModal(false)}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold text-sm bg-slate-800/80 px-4 py-2 rounded-lg"
+            data-testid="button-close-auth"
+          >
+            Continue as Guest
+          </button>
+        </div>
+      </div>
+    );
   }
 
+  return (
+    <AppLayout 
+      currentTab={currentTab} 
+      setTab={setTab} 
+      user={user}
+      onLoginClick={() => setShowAuthModal(true)}
+      onLogoutClick={handleLogout}
+    >
+      {renderContent()}
+    </AppLayout>
+  );
+}
+
+export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SettingsProvider>
         <TooltipProvider>
           <Toaster />
           <SonnerToaster position="top-right" richColors />
-          <AuthenticatedRoutes user={user} onLogout={handleLogout} />
+          <Switch>
+            <Route path="/" component={MainDashboard} />
+            <Route path="/pricing" component={Pricing} />
+            <Route path="/checkout/success" component={CheckoutSuccess} />
+            <Route path="/checkout/cancel" component={CheckoutCancel} />
+            <Route component={MainDashboard} />
+          </Switch>
         </TooltipProvider>
       </SettingsProvider>
     </QueryClientProvider>
