@@ -1,36 +1,26 @@
 import React, { useState } from 'react';
-import { 
-  BrainCircuit, 
-  Search, 
-  TrendingUp, 
-  TrendingDown, 
-  Minus, 
-  Layers,
-  Zap 
-} from 'lucide-react';
-import PremiumLock from './PremiumLock';
+import { BrainCircuit, Search, Zap, Shield, TrendingUp, AlertTriangle, Crosshair, DollarSign } from 'lucide-react';
 
 export default function TheStrategist() {
   const [ticker, setTicker] = useState('');
-  const [result, setResult] = useState<any>(null);
+  const [capital, setCapital] = useState('2000');
+  const [risk, setRisk] = useState('Moderate');
+  
+  const [playbook, setPlaybook] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [isPremiumLocked, setIsPremiumLocked] = useState(false);
 
-  const handleAnalyze = async (e: React.FormEvent) => {
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ticker) return;
-    
     setLoading(true);
-    setResult(null);
-    setIsPremiumLocked(false);
+    setPlaybook(null);
     try {
-      const res = await fetch(`/api/strategist/analyze?ticker=${ticker}`);
-      if (res.status === 403) {
-        setIsPremiumLocked(true);
-        return;
-      }
+      const res = await fetch('/api/strategist/playbook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, capital, riskProfile: risk })
+      });
       const json = await res.json();
-      if (json.success) setResult(json.data);
+      if (json.success) setPlaybook(json.data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -39,119 +29,163 @@ export default function TheStrategist() {
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in">
       
-      <div className="flex flex-col md:flex-row justify-between items-end gap-4 border-b border-slate-800 pb-6">
-        <div>
-          <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-            <BrainCircuit className="text-purple-400 h-8 w-8" />
-            The Strategist
-          </h2>
-          <p className="text-slate-400 mt-2">
-            AI-Derived Options Playbooks & Execution Algorithms.
-          </p>
-        </div>
-
-        <form onSubmit={handleAnalyze} className="relative w-full md:w-96">
-          <input 
-            type="text" 
-            placeholder="Enter Ticker (e.g. NVDA)..." 
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg py-3 pl-12 pr-4 text-white focus:outline-none focus:border-purple-500 transition-colors uppercase"
-            value={ticker}
-            onChange={(e) => setTicker(e.target.value)}
-            data-testid="input-ticker"
-          />
-          <Search className="absolute left-4 top-3.5 text-slate-500 h-5 w-5" />
-          <button 
-            type="submit"
-            className="absolute right-2 top-2 bg-purple-600 hover:bg-purple-500 text-white p-1.5 rounded-md transition-colors"
-            data-testid="button-analyze"
-          >
-            <Zap className="h-4 w-4" />
-          </button>
-        </form>
+      {/* HEADER */}
+      <div className="border-b border-slate-800 pb-6">
+        <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+          <BrainCircuit className="text-purple-500 h-8 w-8" />
+          The Strategist <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded border border-purple-500/50">PREMIUM AI</span>
+        </h2>
+        <p className="text-slate-400 mt-2">Generate personalized option playbooks based on your capital and risk tolerance.</p>
       </div>
 
-      {isPremiumLocked && (
-        <PremiumLock featureName="The Strategist" />
-      )}
-
-      {loading && !isPremiumLocked && (
-        <div className="text-center py-20 text-slate-500 animate-pulse">
-          Calculating Volatility & Greeks...
-        </div>
-      )}
-
-      {result && !loading && !isPremiumLocked && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          <div className="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-6 h-fit">
-            <h3 className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-4">Target Asset</h3>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-4xl font-bold text-white">{result.ticker}</span>
-              <span className="text-xl text-slate-400 font-mono">${result.currentPrice.toFixed(2)}</span>
-            </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* LEFT: MISSION PARAMETERS (Input Form) */}
+        <div className="lg:col-span-4 space-y-6">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Crosshair className="h-4 w-4 text-purple-400" /> Mission Parameters
+            </h3>
             
-            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-bold border ${
-              result.trend === 'BULLISH' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
-              result.trend === 'BEARISH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-              'bg-slate-500/10 text-slate-400 border-slate-500/20'
-            }`}>
-              {result.trend === 'BULLISH' && <TrendingUp className="h-4 w-4" />}
-              {result.trend === 'BEARISH' && <TrendingDown className="h-4 w-4" />}
-              {result.trend === 'NEUTRAL' && <Minus className="h-4 w-4" />}
-              {result.trend} TREND
-            </div>
-
-            <div className="mt-8 space-y-4">
-              <div className="p-4 bg-slate-950 rounded-lg border border-slate-800">
-                <div className="text-xs text-slate-500 mb-1">Implied Risk Profile</div>
-                <div className="text-white font-medium">{result.strategy.riskProfile}</div>
+            <form onSubmit={handleGenerate} className="space-y-4">
+              <div>
+                <label className="text-xs text-slate-500 font-bold uppercase">Target Asset</label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                  <input 
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white uppercase font-bold focus:border-purple-500 outline-none transition-colors"
+                    placeholder="e.g. TSLA"
+                    value={ticker} onChange={e => setTicker(e.target.value)} required
+                    data-testid="input-strategist-ticker"
+                  />
+                </div>
               </div>
-            </div>
+
+              <div>
+                <label className="text-xs text-slate-500 font-bold uppercase">Allocated Capital</label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                  <input 
+                    type="number"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white font-mono focus:border-purple-500 outline-none"
+                    value={capital} onChange={e => setCapital(e.target.value)}
+                    data-testid="input-strategist-capital"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-500 font-bold uppercase">Risk Profile</label>
+                <div className="grid grid-cols-3 gap-2 mt-1">
+                  {['Conservative', 'Moderate', 'Aggressive'].map(r => (
+                    <button 
+                      key={r} type="button" onClick={() => setRisk(r)}
+                      className={`text-xs py-2 rounded border transition-all ${risk === r ? 'bg-purple-600 border-purple-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'}`}
+                      data-testid={`button-risk-${r.toLowerCase()}`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button 
+                disabled={loading} 
+                className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all mt-4 disabled:opacity-50"
+                data-testid="button-generate-playbook"
+              >
+                {loading ? <span className="animate-pulse">Analyzing Market...</span> : <><Zap className="h-4 w-4" /> Generate Playbook</>}
+              </button>
+            </form>
           </div>
+        </div>
 
-          <div className="lg:col-span-2 bg-gradient-to-br from-slate-900 to-purple-900/20 border border-purple-500/30 rounded-xl p-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <Layers className="h-32 w-32 text-purple-500" />
+        {/* RIGHT: TACTICAL DISPLAY (AI Output) */}
+        <div className="lg:col-span-8">
+          {!playbook ? (
+            <div className="h-full min-h-[400px] border-2 border-dashed border-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-600">
+              <BrainCircuit className="h-16 w-16 mb-4 opacity-20" />
+              <p>Awaiting Mission Parameters...</p>
             </div>
-
-            <h3 className="text-purple-400 text-sm font-bold uppercase tracking-wider mb-2">Recommended Playbook</h3>
-            <h2 className="text-3xl font-bold text-white mb-4">{result.strategy.name}</h2>
-            <p className="text-slate-300 max-w-lg mb-8 leading-relaxed">
-              {result.strategy.description}
-            </p>
-
-            <div className="space-y-3 mb-8">
-              {result.strategy.legs.map((leg: any, idx: number) => (
-                <div key={idx} className="flex items-center gap-4 bg-slate-950/50 p-4 rounded-lg border border-purple-500/20">
-                  <div className={`h-8 w-8 rounded flex items-center justify-center font-bold text-xs ${
-                    leg.type.includes('Buy') ? 'bg-green-500 text-green-950' : 'bg-red-500 text-red-950'
-                  }`}>
-                    {idx + 1}
+          ) : (
+            <div className="bg-slate-900 border border-purple-500/30 rounded-xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-2">
+              
+              {/* Header Card */}
+              <div className="bg-gradient-to-r from-purple-900/50 to-slate-900 p-6 border-b border-purple-500/20">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white" data-testid="text-strategy-name">{playbook.strategyName}</h2>
+                    <p className="text-purple-300 text-sm mt-1">{playbook.thesis}</p>
                   </div>
-                  <div className="flex-1">
-                    <div className="text-white font-bold">{leg.type} ${leg.strike} Strike</div>
-                    <div className="text-xs text-slate-500">Expiry: {leg.expiry}</div>
+                  <div className="bg-slate-950 border border-slate-800 px-4 py-2 rounded-lg text-center">
+                    <div className="text-[10px] text-slate-500 uppercase font-bold">Risk Score</div>
+                    <div className={`text-xl font-bold ${playbook.riskScore > 7 ? 'text-red-500' : 'text-green-500'}`} data-testid="text-risk-score">{playbook.riskScore}/10</div>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-950/30 p-3 rounded border border-white/5">
-                <div className="text-xs text-slate-500 uppercase">Est. Delta</div>
-                <div className="font-mono text-white">{result.strategy.greeks.delta}</div>
               </div>
-              <div className="bg-slate-950/30 p-3 rounded border border-white/5">
-                <div className="text-xs text-slate-500 uppercase">Est. Theta</div>
-                <div className="font-mono text-white">{result.strategy.greeks.theta}</div>
+
+              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                {/* EXECUTION (Legs) */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4" /> Execution Setup
+                  </h3>
+                  <div className="space-y-2">
+                    {playbook.legs?.map((leg: any, i: number) => (
+                      <div key={i} className="bg-slate-950 p-3 rounded border border-slate-800 flex justify-between items-center" data-testid={`leg-${i}`}>
+                         <span className={`font-bold ${leg.action === 'Buy' ? 'text-green-400' : 'text-red-400'}`}>{leg.action}</span>
+                         <span className="text-white">{leg.strike} {leg.type}</span>
+                         <span className="text-slate-500 text-xs">{leg.expiry}</span>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Targets */}
+                  <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+                    <div className="bg-green-900/20 border border-green-500/20 p-2 rounded">
+                      <div className="text-[10px] text-green-500 uppercase">Target</div>
+                      <div className="text-white font-mono text-sm">{playbook.setup?.profitTarget}</div>
+                    </div>
+                    <div className="bg-slate-800/50 border border-slate-700 p-2 rounded">
+                       <div className="text-[10px] text-slate-400 uppercase">Entry</div>
+                       <div className="text-white font-mono text-sm">{playbook.setup?.entryZone}</div>
+                    </div>
+                    <div className="bg-red-900/20 border border-red-500/20 p-2 rounded">
+                       <div className="text-[10px] text-red-500 uppercase">Stop Loss</div>
+                       <div className="text-white font-mono text-sm">{playbook.setup?.stopLoss}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* GREEKS & RISK */}
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                    <Shield className="h-4 w-4" /> Risk Analysis
+                  </h3>
+                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-3">
+                    <div>
+                      <div className="text-xs text-slate-500 uppercase">Delta Exposure</div>
+                      <p className="text-sm text-slate-300">{playbook.greeks?.delta}</p>
+                    </div>
+                    <div>
+                      <div className="text-xs text-slate-500 uppercase">Theta Decay</div>
+                      <p className="text-sm text-slate-300">{playbook.greeks?.theta}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2 text-xs text-amber-500 bg-amber-900/10 p-3 rounded border border-amber-900/30">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Warning: Options involve significant risk. Ensure this trade fits your allocated capital of ${capital}.
+                  </div>
+                </div>
+
               </div>
             </div>
-
-          </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
