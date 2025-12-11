@@ -192,19 +192,31 @@ router.post('/earnings-play', requirePremium, async (req, res) => {
       Current Price: $${price}
       Earnings Date: ${date}
 
-      Analyze the implied volatility (IV) crush potential.
+      IMPORTANT: Choose the BEST strategy for this specific situation. Consider these options:
+      - Long Straddle: When expecting a BIG move but unsure of direction
+      - Long Strangle: Cheaper than straddle, needs bigger move to profit
+      - Iron Condor: When expecting stock to stay FLAT after earnings
+      - Iron Butterfly: More aggressive neutral bet with higher reward
+      - Bull Call Spread: When bullish on earnings
+      - Bear Put Spread: When bearish on earnings
+      - Calendar Spread: To profit from IV crush while maintaining position
+      - Jade Lizard: Bullish with premium collection
+      
+      Analyze the stock's historical earnings moves, current IV percentile, and market sentiment to pick the OPTIMAL strategy.
       
       Output strict JSON:
       {
-        "strategy": "Name (e.g. Long Straddle, Iron Condor)",
-        "bias": "Directional bias or Neutral?",
-        "impliedMove": "Estimated % move based on current pricing",
-        "rationale": "Why this strategy? (e.g. 'Market expects 5% move, stock usually moves 8%')",
+        "strategy": "Strategy Name",
+        "bias": "Bullish / Bearish / Neutral / Volatility Play",
+        "impliedMove": "Estimated % move (e.g. ±8.5%)",
+        "rationale": "2-3 sentence explanation of why this strategy fits this earnings event",
         "setup": {
-          "leg1": "Description of Leg 1",
-          "leg2": "Description of Leg 2"
+          "leg1": "Action + Strike + Expiry (e.g. Buy $150 Call 12/20)",
+          "leg2": "Action + Strike + Expiry (or 'N/A' for single-leg)"
         },
-        "risk": "High/Med/Low"
+        "risk": "High/Med/Low",
+        "maxProfit": "Estimate or 'Unlimited'",
+        "maxLoss": "Estimate"
       }
     `;
 

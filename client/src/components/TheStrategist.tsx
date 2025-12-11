@@ -286,7 +286,22 @@ export default function TheStrategist() {
                       </div>
                       <div className="bg-slate-950 p-4 rounded border border-slate-800">
                          <div className="text-xs text-slate-500 uppercase font-bold mb-1">Leg 2</div>
-                         <div className="text-white font-mono">{earningsPlay.setup?.leg2}</div>
+                         <div className="text-white font-mono">{earningsPlay.setup?.leg2 || 'N/A'}</div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-green-900/20 border border-green-500/30 p-3 rounded text-center">
+                        <div className="text-xs text-green-400 uppercase font-bold mb-1">Max Profit</div>
+                        <div className="text-white font-mono text-sm">{earningsPlay.maxProfit || 'Variable'}</div>
+                      </div>
+                      <div className="bg-red-900/20 border border-red-500/30 p-3 rounded text-center">
+                        <div className="text-xs text-red-400 uppercase font-bold mb-1">Max Loss</div>
+                        <div className="text-white font-mono text-sm">{earningsPlay.maxLoss || 'Variable'}</div>
+                      </div>
+                      <div className="bg-slate-800/50 border border-slate-700 p-3 rounded text-center">
+                        <div className="text-xs text-slate-400 uppercase font-bold mb-1">Risk Level</div>
+                        <div className={`font-bold text-sm ${earningsPlay.risk === 'High' ? 'text-red-400' : earningsPlay.risk === 'Med' ? 'text-amber-400' : 'text-green-400'}`}>{earningsPlay.risk}</div>
                       </div>
                     </div>
 
