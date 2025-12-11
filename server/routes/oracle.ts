@@ -134,17 +134,33 @@ router.get('/history', async (req, res) => {
     let tempStreak = 0;
 
     const gradedHistory = allPredictions.map((p, idx) => {
-      const currentPrice = p.outcomePrice || quotes[p.ticker] || p.entryPrice;
-      const profitPercent = ((currentPrice - p.entryPrice) / p.entryPrice) * 100;
+      // Use stored outcome if available, otherwise calculate from live price
+      const hasStoredOutcome = p.outcome && (p.outcome.toLowerCase() === 'win' || p.outcome.toLowerCase() === 'loss');
+      
+      let currentPrice = p.entryPrice;
+      let profitPercent = 0;
+      let outcome = 'PENDING';
 
-      // Define Win/Loss thresholds
-      const isWin = profitPercent > 1.0;
-      const isLoss = profitPercent < -1.0;
+      if (hasStoredOutcome) {
+        // Use stored outcome
+        outcome = p.outcome!.toUpperCase();
+        currentPrice = p.outcomePrice || p.entryPrice;
+        profitPercent = p.entryPrice > 0 ? ((currentPrice - p.entryPrice) / p.entryPrice) * 100 : 0;
+      } else {
+        // Calculate from live price
+        currentPrice = quotes[p.ticker] || p.entryPrice;
+        profitPercent = p.entryPrice > 0 ? ((currentPrice - p.entryPrice) / p.entryPrice) * 100 : 0;
+        
+        // Define Win/Loss thresholds for unresolved predictions
+        if (profitPercent > 1.0) outcome = 'WIN';
+        else if (profitPercent < -1.0) outcome = 'LOSS';
+      }
 
-      if (isWin) {
+      // Count wins/losses
+      if (outcome === 'WIN') {
         wins++;
         tempStreak++;
-      } else if (isLoss) {
+      } else if (outcome === 'LOSS') {
         losses++;
         tempStreak = 0;
       }
@@ -161,7 +177,7 @@ router.get('/history', async (req, res) => {
         entry: p.entryPrice,
         exit: currentPrice,
         profitPercent,
-        outcome: isWin ? 'WIN' : isLoss ? 'LOSS' : 'PENDING'
+        outcome
       };
     });
 
