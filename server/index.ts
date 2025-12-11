@@ -7,6 +7,7 @@ import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import authRouter from "./routes/auth";
+import { initDb } from "./db";
 
 const app = express();
 const httpServer = createServer(app);
@@ -274,6 +275,7 @@ function startPredictionScheduler() {
 }
 
 (async () => {
+  await initDb();
   await registerRoutes(httpServer, app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
