@@ -42,7 +42,7 @@ export default function MarketRadar() {
   };
 
   const getSignalBadge = (signal: string) => {
-    const baseClasses = "px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap min-w-fit";
+    const baseClasses = "px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap min-w-fit shrink-0";
     
     if (signal.includes('BUY')) 
       return <span className={`${baseClasses} bg-green-500/20 text-green-500 border-green-500/50`}>🚀 {signal}</span>;
