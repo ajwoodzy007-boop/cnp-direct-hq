@@ -15,6 +15,7 @@ import TheAcademy from './components/TheAcademy';
 import AuthPage from './components/AuthPage';
 import AuthLock from './components/AuthLock';
 import PremiumLock from './components/PremiumLock';
+import LegalPage from './components/LegalPage';
 import Pricing from "@/pages/Pricing";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
@@ -30,6 +31,7 @@ function MainDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [legalPage, setLegalPage] = useState<'terms' | 'privacy' | 'risk' | null>(null);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -95,6 +97,14 @@ function MainDashboard() {
     );
   }
 
+  if (legalPage) {
+    return (
+      <div className="min-h-screen bg-slate-950 p-4">
+        <LegalPage page={legalPage} onBack={() => setLegalPage(null)} />
+      </div>
+    );
+  }
+
   if (showAuthModal) {
     return (
       <div className="relative">
@@ -135,6 +145,7 @@ function MainDashboard() {
       user={user}
       onLoginClick={() => setShowAuthModal(true)}
       onLogoutClick={handleLogout}
+      onLegalClick={setLegalPage}
     >
       {renderContent()}
     </AppLayout>

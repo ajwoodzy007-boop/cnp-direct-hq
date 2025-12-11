@@ -18,10 +18,11 @@ interface LayoutProps {
   user: { email: string; tier: string } | null;
   onLoginClick: () => void;
   onLogoutClick: () => void;
+  onLegalClick?: (page: 'terms' | 'privacy' | 'risk') => void;
 }
 
 export default function AppLayout({ 
-  children, currentTab, setTab, user, onLoginClick, onLogoutClick 
+  children, currentTab, setTab, user, onLoginClick, onLogoutClick, onLegalClick 
 }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -130,9 +131,27 @@ export default function AppLayout({
             
             <div className="pt-12 pb-6 text-center border-t border-slate-900 mt-8">
               <div className="flex justify-center gap-6 text-xs text-slate-500 mb-4">
-                <span className="cursor-pointer hover:text-slate-300">Privacy Policy</span>
-                <span className="cursor-pointer hover:text-slate-300">Terms of Service</span>
-                <span className="cursor-pointer hover:text-slate-300">Risk Disclosure</span>
+                <span 
+                  className="cursor-pointer hover:text-slate-300" 
+                  onClick={() => onLegalClick?.('privacy')}
+                  data-testid="link-privacy"
+                >
+                  Privacy Policy
+                </span>
+                <span 
+                  className="cursor-pointer hover:text-slate-300" 
+                  onClick={() => onLegalClick?.('terms')}
+                  data-testid="link-terms"
+                >
+                  Terms of Service
+                </span>
+                <span 
+                  className="cursor-pointer hover:text-slate-300" 
+                  onClick={() => onLegalClick?.('risk')}
+                  data-testid="link-risk"
+                >
+                  Risk Disclosure
+                </span>
               </div>
               <p className="text-[10px] text-slate-700">
                 CNP Direct | Market Sentinel is a research tool for educational purposes only. 
