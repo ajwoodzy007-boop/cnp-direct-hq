@@ -1,3 +1,4 @@
+// client/components/StockChart.tsx
 import React, { useEffect, useState } from 'react';
 import { 
   AreaChart, 
@@ -33,7 +34,7 @@ export default function StockChart({ ticker }: ChartProps) {
           setData(json.data);
           setTrend(json.trend);
         } else {
-          setError("No data returned");
+            setError("No data returned");
         }
       } catch (e: any) {
         if (isMounted) setError(e.message);
@@ -45,6 +46,7 @@ export default function StockChart({ ticker }: ChartProps) {
     return () => { isMounted = false };
   }, [ticker]);
 
+  // ERROR STATE
   if (error) return (
     <div className="h-64 w-full flex flex-col items-center justify-center bg-slate-950/30 rounded-lg border border-red-900/30">
       <span className="text-red-400 text-xs font-bold mb-2">CHART ERROR</span>
@@ -52,12 +54,14 @@ export default function StockChart({ ticker }: ChartProps) {
     </div>
   );
 
+  // LOADING STATE
   if (loading) return (
     <div className="h-64 w-full flex items-center justify-center bg-slate-950/30 rounded-lg animate-pulse">
       <span className="text-slate-600 text-xs font-mono">LOADING DATA...</span>
     </div>
   );
 
+  // EMPTY DATA STATE
   if (data.length === 0) return (
     <div className="h-64 w-full flex items-center justify-center bg-slate-950/30 rounded-lg">
       <span className="text-slate-600 text-xs">No Price History Available</span>
@@ -68,7 +72,7 @@ export default function StockChart({ ticker }: ChartProps) {
   const gradientId = `colorGradient-${ticker}`;
 
   return (
-    <div className="h-72 w-full bg-slate-950/30 rounded-lg p-4 border border-slate-800" data-testid={`chart-${ticker}`}>
+    <div className="h-72 w-full bg-slate-950/30 rounded-lg p-4 border border-slate-800">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart 
           data={data}
@@ -81,24 +85,27 @@ export default function StockChart({ ticker }: ChartProps) {
             </linearGradient>
           </defs>
           
+          {/* Faint Background Grid */}
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.2} vertical={false} />
 
+          {/* Date Axis (Bottom) */}
           <XAxis 
             dataKey="date" 
             axisLine={false}
             tickLine={false}
-            tick={{ fontSize: 10, fill: '#64748b' }}
+            tick={{ fontSize: 10, fill: '#64748b' }} // Small gray text
             tickMargin={10}
-            minTickGap={30}
+            minTickGap={30} // Prevents dates from overlapping
           />
 
+          {/* Price Axis (Left) */}
           <YAxis 
             domain={['auto', 'auto']} 
             axisLine={false}
             tickLine={false}
             tick={{ fontSize: 10, fill: '#64748b' }}
-            tickFormatter={(value) => `$${Math.round(value)}`}
-            width={40}
+            tickFormatter={(value) => `$${Math.round(value)}`} // Round to whole dollars to save space
+            width={40} // Reserve space for the price numbers
           />
           
           <Tooltip 
