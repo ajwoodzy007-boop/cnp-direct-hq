@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Plus, Activity, PieChart, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { LayoutDashboard, Plus, Activity, PieChart, TrendingUp, Clock, AlertCircle, Pencil, Trash2, X } from 'lucide-react';
 
 export default function TheVault() {
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [audit, setAudit] = useState<any>(null);
   const [auditing, setAuditing] = useState(false);
 
+  const [editId, setEditId] = useState<string | null>(null);
   const [assetType, setAssetType] = useState('SHARE');
   const [newTicker, setNewTicker] = useState('');
   const [newPrice, setNewPrice] = useState('');
@@ -25,12 +26,35 @@ export default function TheVault() {
 
   useEffect(() => { fetchPortfolio(); }, []);
 
-  const handleAddTrade = async (e: React.FormEvent) => {
+  const openAddModal = () => {
+    setEditId(null);
+    setAssetType('SHARE');
+    setNewTicker(''); setNewPrice(''); setNewShares('1'); setNewStrike(''); setNewExpiry('');
+    setShowModal(true);
+  };
+
+  const openEditModal = (p: any) => {
+    setEditId(p.id);
+    setAssetType(p.type);
+    setNewTicker(p.ticker);
+    setNewPrice(p.entryPrice);
+    setNewShares(p.shares);
+    setNewStrike(p.strikePrice || '');
+    setNewExpiry(p.expirationDate || '');
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch('/api/vault/add', {
-      method: 'POST',
+    
+    const endpoint = editId ? '/api/vault/edit' : '/api/vault/add';
+    const method = editId ? 'PUT' : 'POST';
+
+    await fetch(endpoint, {
+      method: method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
+        id: editId,
         ticker: newTicker.toUpperCase(), 
         price: newPrice, 
         shares: newShares, 
@@ -39,9 +63,19 @@ export default function TheVault() {
         expiry: newExpiry
       })
     });
-    setShowAddModal(false);
+    
+    setShowModal(false);
     fetchPortfolio();
-    setNewTicker(''); setNewPrice(''); setNewShares('1'); setNewStrike(''); setNewExpiry('');
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to close this position?")) return;
+    await fetch('/api/vault/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id })
+    });
+    fetchPortfolio();
   };
 
   const runOptimizer = async () => {
@@ -76,10 +110,10 @@ export default function TheVault() {
              data-testid="button-ai-audit"
            >
              {auditing ? <Activity className="h-5 w-5 animate-spin" /> : <PieChart className="h-5 w-5" />}
-             {auditing ? 'Analyzing Greeks...' : 'AI Risk Audit'}
+             {auditing ? 'Analyzing...' : 'AI Risk Audit'}
            </button>
            <button 
-             onClick={() => setShowAddModal(true)} 
+             onClick={openAddModal} 
              className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium"
              data-testid="button-log-trade"
            >
@@ -142,9 +176,9 @@ export default function TheVault() {
                     <th className="px-6 py-3">Contract</th>
                     <th className="px-6 py-3">Strike</th>
                     <th className="px-6 py-3">Expiry</th>
-                    <th className="px-6 py-3">Cost</th>
                     <th className="px-6 py-3">Value</th>
                     <th className="px-6 py-3">P/L %</th>
+                    <th className="px-6 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -156,10 +190,27 @@ export default function TheVault() {
                       </td>
                       <td className="px-6 py-4 text-slate-300">${p.strikePrice}</td>
                       <td className="px-6 py-4 text-slate-300">{p.expirationDate}</td>
-                      <td className="px-6 py-4 text-slate-400">${(p.entryPrice * p.shares * 100).toFixed(0)}</td>
                       <td className="px-6 py-4 text-white font-mono font-bold">${p.marketValue?.toLocaleString()}</td>
                       <td className={`px-6 py-4 font-bold ${p.gainPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {p.gainPercent > 0 ? '+' : ''}{p.gainPercent?.toFixed(2)}%
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => openEditModal(p)} 
+                            className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded hover:bg-slate-700"
+                            data-testid={`button-edit-${p.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(p.id)} 
+                            className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded hover:bg-slate-700"
+                            data-testid={`button-delete-${p.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -184,8 +235,8 @@ export default function TheVault() {
                   <th className="px-6 py-3">Entry</th>
                   <th className="px-6 py-3">Current</th>
                   <th className="px-6 py-3">Shares</th>
-                  <th className="px-6 py-3">Value</th>
                   <th className="px-6 py-3">P/L %</th>
+                  <th className="px-6 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -195,9 +246,26 @@ export default function TheVault() {
                     <td className="px-6 py-4 text-slate-400">${p.entryPrice?.toFixed(2)}</td>
                     <td className="px-6 py-4 text-white">${p.currentPrice?.toFixed(2)}</td>
                     <td className="px-6 py-4 text-slate-400">{p.shares}</td>
-                    <td className="px-6 py-4 text-white font-mono">${p.marketValue?.toLocaleString()}</td>
                     <td className={`px-6 py-4 font-bold ${p.gainPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                       {p.gainPercent > 0 ? '+' : ''}{p.gainPercent?.toFixed(2)}%
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => openEditModal(p)} 
+                          className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded hover:bg-slate-700"
+                          data-testid={`button-edit-${p.id}`}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(p.id)} 
+                          className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded hover:bg-slate-700"
+                          data-testid={`button-delete-${p.id}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -210,12 +278,19 @@ export default function TheVault() {
         </div>
       </div>
 
-      {/* ADD MODAL */}
-      {showAddModal && (
+      {/* ADD/EDIT MODAL */}
+      {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-xl font-bold text-white mb-4">Log New Position</h3>
-            <form onSubmit={handleAddTrade} className="space-y-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md relative">
+            <button 
+              onClick={() => setShowModal(false)} 
+              className="absolute top-4 right-4 text-slate-500 hover:text-white"
+              data-testid="button-close-modal"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            <h3 className="text-xl font-bold text-white mb-4">{editId ? 'Edit Position' : 'Log New Position'}</h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
               
               {/* Asset Type Toggle */}
               <div className="flex bg-slate-950 p-1 rounded-lg mb-4 border border-slate-800">
@@ -238,7 +313,7 @@ export default function TheVault() {
                   onChange={e => setNewTicker(e.target.value)} 
                   placeholder="AAPL" 
                   required 
-                  data-testid="input-new-ticker"
+                  data-testid="input-ticker"
                 />
               </div>
 
@@ -280,7 +355,7 @@ export default function TheVault() {
                     value={newPrice} 
                     onChange={e => setNewPrice(e.target.value)} 
                     required 
-                    data-testid="input-new-price"
+                    data-testid="input-price"
                   />
                 </div>
                 <div>
@@ -291,7 +366,7 @@ export default function TheVault() {
                     value={newShares} 
                     onChange={e => setNewShares(e.target.value)} 
                     required 
-                    data-testid="input-new-shares"
+                    data-testid="input-shares"
                   />
                 </div>
               </div>
@@ -299,7 +374,7 @@ export default function TheVault() {
               <div className="flex gap-2 pt-4">
                 <button 
                   type="button" 
-                  onClick={() => setShowAddModal(false)} 
+                  onClick={() => setShowModal(false)} 
                   className="flex-1 bg-slate-800 text-white py-2 rounded"
                   data-testid="button-cancel"
                 >
@@ -308,9 +383,9 @@ export default function TheVault() {
                 <button 
                   type="submit" 
                   className="flex-1 bg-emerald-600 text-white py-2 rounded font-bold"
-                  data-testid="button-log-trade-submit"
+                  data-testid="button-submit"
                 >
-                  Log Trade
+                  {editId ? 'Update Asset' : 'Secure Asset'}
                 </button>
               </div>
             </form>
