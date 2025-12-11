@@ -1,22 +1,34 @@
-import React, { useState, useEffect } from 'react';
-import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Progress } from '@/components/ui/progress';
 
 interface PickData {
   ticker: string;
   entryPrice: number;
   predictedPrice: number;
+  currentPrice?: number;
   outcome: string;
   confidence: string;
+  confidenceScore?: number;
   signal: string;
   rsi?: number;     
   sentimentScore?: number;
   rvol?: number;
+  riskLevel?: 'Low' | 'Medium' | 'High';
+  stopLoss?: number;
+  riskRewardRatio?: number;
+  aiReasoning?: string;
+  lockedAt?: string;
 }
+
+type SortOption = 'rank' | 'confidence' | 'return' | 'risk';
 
 export default function TheOracle() {
   const [picks, setPicks] = useState<PickData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPick, setSelectedPick] = useState<PickData | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>('rank');
 
   const stats = { wins: 12, losses: 4, winRate: 75, streak: 3 };
 
@@ -35,6 +47,51 @@ export default function TheOracle() {
     fetchDailyPicks();
   }, []);
 
+  const sortedPicks = useMemo(() => {
+    const sorted = [...picks];
+    switch (sortBy) {
+      case 'confidence':
+        return sorted.sort((a, b) => (b.confidenceScore || 70) - (a.confidenceScore || 70));
+      case 'return':
+        return sorted.sort((a, b) => {
+          const returnA = ((a.predictedPrice - a.entryPrice) / a.entryPrice) * 100;
+          const returnB = ((b.predictedPrice - b.entryPrice) / b.entryPrice) * 100;
+          return returnB - returnA;
+        });
+      case 'risk':
+        const riskOrder = { 'Low': 1, 'Medium': 2, 'High': 3 };
+        return sorted.sort((a, b) => (riskOrder[a.riskLevel || 'Medium'] || 2) - (riskOrder[b.riskLevel || 'Medium'] || 2));
+      default:
+        return sorted;
+    }
+  }, [picks, sortBy]);
+
+  const getProgressToTarget = (pick: PickData) => {
+    const current = pick.currentPrice || pick.entryPrice;
+    const target = pick.predictedPrice;
+    const entry = pick.entryPrice;
+    if (target === entry) return 0;
+    const progress = ((current - entry) / (target - entry)) * 100;
+    return Math.min(Math.max(progress, 0), 100);
+  };
+
+  const getConfidenceColor = (score: number) => {
+    if (score >= 70) return 'bg-green-500';
+    if (score >= 50) return 'bg-yellow-500';
+    return 'bg-red-500';
+  };
+
+  const getRiskBadge = (risk: string) => {
+    switch (risk) {
+      case 'Low':
+        return <span className="px-2 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 flex items-center gap-1"><Shield className="h-3 w-3" /> Low</span>;
+      case 'High':
+        return <span className="px-2 py-0.5 rounded text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1"><Flame className="h-3 w-3" /> High</span>;
+      default:
+        return <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Med</span>;
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 relative">
       
@@ -48,23 +105,50 @@ export default function TheOracle() {
           <p className="text-slate-400 mt-2 max-w-2xl">
             High-conviction setups filtered by the Sentinel Engine.
           </p>
-          <div className="flex gap-6 mt-8">
+          <div className="flex flex-wrap gap-4 mt-8">
             <div className="bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50">
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Win Rate</div>
               <div className="text-2xl font-bold text-green-400">{stats.winRate}%</div>
             </div>
             <div className="bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50">
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Current Streak</div>
-              <div className="text-2xl font-bold text-cyan-400">{stats.streak} Days</div>
+              <div className="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+                {stats.streak} Days
+                {stats.streak >= 3 && <span className="text-orange-500">🔥</span>}
+              </div>
+            </div>
+            <div className="bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50">
+              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Record</div>
+              <div className="text-2xl font-bold">
+                <span className="text-green-400">{stats.wins}W</span>
+                <span className="text-slate-600 mx-1">/</span>
+                <span className="text-red-400">{stats.losses}L</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       <div>
-        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-          Today's Predictions <span className="text-xs font-normal text-slate-500 bg-slate-800 px-2 py-1 rounded ml-2">Live</span>
-        </h3>
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            Today's Predictions <span className="text-xs font-normal text-slate-500 bg-slate-800 px-2 py-1 rounded ml-2">Live</span>
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">Sort by:</span>
+            <select 
+              value={sortBy} 
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="bg-slate-800 border border-slate-700 text-slate-300 text-xs rounded px-2 py-1"
+              data-testid="select-sort"
+            >
+              <option value="rank">Rank</option>
+              <option value="confidence">Confidence</option>
+              <option value="return">Potential Return</option>
+              <option value="risk">Risk Level</option>
+            </select>
+          </div>
+        </div>
 
         {loading ? (
           <div className="text-center py-20 text-slate-500">Consulting the Oracle...</div>
@@ -74,46 +158,109 @@ export default function TheOracle() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {picks.map((pick) => (
-              <div key={pick.ticker} className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-cyan-500/30 transition-all group" data-testid={`oracle-pick-${pick.ticker}`}>
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h4 className="text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors">
-                      {pick.ticker}
-                    </h4>
-                    <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-                      {pick.signal}
-                    </span>
-                  </div>
-                  <div className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                    pick.confidence === 'High' 
-                      ? 'bg-green-500/10 text-green-400 border-green-500/30' 
-                      : 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30'
-                  }`}>
-                    {pick.confidence} Conf.
-                  </div>
-                </div>
+            {sortedPicks.map((pick, index) => {
+              const confScore = pick.confidenceScore || (pick.confidence === 'High' ? 85 : 60);
+              const progress = getProgressToTarget(pick);
+              const potentialReturn = ((pick.predictedPrice - pick.entryPrice) / pick.entryPrice * 100).toFixed(1);
+              const riskLevel = pick.riskLevel || 'Medium';
+              const stopLoss = pick.stopLoss || (pick.entryPrice * 0.95);
+              const rr = pick.riskRewardRatio || 2.5;
 
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Entry Zone</span>
-                    <span className="text-white font-mono">${pick.entryPrice.toFixed(2)}</span>
+              return (
+                <div key={pick.ticker} className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-cyan-500/30 transition-all group" data-testid={`oracle-pick-${pick.ticker}`}>
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors">
+                          {pick.ticker}
+                        </h4>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="text-slate-500 hover:text-cyan-400" data-testid={`button-why-${pick.ticker}`}>
+                              <Info className="h-4 w-4" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-72 bg-slate-900 border-slate-700 text-slate-300 text-sm">
+                            <div className="font-bold text-cyan-400 mb-2">Why this pick?</div>
+                            <p className="text-xs leading-relaxed">
+                              {pick.aiReasoning || `Strong ${pick.signal.toLowerCase()} signal detected with ${confScore}% confidence. RSI at ${pick.rsi || 65} indicates ${pick.signal.includes('VALUE') ? 'oversold conditions' : 'momentum continuation'}. Sentiment analysis shows ${(pick.sentimentScore || 0.5) > 0.5 ? 'bullish' : 'neutral'} market tone.`}
+                            </p>
+                          </PopoverContent>
+                        </Popover>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
+                          {pick.signal}
+                        </span>
+                        {getRiskBadge(riskLevel)}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-slate-500 mb-1">Confidence</div>
+                      <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${getConfidenceColor(confScore)} transition-all`}
+                          style={{ width: `${confScore}%` }}
+                        />
+                      </div>
+                      <div className="text-xs font-bold mt-1 text-slate-300">{confScore}%</div>
+                    </div>
                   </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Target (AI)</span>
-                    <span className="text-cyan-400 font-mono font-bold">${pick.predictedPrice.toFixed(2)}</span>
-                  </div>
-                </div>
 
-                <button 
-                  onClick={() => setSelectedPick(pick)}
-                  className="w-full py-2 bg-slate-800 hover:bg-cyan-600 hover:text-white text-slate-300 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
-                  data-testid={`button-view-analysis-${pick.ticker}`}
-                >
-                  View Analysis <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
+                  <div className="space-y-3 mb-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Entry Zone</span>
+                      <span className="text-white font-mono">${pick.entryPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Target (AI)</span>
+                      <span className="text-cyan-400 font-mono font-bold">${pick.predictedPrice.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Potential</span>
+                      <span className="text-green-400 font-mono font-bold">+{potentialReturn}%</span>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs text-slate-500 mb-1">
+                      <span>Progress to Target</span>
+                      <span>{progress.toFixed(0)}%</span>
+                    </div>
+                    <Progress 
+                      value={progress} 
+                      className="h-2 bg-slate-800"
+                    />
+                  </div>
+
+                  <div className="flex justify-between text-xs text-slate-500 mb-4 border-t border-slate-800 pt-3">
+                    <div>
+                      <span className="text-slate-600">Stop Loss:</span>
+                      <span className="text-red-400 ml-1 font-mono">${stopLoss.toFixed(2)}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-600">R:R</span>
+                      <span className="text-cyan-400 ml-1 font-mono">{rr.toFixed(1)}:1</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-slate-600 mb-4">
+                    <div className="flex items-center gap-1">
+                      <Lock className="h-3 w-3" />
+                      <span>Locked {pick.lockedAt || '7:30 AM ET'}</span>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => setSelectedPick(pick)}
+                    className="w-full py-2 bg-slate-800 hover:bg-cyan-600 hover:text-white text-slate-300 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                    data-testid={`button-view-analysis-${pick.ticker}`}
+                  >
+                    View Analysis <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -144,8 +291,7 @@ export default function TheOracle() {
                 <div>
                   <div className="font-bold text-cyan-100">AI Recommendation: {selectedPick.signal}</div>
                   <p className="text-sm text-cyan-200/70 mt-1 leading-relaxed">
-                    The Sentinel Engine has detected a high-probability setup based on 
-                    {selectedPick.signal.includes('MOMENTUM') ? ' accelerating volume and breakout price action.' : ' oversold conditions and resilient sentiment.'}
+                    {selectedPick.aiReasoning || `The Sentinel Engine has detected a high-probability setup based on ${selectedPick.signal.includes('MOMENTUM') ? ' accelerating volume and breakout price action.' : ' oversold conditions and resilient sentiment.'}`}
                   </p>
                 </div>
               </div>
@@ -168,7 +314,7 @@ export default function TheOracle() {
                     <BarChart2 className="h-3 w-3" /> Relative Vol
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
-                    {selectedPick.rvol || (selectedPick.signal.includes('MOMENTUM') ? '3.5x' : '1.2x')}
+                    {selectedPick.rvol ? `${selectedPick.rvol}x` : (selectedPick.signal.includes('MOMENTUM') ? '3.5x' : '1.2x')}
                   </div>
                   <div className="text-xs text-slate-600 mt-1">vs 30-Day Avg</div>
                 </div>
@@ -177,11 +323,16 @@ export default function TheOracle() {
               <div>
                 <div className="text-sm text-slate-400 mb-2 font-medium">News Sentiment Scan</div>
                 <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-green-600 to-green-400 w-[75%]"></div>
+                  <div 
+                    className="h-full bg-gradient-to-r from-green-600 to-green-400"
+                    style={{ width: `${((selectedPick.sentimentScore || 0.65) + 1) / 2 * 100}%` }}
+                  ></div>
                 </div>
                 <div className="flex justify-between text-xs text-slate-500 mt-1">
                   <span>Negative</span>
-                  <span className="text-green-400 font-bold">Bullish (0.65)</span>
+                  <span className="text-green-400 font-bold">
+                    {(selectedPick.sentimentScore || 0.65) > 0 ? 'Bullish' : 'Bearish'} ({(selectedPick.sentimentScore || 0.65).toFixed(2)})
+                  </span>
                   <span>Positive</span>
                 </div>
               </div>
