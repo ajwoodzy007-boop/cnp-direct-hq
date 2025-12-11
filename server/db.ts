@@ -20,21 +20,22 @@ export async function initDb() {
         "entryPrice" REAL NOT NULL, 
         shares REAL NOT NULL,
         "dateOpened" TEXT NOT NULL,
-        status TEXT DEFAULT 'OPEN'
+        status TEXT DEFAULT 'OPEN',
+        "userId" INTEGER
       );
     `);
 
     await client.query(`
-      CREATE TABLE IF NOT EXISTS members (
+      CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
-        membership_tier TEXT DEFAULT 'FREE',
+        tier TEXT DEFAULT 'FREE',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
     
-    console.log("Database Upgraded: Members & Portfolio ready.");
+    console.log("🗄️  Database Ready: Users & Portfolio tables active.");
   } catch (err) {
     console.error("DB Init Error:", err);
   } finally {
