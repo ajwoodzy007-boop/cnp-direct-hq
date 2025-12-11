@@ -12,7 +12,7 @@ import TheOracle from './components/TheOracle';
 import TheStrategist from './components/TheStrategist';
 import TheVault from './components/TheVault';
 import TheAcademy from './components/TheAcademy';
-import LoginPage from './components/LoginPage';
+import AuthPage from './components/AuthPage';
 import PremiumLock from './components/PremiumLock';
 import Pricing from "@/pages/Pricing";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
@@ -91,15 +91,9 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <LoginPage onLogin={() => {
-      fetch('/api/auth/me')
-        .then(res => res.json())
-        .then(json => {
-          if (json.authenticated) {
-            setUser(json.user);
-            setIsAuthenticated(true);
-          }
-        });
+    return <AuthPage onLogin={(userData) => {
+      setUser(userData);
+      setIsAuthenticated(true);
     }} />;
   }
 
