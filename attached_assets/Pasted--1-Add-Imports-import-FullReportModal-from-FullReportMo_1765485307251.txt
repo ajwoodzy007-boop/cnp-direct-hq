@@ -1,0 +1,57 @@
+// 1. Add Imports
+import FullReportModal from './FullReportModal';
+import { BookOpen, ExternalLink, Scroll, Shield, Zap, TrendingUp, RefreshCw, Radio, FileText, Lock } from 'lucide-react'; // Add Lock, FileText
+
+// 2. Add State inside the component
+const [fullReport, setFullReport] = useState<any>(null);
+const [loadingFull, setLoadingFull] = useState(false);
+const [showFullModal, setShowFullModal] = useState(false);
+
+// 3. Add Handler Function
+const handleOpenFullReport = async () => {
+  setLoadingFull(true);
+  try {
+    const res = await fetch('/api/academy/full-report');
+    if (res.status === 403) {
+      alert("This report is classified. Upgrade to Premium to access the full 3-page briefing.");
+      setLoadingFull(false);
+      return;
+    }
+    const json = await res.json();
+    if (json.success) {
+      setFullReport(json.data);
+      setShowFullModal(true);
+    }
+  } catch (e) {
+    console.error(e);
+  } finally {
+    setLoadingFull(false);
+  }
+};
+
+// 4. Update the Briefing Card (Inside the return JSX)
+// Look for the "Sentinel Daily Briefing" card. 
+// Add this button BELOW the <div className="space-y-4 ..."> summary block.
+
+{/* ... inside the briefing card ... */}
+<div className="space-y-4 text-slate-300 leading-relaxed max-w-4xl">
+   <p>{briefing.summary}</p>
+   {/* ... key levels grid ... */}
+   
+   {/* NEW BUTTON */}
+   <div className="mt-6 pt-6 border-t border-slate-800 flex justify-end">
+     <button 
+       onClick={handleOpenFullReport}
+       disabled={loadingFull}
+       className="flex items-center gap-2 text-sm font-bold text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/30 hover:bg-cyan-950/50 px-4 py-2 rounded-lg border border-cyan-500/30"
+     >
+       {loadingFull ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+       {loadingFull ? 'Decrypting...' : 'Read Full Intelligence Report'}
+     </button>
+   </div>
+</div>
+
+// 5. Render Modal (At the very bottom, before </div>)
+{showFullModal && fullReport && (
+  <FullReportModal data={fullReport} onClose={() => setShowFullModal(false)} />
+)}

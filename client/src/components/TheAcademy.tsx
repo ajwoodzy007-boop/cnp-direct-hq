@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, ExternalLink, Shield, Zap, TrendingUp, RefreshCw, Radio } from 'lucide-react';
+import { BookOpen, ExternalLink, Shield, Zap, TrendingUp, RefreshCw, Radio, FileText } from 'lucide-react';
+import FullReportModal from './FullReportModal';
 
 export default function TheAcademy() {
   const [briefing, setBriefing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [fullReport, setFullReport] = useState<any>(null);
+  const [loadingFull, setLoadingFull] = useState(false);
+  const [showFullModal, setShowFullModal] = useState(false);
 
   const resources = [
     { name: "TradingView Charts", desc: "Advanced Charting Software", link: "#", icon: TrendingUp },
@@ -21,6 +25,27 @@ export default function TheAcademy() {
     }
     fetchBriefing();
   }, []);
+
+  const handleOpenFullReport = async () => {
+    setLoadingFull(true);
+    try {
+      const res = await fetch('/api/academy/full-report');
+      if (res.status === 403) {
+        alert("This report is classified. Upgrade to Premium to access the full intelligence briefing.");
+        setLoadingFull(false);
+        return;
+      }
+      const json = await res.json();
+      if (json.success) {
+        setFullReport(json.data);
+        setShowFullModal(true);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingFull(false);
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -78,6 +103,18 @@ export default function TheAcademy() {
                       <span data-testid="text-action-plan">{briefing.actionPlan}</span>
                    </div>
                 </div>
+                
+                <div className="mt-6 pt-6 border-t border-slate-800 flex justify-end">
+                  <button 
+                    onClick={handleOpenFullReport}
+                    disabled={loadingFull}
+                    className="flex items-center gap-2 text-sm font-bold text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/30 hover:bg-cyan-950/50 px-4 py-2 rounded-lg border border-cyan-500/30 disabled:opacity-50"
+                    data-testid="button-full-report"
+                  >
+                    {loadingFull ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                    {loadingFull ? 'Decrypting...' : 'Read Full Intelligence Report'}
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -134,6 +171,9 @@ export default function TheAcademy() {
         </div>
       </div>
 
+      {showFullModal && fullReport && (
+        <FullReportModal data={fullReport} onClose={() => setShowFullModal(false)} />
+      )}
     </div>
   );
 }
