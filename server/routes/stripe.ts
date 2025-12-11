@@ -73,4 +73,30 @@ router.get('/success', async (req, res) => {
   }
 });
 
+router.post('/create-portal-session', async (req, res) => {
+  const user = (req.session as any).user;
+  if (!user) return res.status(401).json({ error: 'Log in required' });
+
+  try {
+    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    
+    if (customers.data.length === 0) {
+      return res.status(404).json({ error: "No billing history found." });
+    }
+
+    const customerId = customers.data[0].id;
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${DOMAIN}/`,
+    });
+
+    res.json({ url: portalSession.url });
+
+  } catch (e: any) {
+    console.error("Portal Error:", e);
+    res.status(500).json({ error: "Could not access billing portal" });
+  }
+});
+
 export default router;
