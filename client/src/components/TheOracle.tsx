@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info } from 'lucide-react';
+import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info, Zap } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
+import PremiumLock from './PremiumLock';
 
 interface PickData {
   ticker: string;
@@ -29,8 +30,31 @@ export default function TheOracle() {
   const [loading, setLoading] = useState(true);
   const [selectedPick, setSelectedPick] = useState<PickData | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('rank');
+  const [showSignals, setShowSignals] = useState(false);
+  const [signalsLocked, setSignalsLocked] = useState(false);
+  const [signalsLoading, setSignalsLoading] = useState(false);
+  const [liveSignals, setLiveSignals] = useState<any[]>([]);
 
   const stats = { wins: 12, losses: 4, winRate: 75, streak: 3 };
+
+  const fetchSignals = async () => {
+    setShowSignals(true);
+    setSignalsLoading(true);
+    setSignalsLocked(false);
+    try {
+      const res = await fetch('/api/oracle/signals');
+      if (res.status === 403) {
+        setSignalsLocked(true);
+        return;
+      }
+      const json = await res.json();
+      if (json.success) setLiveSignals(json.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSignalsLoading(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchDailyPicks() {
@@ -125,6 +149,13 @@ export default function TheOracle() {
                 <span className="text-red-400">{stats.losses}L</span>
               </div>
             </div>
+            <button
+              onClick={fetchSignals}
+              className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 px-6 py-3 rounded-xl font-bold text-white flex items-center gap-2 transition-all"
+              data-testid="button-live-signals"
+            >
+              <Zap className="h-5 w-5" /> Live Signals
+            </button>
           </div>
         </div>
       </div>
@@ -351,6 +382,70 @@ export default function TheOracle() {
                 Add to Watchlist
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showSignals && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden max-h-[80vh]">
+            {signalsLocked ? (
+              <PremiumLock featureName="Real-Time Signals" />
+            ) : (
+              <>
+                <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Zap className="text-cyan-400 h-5 w-5" />
+                      Live Trading Signals
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">Real-time entry points from the Sentinel Engine</p>
+                  </div>
+                  <button 
+                    onClick={() => setShowSignals(false)} 
+                    className="text-slate-400 hover:text-white"
+                    data-testid="button-close-signals"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+                <div className="p-6 overflow-auto max-h-[60vh]">
+                  {signalsLoading ? (
+                    <div className="text-center py-12 text-slate-500 animate-pulse">
+                      Scanning markets for signals...
+                    </div>
+                  ) : liveSignals.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">
+                      No active signals at this time.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {liveSignals.map((sig, i) => (
+                        <div key={i} className="bg-slate-950 border border-slate-800 rounded-lg p-4 flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center font-bold text-sm ${
+                              sig.signal.includes('BUY') ? 'bg-green-500/20 text-green-400' : 
+                              sig.signal.includes('SELL') ? 'bg-red-500/20 text-red-400' : 
+                              'bg-slate-700 text-slate-300'
+                            }`}>
+                              {sig.ticker?.slice(0, 3)}
+                            </div>
+                            <div>
+                              <div className="text-white font-bold">{sig.ticker}</div>
+                              <div className="text-xs text-slate-500">{sig.signal}</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-white font-mono">${sig.price?.toFixed(2)}</div>
+                            <div className="text-xs text-slate-500">RSI: {sig.rsi?.toFixed(0)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

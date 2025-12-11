@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Plus } from 'lucide-react';
+import { LayoutDashboard, Plus, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
+import PremiumLock from './PremiumLock';
 
 export default function TheVault() {
   const [positions, setPositions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showOptimizer, setShowOptimizer] = useState(false);
+  const [optimizerLocked, setOptimizerLocked] = useState(false);
+  const [optimizerLoading, setOptimizerLoading] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
 
   const [newTicker, setNewTicker] = useState('');
   const [newPrice, setNewPrice] = useState('');
@@ -48,6 +53,26 @@ export default function TheVault() {
   const totalEquity = positions.reduce((acc, p) => acc + (p.marketValue || 0), 0);
   const totalGain = positions.reduce((acc, p) => acc + (p.gain || 0), 0);
 
+  const handleOptimize = async () => {
+    setShowOptimizer(true);
+    setOptimizerLoading(true);
+    setOptimizerLocked(false);
+    setSuggestions([]);
+    try {
+      const res = await fetch('/api/vault/optimize');
+      if (res.status === 403) {
+        setOptimizerLocked(true);
+        return;
+      }
+      const json = await res.json();
+      if (json.success) setSuggestions(json.data.suggestions || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setOptimizerLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
@@ -59,13 +84,22 @@ export default function TheVault() {
           </h2>
           <p className="text-slate-400 mt-2">Paper Trading & Portfolio Tracking</p>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium"
-          data-testid="button-log-trade"
-        >
-          <Plus className="h-5 w-5" /> Log Trade
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={handleOptimize}
+            className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium"
+            data-testid="button-optimize"
+          >
+            <Sparkles className="h-5 w-5" /> Optimize
+          </button>
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium"
+            data-testid="button-log-trade"
+          >
+            <Plus className="h-5 w-5" /> Log Trade
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -177,6 +211,63 @@ export default function TheVault() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showOptimizer && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[80vh] overflow-auto">
+            {optimizerLocked ? (
+              <PremiumLock featureName="Portfolio Optimizer" />
+            ) : (
+              <>
+                <div className="p-6 border-b border-slate-800">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-purple-400" />
+                    AI Portfolio Optimizer
+                  </h3>
+                  <p className="text-sm text-slate-400 mt-1">Smart suggestions to improve your portfolio</p>
+                </div>
+                <div className="p-6">
+                  {optimizerLoading ? (
+                    <div className="text-center py-12 text-slate-500 animate-pulse">
+                      Analyzing your portfolio...
+                    </div>
+                  ) : suggestions.length === 0 ? (
+                    <div className="text-center py-12">
+                      <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-4" />
+                      <div className="text-white font-bold">Portfolio looks great!</div>
+                      <p className="text-slate-400 text-sm mt-2">No optimization suggestions at this time.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {suggestions.map((s, i) => (
+                        <div key={i} className="bg-slate-950 border border-slate-800 rounded-lg p-4 flex items-start gap-4">
+                          <AlertCircle className={`h-5 w-5 shrink-0 mt-0.5 ${
+                            s.type === 'OVERWEIGHT' ? 'text-orange-400' :
+                            s.type === 'DIVERSIFY' ? 'text-blue-400' : 'text-yellow-400'
+                          }`} />
+                          <div>
+                            <div className="text-white font-medium">{s.type}</div>
+                            <p className="text-slate-400 text-sm mt-1">{s.message}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="p-4 border-t border-slate-800">
+                  <button 
+                    onClick={() => setShowOptimizer(false)}
+                    className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium"
+                    data-testid="button-close-optimizer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

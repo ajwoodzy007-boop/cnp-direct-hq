@@ -8,11 +8,13 @@ import {
   Layers,
   Zap 
 } from 'lucide-react';
+import PremiumLock from './PremiumLock';
 
 export default function TheStrategist() {
   const [ticker, setTicker] = useState('');
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [isPremiumLocked, setIsPremiumLocked] = useState(false);
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,8 +22,13 @@ export default function TheStrategist() {
     
     setLoading(true);
     setResult(null);
+    setIsPremiumLocked(false);
     try {
       const res = await fetch(`/api/strategist/analyze?ticker=${ticker}`);
+      if (res.status === 403) {
+        setIsPremiumLocked(true);
+        return;
+      }
       const json = await res.json();
       if (json.success) setResult(json.data);
     } catch (err) {
@@ -65,13 +72,17 @@ export default function TheStrategist() {
         </form>
       </div>
 
-      {loading && (
+      {isPremiumLocked && (
+        <PremiumLock featureName="The Strategist" />
+      )}
+
+      {loading && !isPremiumLocked && (
         <div className="text-center py-20 text-slate-500 animate-pulse">
           Calculating Volatility & Greeks...
         </div>
       )}
 
-      {result && !loading && (
+      {result && !loading && !isPremiumLocked && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
           <div className="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-6 h-fit">
