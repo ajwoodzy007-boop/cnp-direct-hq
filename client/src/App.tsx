@@ -54,16 +54,34 @@ function MainDashboard() {
         return <MarketRadar />;
       case 'academy': 
         return <TheAcademy />;
-      case 'oracle':
-        if (!user) return <AuthLock featureName="The Oracle" description="delivers AI-powered daily predictions and real-time trading signals. Create a free account to unlock." onLoginClick={() => setShowAuthModal(true)} />;
+      case 'oracle': 
+        if (!user) return (
+          <AuthLock 
+            featureName="The Oracle" 
+            description="uses AI to identify high-probability daily setups. Sign up for free to view today's top conviction picks."
+            onLoginClick={() => setShowAuthModal(true)} 
+          />
+        );
         if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Oracle" />;
         return <TheOracle />;
-      case 'strategist':
-        if (!user) return <AuthLock featureName="The Strategist" description="provides AI-generated options playbooks and execution algorithms. Sign in to access." onLoginClick={() => setShowAuthModal(true)} />;
+      case 'strategist': 
+        if (!user) return (
+          <AuthLock 
+            featureName="The Strategist" 
+            description="generates institutional-grade option plays (Calls/Puts) based on volatility. Create an account to run the algorithms."
+            onLoginClick={() => setShowAuthModal(true)} 
+          />
+        );
         if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Strategist" />;
         return <TheStrategist />;
-      case 'vault':
-        if (!user) return <AuthLock featureName="The Vault" description="lets you track trades and monitor your portfolio performance. Log in to save your data." onLoginClick={() => setShowAuthModal(true)} />;
+      case 'vault': 
+        if (!user) return (
+          <AuthLock 
+            featureName="The Vault" 
+            description="is your secure paper-trading journal. You must be logged in to save your trade history and track performance."
+            onLoginClick={() => setShowAuthModal(true)} 
+          />
+        );
         return <TheVault />;
       default: return <MarketRadar />;
     }
