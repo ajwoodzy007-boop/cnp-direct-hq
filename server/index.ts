@@ -111,15 +111,23 @@ app.use(
 
 app.use(express.urlencoded({ extended: false }));
 
-// Session middleware
+// Trust proxy for Replit HTTPS
+app.set('trust proxy', 1);
+
+// Session middleware - requires SESSION_SECRET environment variable
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret) {
+  console.warn('[SESSION] WARNING: SESSION_SECRET not set. Sessions will not work until configured.');
+}
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'cnp-sentinel-secret-key-change-in-production',
+  secret: sessionSecret || 'temporary-dev-only-not-for-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000
   }
 }));
 
