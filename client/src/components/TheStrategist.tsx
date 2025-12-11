@@ -39,9 +39,12 @@ export default function TheStrategist() {
     } catch (e) { console.error(e); } finally { setScanning(false); }
   };
 
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+
   const generateEarningsPlay = async (item: any) => {
     setGenerating(true);
     setEarningsPlay(null);
+    setSelectedTicker(item.ticker);
     try {
       const res = await fetch('/api/strategist/earnings-play', {
         method: 'POST',
@@ -49,7 +52,7 @@ export default function TheStrategist() {
         body: JSON.stringify({ ticker: item.ticker, price: item.price, date: item.date })
       });
       const json = await res.json();
-      if (json.success) setEarningsPlay({ ...json.data, ticker: item.ticker });
+      if (json.success) setEarningsPlay(json.data);
     } catch (e) { console.error(e); } finally { setGenerating(false); }
   };
 
@@ -240,7 +243,7 @@ export default function TheStrategist() {
                 <div 
                   key={item.ticker} 
                   onClick={() => generateEarningsPlay(item)}
-                  className={`bg-slate-900 p-4 rounded-xl border cursor-pointer transition-all hover:bg-slate-800 ${earningsPlay?.ticker === item.ticker ? 'border-amber-500 shadow-lg shadow-amber-900/20' : 'border-slate-800 hover:border-amber-500/50'}`}
+                  className={`bg-slate-900 p-4 rounded-xl border cursor-pointer transition-all hover:bg-slate-800 ${selectedTicker === item.ticker ? 'border-amber-500 shadow-lg shadow-amber-900/20' : 'border-slate-800 hover:border-amber-500/50'}`}
                   data-testid={`card-earnings-${item.ticker}`}
                 >
                   <div className="flex justify-between items-center">
@@ -259,60 +262,75 @@ export default function TheStrategist() {
               {generating ? (
                 <div className="h-full flex flex-col items-center justify-center text-amber-500 space-y-4 min-h-[300px]">
                   <Flame className="h-12 w-12 animate-pulse" />
-                  <div className="text-lg font-bold">Calculating Implied Volatility Move...</div>
+                  <div className="text-lg font-bold">Generating 3 Risk-Adjusted Plays...</div>
                 </div>
-              ) : earningsPlay ? (
-                <div className="bg-slate-900 border border-amber-500/30 rounded-xl overflow-hidden shadow-2xl animate-in slide-in-from-right-4">
-                  <div className="bg-gradient-to-r from-amber-900/50 to-slate-900 p-6 border-b border-amber-500/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                    <div>
-                      <h2 className="text-2xl font-bold text-white">{earningsPlay.strategy}</h2>
-                      <div className="text-amber-400 font-bold mt-1">BIAS: {earningsPlay.bias}</div>
-                    </div>
-                    <div className="text-right">
-                       <div className="text-xs text-slate-500 uppercase font-bold">Implied Move</div>
-                       <div className="text-2xl font-bold text-white">{earningsPlay.impliedMove}</div>
-                    </div>
+              ) : earningsPlay && Array.isArray(earningsPlay) && earningsPlay.length > 0 ? (
+                <div className="space-y-4 animate-in slide-in-from-right-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-white font-bold text-lg">{selectedTicker}</span>
+                    <span className="text-slate-500">Earnings Plays</span>
                   </div>
                   
-                  <div className="p-6 space-y-6">
-                    <p className="text-slate-300 leading-relaxed text-lg border-l-4 border-amber-500 pl-4">
-                      {earningsPlay.rationale}
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-slate-950 p-4 rounded border border-slate-800">
-                        <div className="text-xs text-slate-500 uppercase font-bold mb-1">Leg 1</div>
-                        <div className="text-white font-mono">{earningsPlay.setup?.leg1}</div>
+                  {earningsPlay.map((play: any, idx: number) => {
+                    const riskColors: Record<string, { border: string; bg: string; badge: string }> = {
+                      'Low': { border: 'border-green-500/30', bg: 'from-green-900/30', badge: 'bg-green-500/20 text-green-400 border-green-500/50' },
+                      'Medium': { border: 'border-amber-500/30', bg: 'from-amber-900/30', badge: 'bg-amber-500/20 text-amber-400 border-amber-500/50' },
+                      'High': { border: 'border-red-500/30', bg: 'from-red-900/30', badge: 'bg-red-500/20 text-red-400 border-red-500/50' }
+                    };
+                    const colors = riskColors[play.risk] || riskColors['Medium'];
+                    
+                    return (
+                      <div key={idx} className={`bg-slate-900 border ${colors.border} rounded-xl overflow-hidden`}>
+                        <div className={`bg-gradient-to-r ${colors.bg} to-slate-900 p-4 border-b border-slate-800`}>
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                              <span className={`text-xs px-2 py-1 rounded border font-bold ${colors.badge}`}>
+                                {play.risk} Risk
+                              </span>
+                              <h3 className="text-lg font-bold text-white">{play.strategy}</h3>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-slate-500">Implied Move</div>
+                              <div className="text-white font-bold">{play.impliedMove}</div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="p-4 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-slate-500 uppercase">Bias:</span>
+                            <span className="text-white font-medium">{play.bias}</span>
+                          </div>
+                          
+                          <p className="text-slate-400 text-sm">{play.rationale}</p>
+                          
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="bg-slate-950 p-2 rounded border border-slate-800">
+                              <div className="text-[10px] text-slate-500 uppercase">Leg 1</div>
+                              <div className="text-white text-xs font-mono">{play.setup?.leg1}</div>
+                            </div>
+                            <div className="bg-slate-950 p-2 rounded border border-slate-800">
+                              <div className="text-[10px] text-slate-500 uppercase">Leg 2</div>
+                              <div className="text-white text-xs font-mono">{play.setup?.leg2 || 'N/A'}</div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-4 text-xs">
+                            <div><span className="text-green-400">Max Profit:</span> <span className="text-white">{play.maxProfit}</span></div>
+                            <div><span className="text-red-400">Max Loss:</span> <span className="text-white">{play.maxLoss}</span></div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="bg-slate-950 p-4 rounded border border-slate-800">
-                         <div className="text-xs text-slate-500 uppercase font-bold mb-1">Leg 2</div>
-                         <div className="text-white font-mono">{earningsPlay.setup?.leg2 || 'N/A'}</div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="bg-green-900/20 border border-green-500/30 p-3 rounded text-center">
-                        <div className="text-xs text-green-400 uppercase font-bold mb-1">Max Profit</div>
-                        <div className="text-white font-mono text-sm">{earningsPlay.maxProfit || 'Variable'}</div>
-                      </div>
-                      <div className="bg-red-900/20 border border-red-500/30 p-3 rounded text-center">
-                        <div className="text-xs text-red-400 uppercase font-bold mb-1">Max Loss</div>
-                        <div className="text-white font-mono text-sm">{earningsPlay.maxLoss || 'Variable'}</div>
-                      </div>
-                      <div className="bg-slate-800/50 border border-slate-700 p-3 rounded text-center">
-                        <div className="text-xs text-slate-400 uppercase font-bold mb-1">Risk Level</div>
-                        <div className={`font-bold text-sm ${earningsPlay.risk === 'High' ? 'text-red-400' : earningsPlay.risk === 'Med' ? 'text-amber-400' : 'text-green-400'}`}>{earningsPlay.risk}</div>
-                      </div>
-                    </div>
-
-                    <div className="bg-slate-950/50 p-4 rounded text-center text-xs text-slate-500">
-                      Warning: Earnings events carry "Binary Risk". Prices can gap significantly beyond the implied move.
-                    </div>
+                    );
+                  })}
+                  
+                  <div className="bg-slate-950/50 p-3 rounded text-center text-xs text-slate-500">
+                    Warning: Earnings events carry "Binary Risk". Prices can gap significantly beyond the implied move.
                   </div>
                 </div>
               ) : (
                 <div className="h-full border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-600 min-h-[300px]">
-                  Select a stock from the left to generate strategy.
+                  Select a stock from the left to generate strategies.
                 </div>
               )}
             </div>

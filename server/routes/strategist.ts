@@ -188,35 +188,60 @@ router.post('/earnings-play', requirePremium, async (req, res) => {
 
   try {
     const prompt = `
-      Act as a Derivatives Specialist. Generate an 'Earnings Play' for ${ticker}.
+      Act as a Derivatives Specialist. Generate THREE different 'Earnings Plays' for ${ticker}.
       Current Price: $${price}
       Earnings Date: ${date}
 
-      IMPORTANT: Choose the BEST strategy for this specific situation. Consider these options:
-      - Long Straddle: When expecting a BIG move but unsure of direction
-      - Long Strangle: Cheaper than straddle, needs bigger move to profit
-      - Iron Condor: When expecting stock to stay FLAT after earnings
-      - Iron Butterfly: More aggressive neutral bet with higher reward
-      - Bull Call Spread: When bullish on earnings
-      - Bear Put Spread: When bearish on earnings
-      - Calendar Spread: To profit from IV crush while maintaining position
-      - Jade Lizard: Bullish with premium collection
+      Generate exactly 3 strategies with different risk levels:
+      1. LOW RISK - Conservative play (e.g. Iron Condor, Cash-Secured Put, Covered Call, Wide Credit Spread)
+      2. MEDIUM RISK - Balanced play (e.g. Bull/Bear Spread, Calendar Spread, Jade Lizard)  
+      3. HIGH RISK - Aggressive play (e.g. Long Straddle, Long Strangle, Naked Options, ATM Debit Spread)
+
+      Available strategies to choose from:
+      - Long Straddle/Strangle: Big move expected
+      - Iron Condor/Butterfly: Expecting flat price
+      - Bull Call Spread / Bear Put Spread: Directional bets
+      - Calendar Spread: IV crush play
+      - Jade Lizard: Bullish with premium
+      - Credit/Debit Spreads: Various risk profiles
       
-      Analyze the stock's historical earnings moves, current IV percentile, and market sentiment to pick the OPTIMAL strategy.
-      
-      Output strict JSON:
+      Output strict JSON with this structure:
       {
-        "strategy": "Strategy Name",
-        "bias": "Bullish / Bearish / Neutral / Volatility Play",
-        "impliedMove": "Estimated % move (e.g. ±8.5%)",
-        "rationale": "2-3 sentence explanation of why this strategy fits this earnings event",
-        "setup": {
-          "leg1": "Action + Strike + Expiry (e.g. Buy $150 Call 12/20)",
-          "leg2": "Action + Strike + Expiry (or 'N/A' for single-leg)"
-        },
-        "risk": "High/Med/Low",
-        "maxProfit": "Estimate or 'Unlimited'",
-        "maxLoss": "Estimate"
+        "plays": [
+          {
+            "strategy": "Strategy Name",
+            "risk": "Low",
+            "bias": "Bullish / Bearish / Neutral",
+            "impliedMove": "±X.X%",
+            "rationale": "1-2 sentence explanation",
+            "setup": {
+              "leg1": "Buy/Sell $XXX Call/Put Expiry",
+              "leg2": "Buy/Sell $XXX Call/Put Expiry (or N/A)"
+            },
+            "maxProfit": "$XXX or Unlimited",
+            "maxLoss": "$XXX"
+          },
+          {
+            "strategy": "Strategy Name",
+            "risk": "Medium",
+            "bias": "...",
+            "impliedMove": "...",
+            "rationale": "...",
+            "setup": { "leg1": "...", "leg2": "..." },
+            "maxProfit": "...",
+            "maxLoss": "..."
+          },
+          {
+            "strategy": "Strategy Name", 
+            "risk": "High",
+            "bias": "...",
+            "impliedMove": "...",
+            "rationale": "...",
+            "setup": { "leg1": "...", "leg2": "..." },
+            "maxProfit": "...",
+            "maxLoss": "..."
+          }
+        ]
       }
     `;
 
@@ -226,8 +251,8 @@ router.post('/earnings-play', requirePremium, async (req, res) => {
       response_format: { type: "json_object" }
     });
 
-    const play = JSON.parse(completion.choices[0].message.content || '{}');
-    res.json({ success: true, data: play });
+    const result = JSON.parse(completion.choices[0].message.content || '{}');
+    res.json({ success: true, data: result.plays || [] });
 
   } catch (error) {
     res.status(500).json({ success: false, error: "Strategy Generation Failed" });
