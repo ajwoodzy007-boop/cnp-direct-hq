@@ -1,5 +1,6 @@
 import express from 'express';
 import { runMarketScan } from '../lib/sentinel';
+import { requirePremium } from '../middleware/premium';
 
 const router = express.Router();
 
@@ -35,6 +36,27 @@ router.get('/daily', async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ success: false, error: "Oracle Malfunction" });
+  }
+});
+
+router.get('/signals', requirePremium, async (req, res) => {
+  try {
+    const scanResults = await runMarketScan();
+    
+    const signals = scanResults
+      .filter(s => s.signal !== 'HOLD')
+      .map(s => ({
+        ticker: s.ticker,
+        price: s.price,
+        signal: s.signal,
+        rsi: s.rsi,
+        momentum: s.momentum,
+        timestamp: new Date().toISOString()
+      }));
+
+    res.json({ success: true, data: signals });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Signal Generation Failed" });
   }
 });
 

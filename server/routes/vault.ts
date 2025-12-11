@@ -1,6 +1,7 @@
 import express from 'express';
 import YahooFinance from 'yahoo-finance2';
 import { query } from '../db';
+import { requirePremium } from '../middleware/premium';
 
 const router = express.Router();
 const yf = new YahooFinance();
@@ -67,6 +68,59 @@ router.post('/close', async (req, res) => {
     res.json({ success: true, msg: "Position Closed" });
   } catch (e) {
     res.status(500).json({ success: false, error: "Could not close trade" });
+  }
+});
+
+router.get('/optimize', requirePremium, async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
+    const portfolio = result.rows;
+
+    if (portfolio.length === 0) {
+      return res.json({ success: true, data: { suggestions: [], message: "No positions to optimize" } });
+    }
+
+    const suggestions = [];
+    const tickers = portfolio.map((p: any) => p.ticker);
+    const tickerCounts = tickers.reduce((acc: any, t: string) => {
+      acc[t] = (acc[t] || 0) + 1;
+      return acc;
+    }, {});
+
+    for (const [ticker, count] of Object.entries(tickerCounts)) {
+      if ((count as number) > 1) {
+        suggestions.push({
+          type: 'CONSOLIDATE',
+          ticker,
+          message: `Consider consolidating ${count} positions in ${ticker}`
+        });
+      }
+    }
+
+    const totalValue = portfolio.reduce((sum: number, p: any) => sum + (p.entryPrice * p.shares), 0);
+    for (const p of portfolio) {
+      const positionValue = p.entryPrice * p.shares;
+      const weight = (positionValue / totalValue) * 100;
+      if (weight > 25) {
+        suggestions.push({
+          type: 'OVERWEIGHT',
+          ticker: p.ticker,
+          weight: weight.toFixed(1),
+          message: `${p.ticker} is ${weight.toFixed(1)}% of portfolio - consider rebalancing`
+        });
+      }
+    }
+
+    if (tickers.length < 5) {
+      suggestions.push({
+        type: 'DIVERSIFY',
+        message: `Only ${tickers.length} positions - consider adding more for diversification`
+      });
+    }
+
+    res.json({ success: true, data: { suggestions, portfolioSize: portfolio.length } });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Optimization Failed" });
   }
 });
 
