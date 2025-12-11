@@ -18,7 +18,7 @@ interface LayoutProps {
   user: { email: string; tier: string } | null;
   onLoginClick: () => void;
   onLogoutClick: () => void;
-  onLegalClick?: (page: 'terms' | 'privacy' | 'risk') => void;
+  onLegalClick: (page: 'terms' | 'privacy' | 'risk') => void;
 }
 
 export default function AppLayout({ 
@@ -131,27 +131,27 @@ export default function AppLayout({
             
             <div className="pt-12 pb-6 text-center border-t border-slate-900 mt-8">
               <div className="flex justify-center gap-6 text-xs text-slate-500 mb-4">
-                <span 
-                  className="cursor-pointer hover:text-slate-300" 
-                  onClick={() => onLegalClick?.('privacy')}
+                <button 
+                  onClick={() => onLegalClick('privacy')} 
+                  className="hover:text-cyan-400 transition-colors"
                   data-testid="link-privacy"
                 >
                   Privacy Policy
-                </span>
-                <span 
-                  className="cursor-pointer hover:text-slate-300" 
-                  onClick={() => onLegalClick?.('terms')}
+                </button>
+                <button 
+                  onClick={() => onLegalClick('terms')} 
+                  className="hover:text-cyan-400 transition-colors"
                   data-testid="link-terms"
                 >
                   Terms of Service
-                </span>
-                <span 
-                  className="cursor-pointer hover:text-slate-300" 
-                  onClick={() => onLegalClick?.('risk')}
+                </button>
+                <button 
+                  onClick={() => onLegalClick('risk')} 
+                  className="hover:text-amber-500 transition-colors font-bold flex items-center gap-1"
                   data-testid="link-risk"
                 >
                   Risk Disclosure
-                </span>
+                </button>
               </div>
               <p className="text-[10px] text-slate-700">
                 CNP Direct | Market Sentinel is a research tool for educational purposes only. 
