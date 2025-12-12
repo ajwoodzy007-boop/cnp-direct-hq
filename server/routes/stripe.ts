@@ -1,7 +1,8 @@
 import express from 'express';
-import Stripe from 'stripe';
+import * as StripeModule from 'stripe';
 import { query } from '../db';
 
+const Stripe = (StripeModule as any).default || StripeModule;
 const router = express.Router();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
