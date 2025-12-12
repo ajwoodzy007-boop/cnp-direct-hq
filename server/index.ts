@@ -9,6 +9,7 @@ import { WebhookHandlers } from "./webhookHandlers";
 import authRouter from "./routes/auth";
 import adminRouter from "./routes/admin";
 import { initDb } from "./db";
+import { runStockFinalization, runCryptoFinalization } from "./lib/finalizationService";
 
 const app = express();
 const httpServer = createServer(app);
@@ -266,14 +267,10 @@ function startPredictionScheduler() {
     if (isWeekday && hour === 16 && minute === 15) {
       log("Finalizing daily predictions at 4:15 PM ET", "scheduler");
       try {
-        // Call the Oracle finalization endpoint
-        const finalizeResponse = await fetch(`http://localhost:${port}/api/oracle/finalize`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
+        // Call finalization service directly (works in production)
+        const result = await runStockFinalization();
         
-        if (finalizeResponse.ok) {
-          const result = await finalizeResponse.json();
+        if (result.success) {
           log(`Finalized ${result.finalized} Oracle predictions with closing prices`, "scheduler");
         } else {
           log("Failed to finalize Oracle predictions", "scheduler");
@@ -319,13 +316,10 @@ function startPredictionScheduler() {
     if (hour === 23 && minute === 59) {
       log("Finalizing daily crypto predictions at 11:59 PM ET", "scheduler");
       try {
-        const finalizeResponse = await fetch(`http://localhost:${port}/api/oracle/crypto-finalize`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
+        // Call finalization service directly (works in production)
+        const result = await runCryptoFinalization();
         
-        if (finalizeResponse.ok) {
-          const result = await finalizeResponse.json();
+        if (result.success) {
           log(`Finalized ${result.finalized} crypto predictions`, "scheduler");
         } else {
           log("Failed to finalize crypto predictions", "scheduler");
