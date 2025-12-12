@@ -27,6 +27,7 @@ export const predictions = pgTable("predictions", {
   outcome: text("outcome"),
   outcomePrice: real("outcome_price"),
   outcomeDate: timestamp("outcome_date"),
+  assetType: text("asset_type").notNull().default("stock"),
 });
 
 export const insertPredictionSchema = createInsertSchema(predictions).omit({
