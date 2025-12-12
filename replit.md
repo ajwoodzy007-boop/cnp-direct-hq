@@ -66,9 +66,20 @@ Current tables:
 
 ### Market Data Integration
 - **Primary API**: Finnhub API for real-time stock data
+- **Secondary API**: Yahoo Finance (yahoo-finance2) for crypto data and charts
 - **Features**: Quotes, candlestick charts, company news, sentiment scores
 - **Fallback**: Mock data when API key is not configured
 - **Caching**: In-memory cache with 5-minute TTL to reduce API calls
+
+### Cryptocurrency Scanner
+The Radar includes a dedicated Crypto tab analyzing 15 major cryptocurrencies:
+- **Supported Assets**: BTC, ETH, SOL, LINK, AVAX, LTC, DOGE, ADA, XRP, DOT, MATIC, UNI, ATOM, NEAR, BNB
+- **Technical Indicators**: RSI (14-period), Relative Volume (RVOL)
+- **Data Source**: Yahoo Finance via yahoo-finance2 package
+- **Signal Logic**: Uses adjusted thresholds for crypto volatility (RSI < 35 for BUY)
+- **Implementation**: `server/lib/cryptoScanner.ts` mirrors sentinel.ts patterns
+- **API Endpoint**: `GET /api/market/crypto` - Returns sorted crypto signals
+- **UI**: Tabbed interface in MarketRadar.tsx with orange theme for crypto assets
 
 ## External Dependencies
 
