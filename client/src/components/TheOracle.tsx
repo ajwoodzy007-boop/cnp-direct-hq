@@ -35,6 +35,9 @@ export default function TheOracle() {
   const [signalsLocked, setSignalsLocked] = useState(false);
   const [signalsLoading, setSignalsLoading] = useState(false);
   const [liveSignals, setLiveSignals] = useState<any[]>([]);
+  const [selectedSignal, setSelectedSignal] = useState<any>(null);
+  const [signalAnalysis, setSignalAnalysis] = useState<any>(null);
+  const [analyzingSignal, setAnalyzingSignal] = useState(false);
   
   const [aiReport, setAiReport] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -81,6 +84,30 @@ export default function TheOracle() {
       console.error(e);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  const analyzeSignal = async (sig: any) => {
+    setSelectedSignal(sig);
+    setAnalyzingSignal(true);
+    setSignalAnalysis(null);
+    try {
+      const res = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticker: sig.ticker,
+          price: sig.price,
+          rsi: sig.rsi || 50,
+          trend: sig.signal
+        })
+      });
+      const json = await res.json();
+      if (json.success) setSignalAnalysis(json.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAnalyzingSignal(false);
     }
   };
   
@@ -708,7 +735,12 @@ export default function TheOracle() {
                   ) : (
                     <div className="space-y-3">
                       {liveSignals.map((sig, i) => (
-                        <div key={i} className="bg-slate-950 border border-slate-800 rounded-lg p-4 flex items-center justify-between">
+                        <div 
+                          key={i} 
+                          onClick={() => analyzeSignal(sig)}
+                          className="bg-slate-950 border border-slate-800 rounded-lg p-4 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 hover:bg-slate-800/50 transition-all group"
+                          data-testid={`signal-row-${i}`}
+                        >
                           <div className="flex items-center gap-4">
                             <div className={`h-10 w-10 rounded-lg flex items-center justify-center font-bold text-sm ${
                               sig.signal.includes('BUY') ? 'bg-green-500/20 text-green-400' : 
@@ -722,9 +754,12 @@ export default function TheOracle() {
                               <div className="text-xs text-slate-500">{sig.signal}</div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-white font-mono">${sig.price?.toFixed(2)}</div>
-                            <div className="text-xs text-slate-500">RSI: {sig.rsi?.toFixed(0)}</div>
+                          <div className="flex items-center gap-4">
+                            <div className="text-right">
+                              <div className="text-white font-mono">${sig.price?.toFixed(2)}</div>
+                              <div className="text-xs text-slate-500">RSI: {sig.rsi?.toFixed(0)}</div>
+                            </div>
+                            <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
                           </div>
                         </div>
                       ))}
@@ -733,6 +768,130 @@ export default function TheOracle() {
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Signal Analysis Modal */}
+      {selectedSignal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            
+            {/* Header */}
+            <div className="p-6 border-b border-slate-800 bg-slate-800/50">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center font-bold ${
+                      selectedSignal.signal?.includes('BUY') ? 'bg-green-500/20 text-green-400' : 
+                      selectedSignal.signal?.includes('SELL') ? 'bg-red-500/20 text-red-400' : 
+                      'bg-slate-700 text-slate-300'
+                    }`}>
+                      {selectedSignal.ticker?.slice(0, 4)}
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-white">{selectedSignal.ticker}</h3>
+                      <span className={`text-xs font-bold px-2 py-1 rounded ${
+                        selectedSignal.signal?.includes('BUY') ? 'bg-green-500/20 text-green-400' : 
+                        selectedSignal.signal?.includes('SELL') ? 'bg-red-500/20 text-red-400' : 
+                        'bg-slate-700 text-slate-300'
+                      }`}>
+                        {selectedSignal.signal}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => { setSelectedSignal(null); setSignalAnalysis(null); }}
+                  className="text-slate-400 hover:text-white"
+                  data-testid="button-close-signal-analysis"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              {/* Key Metrics */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+                  <div className="text-xs text-slate-500 mb-1">Price</div>
+                  <div className="text-lg font-bold text-white font-mono">${selectedSignal.price?.toFixed(2)}</div>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+                  <div className="text-xs text-slate-500 mb-1">RSI</div>
+                  <div className={`text-lg font-bold font-mono ${
+                    selectedSignal.rsi > 70 ? 'text-red-400' : 
+                    selectedSignal.rsi < 30 ? 'text-green-400' : 
+                    'text-cyan-400'
+                  }`}>{selectedSignal.rsi?.toFixed(0)}</div>
+                </div>
+                <div className="bg-slate-950 p-3 rounded-lg border border-slate-800 text-center">
+                  <div className="text-xs text-slate-500 mb-1">RVOL</div>
+                  <div className="text-lg font-bold text-cyan-400 font-mono">{selectedSignal.rvol?.toFixed(1)}x</div>
+                </div>
+              </div>
+
+              {/* Sentiment */}
+              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs text-slate-500">Sentiment Score</span>
+                  <span className={`font-bold ${
+                    (selectedSignal.sentimentScore || 0) > 0 ? 'text-green-400' : 
+                    (selectedSignal.sentimentScore || 0) < 0 ? 'text-red-400' : 
+                    'text-slate-400'
+                  }`}>
+                    {(selectedSignal.sentimentScore || 0) > 0 ? 'Bullish' : (selectedSignal.sentimentScore || 0) < 0 ? 'Bearish' : 'Neutral'} ({(selectedSignal.sentimentScore || 0).toFixed(2)})
+                  </span>
+                </div>
+                <Progress 
+                  value={50 + (selectedSignal.sentimentScore || 0) * 50} 
+                  className="h-2"
+                />
+              </div>
+
+              {/* AI Analysis */}
+              {analyzingSignal ? (
+                <div className="flex flex-col items-center justify-center py-8 gap-3">
+                  <Loader2 className="animate-spin text-cyan-500 h-8 w-8" />
+                  <div className="text-cyan-400 animate-pulse text-sm">Analyzing {selectedSignal.ticker}...</div>
+                </div>
+              ) : signalAnalysis ? (
+                <div className="space-y-3">
+                  <div className={`p-4 rounded-lg border ${
+                    signalAnalysis.verdict?.includes('BUY') ? 'bg-green-900/20 border-green-500/30' : 
+                    signalAnalysis.verdict?.includes('SELL') ? 'bg-red-900/20 border-red-500/30' : 
+                    'bg-slate-800 border-slate-700'
+                  }`}>
+                    <div className={`font-bold text-lg mb-1 ${
+                      signalAnalysis.verdict?.includes('BUY') ? 'text-green-300' : 
+                      signalAnalysis.verdict?.includes('SELL') ? 'text-red-300' : 
+                      'text-slate-300'
+                    }`}>
+                      {signalAnalysis.verdict}
+                    </div>
+                    <div className="text-sm text-slate-400">{signalAnalysis.summary}</div>
+                  </div>
+                  
+                  <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                    <div className="text-xs text-slate-500 uppercase font-bold mb-2">Risk Assessment</div>
+                    <div className="text-sm text-slate-400">{signalAnalysis.risk}</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4 text-slate-500 text-sm">
+                  Loading analysis...
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-950 border-t border-slate-800 text-center">
+              <div className="text-[10px] text-slate-600">
+                SENTINEL SIGNAL ANALYSIS • REAL-TIME DATA
+              </div>
+            </div>
           </div>
         </div>
       )}
