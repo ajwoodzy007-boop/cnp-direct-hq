@@ -15,6 +15,59 @@ function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+// Helper to calculate dynamic predicted price based on signal characteristics
+function calculateDynamicTarget(
+  entryPrice: number, 
+  signalType: string, 
+  rsi?: number, 
+  sentiment?: number, 
+  rvol?: number,
+  assetType: 'stock' | 'crypto' = 'stock'
+): number {
+  // Base return ranges: stocks 2-8%, crypto 4-15%
+  let baseReturn = assetType === 'crypto' ? 6 : 3;
+  
+  // Signal type adjustment
+  if (signalType === 'MOMENTUM BUY') {
+    baseReturn += assetType === 'crypto' ? 3 : 2;
+  } else if (signalType === 'VALUE BUY') {
+    baseReturn += assetType === 'crypto' ? 2 : 1.5;
+  } else if (signalType === 'SPECULATIVE BUY' || signalType === 'WAIT') {
+    baseReturn += assetType === 'crypto' ? 1 : 0.5;
+  }
+  
+  // RSI adjustment (oversold = more upside potential)
+  if (rsi !== undefined) {
+    if (rsi < 35) {
+      baseReturn += assetType === 'crypto' ? 2.5 : 1.5; // Deeply oversold
+    } else if (rsi < 45) {
+      baseReturn += assetType === 'crypto' ? 1.5 : 1; // Oversold
+    } else if (rsi >= 45 && rsi <= 60) {
+      baseReturn += assetType === 'crypto' ? 1 : 0.5; // Optimal range
+    }
+    // RSI > 60 = overbought, no bonus
+  }
+  
+  // Sentiment adjustment (positive news = more potential)
+  if (sentiment !== undefined && sentiment > 0) {
+    baseReturn += Math.min(sentiment * 2, 1.5); // Cap at +1.5%
+  }
+  
+  // Volume adjustment (high volume = momentum confirmation)
+  if (rvol !== undefined && rvol > 1.5) {
+    baseReturn += Math.min((rvol - 1) * 0.5, 1); // Cap at +1%
+  }
+  
+  // Clamp to reasonable ranges
+  if (assetType === 'crypto') {
+    baseReturn = Math.max(4, Math.min(baseReturn, 15)); // 4-15% for crypto
+  } else {
+    baseReturn = Math.max(2, Math.min(baseReturn, 8)); // 2-8% for stocks
+  }
+  
+  return entryPrice * (1 + baseReturn / 100);
+}
+
 // Helper to fetch the official market open price using Yahoo Finance quote API
 async function getActualOpenPrice(ticker: string): Promise<number | null> {
   try {
@@ -392,7 +445,7 @@ router.get('/daily', async (req, res) => {
           ticker: row.ticker,
           entryPrice: row.entryPrice,
           openPrice: row.openPrice || row.entryPrice,
-          predictedPrice: row.entryPrice * 1.05,
+          predictedPrice: row.predictedPrice || calculateDynamicTarget(row.entryPrice, row.signalType || 'VALUE BUY', undefined, undefined, undefined, 'stock'),
           signal: row.signalType,
           confidence: row.signalType === 'MOMENTUM BUY' ? 'High' : 'Med',
           outcome: row.outcome || 'pending'
@@ -485,26 +538,29 @@ router.get('/daily', async (req, res) => {
     }
 
     // 3. AUTO-SAVE to database (The "Paper Trail")
-    for (const p of topPicks) {
+    const formattedPicks = topPicks.map(p => {
+      const dynamicTarget = calculateDynamicTarget(p.price, p.signal, p.rsi, p.sentimentScore, p.rvol, 'stock');
+      return {
+        ticker: p.ticker,
+        entryPrice: p.price,
+        openPrice: p.openPrice || p.price,
+        predictedPrice: dynamicTarget,
+        signal: p.signal,
+        confidence: p.signal === 'MOMENTUM BUY' ? 'High' : p.signal === 'SPECULATIVE BUY' ? 'Low' : 'Med',
+        outcome: 'pending'
+      };
+    });
+
+    for (const p of formattedPicks) {
       await db.insert(predictions).values({
         ticker: p.ticker,
         signalType: p.signal,
-        entryPrice: p.price,
-        openPrice: p.openPrice || p.price,
+        entryPrice: p.entryPrice,
+        openPrice: p.openPrice,
+        predictedPrice: p.predictedPrice,
         assetType: 'stock'
       });
     }
-
-    // 4. Return formatted picks
-    const formattedPicks = topPicks.map(p => ({
-      ticker: p.ticker,
-      entryPrice: p.price,
-      openPrice: p.openPrice || p.price,
-      predictedPrice: p.price * 1.05,
-      signal: p.signal,
-      confidence: p.signal === 'MOMENTUM BUY' ? 'High' : p.signal === 'SPECULATIVE BUY' ? 'Low' : 'Med',
-      outcome: 'pending'
-    }));
 
     res.json({ success: true, fromCache: false, data: formattedPicks });
 
@@ -845,7 +901,7 @@ router.get('/crypto-daily', async (req, res) => {
           ticker: row.ticker,
           entryPrice: row.entryPrice,
           openPrice: row.openPrice || row.entryPrice,
-          predictedPrice: row.entryPrice * 1.08,
+          predictedPrice: row.predictedPrice || calculateDynamicTarget(row.entryPrice, row.signalType || 'CRYPTO BUY', undefined, undefined, undefined, 'crypto'),
           signal: row.signalType,
           confidence: row.signalType === 'MOMENTUM BUY' ? 'High' : 'Med',
           outcome: row.outcome || 'pending',
@@ -885,28 +941,31 @@ router.get('/crypto-daily', async (req, res) => {
     }
 
     // 3. AUTO-SAVE to database with assetType = 'crypto'
-    for (const p of topPicks) {
-      await db.insert(predictions).values({
+    const formattedPicks = topPicks.map(p => {
+      const dynamicTarget = calculateDynamicTarget(p.price, p.signal || 'CRYPTO BUY', p.rsi, undefined, p.rvol, 'crypto');
+      return {
         ticker: p.ticker,
-        signalType: p.signal || 'CRYPTO BUY',
+        name: p.name,
         entryPrice: p.price,
         openPrice: p.openPrice || p.price,
+        predictedPrice: dynamicTarget,
+        signal: p.signal || 'CRYPTO BUY',
+        confidence: p.signal === 'MOMENTUM BUY' ? 'High' : 'Med',
+        outcome: 'pending',
+        assetType: 'crypto'
+      };
+    });
+
+    for (const p of formattedPicks) {
+      await db.insert(predictions).values({
+        ticker: p.ticker,
+        signalType: p.signal,
+        entryPrice: p.entryPrice,
+        openPrice: p.openPrice,
+        predictedPrice: p.predictedPrice,
         assetType: 'crypto'
       });
     }
-
-    // 4. Return formatted picks
-    const formattedPicks = topPicks.map(p => ({
-      ticker: p.ticker,
-      name: p.name,
-      entryPrice: p.price,
-      openPrice: p.openPrice || p.price,
-      predictedPrice: p.price * 1.08,
-      signal: p.signal || 'CRYPTO BUY',
-      confidence: p.signal === 'MOMENTUM BUY' ? 'High' : 'Med',
-      outcome: 'pending',
-      assetType: 'crypto'
-    }));
 
     res.json({ success: true, fromCache: false, data: formattedPicks });
 
