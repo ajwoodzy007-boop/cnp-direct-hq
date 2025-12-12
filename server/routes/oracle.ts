@@ -654,7 +654,7 @@ router.get('/history', async (req, res) => {
 
     const gradedHistory = allPredictions.map((p, idx) => {
       // Use stored outcome if available, otherwise calculate from live price
-      const hasStoredOutcome = p.outcome && (p.outcome.toLowerCase() === 'win' || p.outcome.toLowerCase() === 'loss');
+      const hasStoredOutcome = p.outcome && ['win', 'loss', 'neutral'].includes(p.outcome.toLowerCase());
       
       let currentPrice = p.entryPrice;
       let profitPercent = 0;

@@ -786,18 +786,25 @@ export default function TheOracle() {
                         <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
                           trade.outcome === 'PENDING'
                             ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : trade.profitPercent > 0 
-                              ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                            : trade.outcome === 'NEUTRAL'
+                              ? 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                              : trade.outcome === 'WIN' || trade.profitPercent > 0 
+                                ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
                         }`}>
                           {trade.outcome === 'PENDING' ? (
                             <>
                               <Clock className="h-3 w-3" />
                               Pending
                             </>
+                          ) : trade.outcome === 'NEUTRAL' ? (
+                            <>
+                              <Activity className="h-3 w-3" />
+                              {Number(trade.profitPercent).toFixed(2)}%
+                            </>
                           ) : (
                             <>
-                              {trade.profitPercent > 0 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                              {trade.outcome === 'WIN' || trade.profitPercent > 0 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                               {trade.profitPercent > 0 ? '+' : ''}{Number(trade.profitPercent).toFixed(2)}%
                             </>
                           )}
@@ -854,15 +861,19 @@ export default function TheOracle() {
             <div className={`text-center p-4 rounded-xl border mb-6 ${
               selectedHistoryItem.outcome === 'PENDING'
                 ? 'bg-amber-500/10 border-amber-500/20'
-                : selectedHistoryItem.profitPercent > 0 
-                  ? 'bg-green-500/10 border-green-500/20' 
-                  : 'bg-red-500/10 border-red-500/20'
+                : selectedHistoryItem.outcome === 'NEUTRAL'
+                  ? 'bg-slate-500/10 border-slate-500/20'
+                  : selectedHistoryItem.outcome === 'WIN' || selectedHistoryItem.profitPercent > 0 
+                    ? 'bg-green-500/10 border-green-500/20' 
+                    : 'bg-red-500/10 border-red-500/20'
             }`}>
               <div className="text-xs font-bold uppercase opacity-70 mb-1">Performance</div>
               <div className={`text-3xl font-bold ${
                 selectedHistoryItem.outcome === 'PENDING'
                   ? 'text-amber-400'
-                  : selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
+                  : selectedHistoryItem.outcome === 'NEUTRAL'
+                    ? 'text-slate-400'
+                    : selectedHistoryItem.outcome === 'WIN' || selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
               }`}>
                 {selectedHistoryItem.outcome === 'PENDING' 
                   ? 'Pending' 
@@ -895,7 +906,9 @@ export default function TheOracle() {
                 <span className={`font-mono font-bold ${
                   selectedHistoryItem.outcome === 'PENDING'
                     ? 'text-amber-400'
-                    : selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
+                    : selectedHistoryItem.outcome === 'NEUTRAL'
+                      ? 'text-slate-400'
+                      : selectedHistoryItem.outcome === 'WIN' || selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
                 }`}>
                   {selectedHistoryItem.outcome === 'PENDING' 
                     ? '—' 
