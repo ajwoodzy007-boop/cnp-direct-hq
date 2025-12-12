@@ -114,4 +114,58 @@ router.post('/users/:id/tier', requireAdmin, async (req, res) => {
   }
 });
 
+function generatePassCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'BETA-';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+router.get('/beta-passes', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT bp.*, u.email as redeemed_email
+      FROM beta_passes bp
+      LEFT JOIN users u ON bp.redeemed_by = u.id
+      ORDER BY bp.created_at DESC
+    `);
+    res.json({ success: true, passes: result.rows });
+  } catch (e) {
+    console.error('Beta passes error:', e);
+    res.status(500).json({ success: false, error: "Failed to fetch beta passes" });
+  }
+});
+
+router.post('/beta-passes/generate', requireAdmin, async (req, res) => {
+  try {
+    const code = generatePassCode();
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+    
+    const result = await query(
+      `INSERT INTO beta_passes (code, expires_at, created_by_admin) 
+       VALUES ($1, $2, $3) 
+       RETURNING *`,
+      [code, expiresAt, ADMIN_EMAIL]
+    );
+    
+    res.json({ success: true, pass: result.rows[0] });
+  } catch (e) {
+    console.error('Generate beta pass error:', e);
+    res.status(500).json({ success: false, error: "Failed to generate pass" });
+  }
+});
+
+router.delete('/beta-passes/:id', requireAdmin, async (req, res) => {
+  try {
+    await query('DELETE FROM beta_passes WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Delete beta pass error:', e);
+    res.status(500).json({ success: false, error: "Failed to delete pass" });
+  }
+});
+
 export default router;

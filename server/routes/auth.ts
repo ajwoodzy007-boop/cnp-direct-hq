@@ -59,10 +59,26 @@ router.post('/login', async (req, res) => {
   }
 });
 
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
   const user = (req.session as any).user;
   if (user) {
-    res.json({ authenticated: true, user });
+    // Check for active beta pass
+    const betaResult = await query(
+      `SELECT * FROM beta_passes 
+       WHERE redeemed_by = $1 AND expires_at > NOW()`,
+      [user.id]
+    );
+    const hasBetaPass = betaResult.rows.length > 0;
+    const betaExpires = hasBetaPass ? betaResult.rows[0].expires_at : null;
+    
+    // If user has active beta pass, treat them as PREMIUM
+    const effectiveTier = hasBetaPass ? 'PREMIUM' : user.tier;
+    
+    res.json({ 
+      authenticated: true, 
+      user: { ...user, tier: effectiveTier },
+      betaPass: hasBetaPass ? { expires: betaExpires } : null
+    });
   } else {
     res.json({ authenticated: false });
   }
@@ -70,6 +86,64 @@ router.get('/me', (req, res) => {
 
 router.post('/logout', (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
+});
+
+router.post('/redeem-beta', async (req, res) => {
+  const user = (req.session as any).user;
+  
+  if (!user) {
+    return res.status(401).json({ success: false, error: "Please log in first" });
+  }
+  
+  const { code } = req.body;
+  
+  if (!code) {
+    return res.status(400).json({ success: false, error: "Please enter a code" });
+  }
+  
+  try {
+    // Find the pass
+    const passResult = await query(
+      'SELECT * FROM beta_passes WHERE code = $1',
+      [code.toUpperCase().trim()]
+    );
+    
+    if (passResult.rows.length === 0) {
+      return res.status(400).json({ success: false, error: "Invalid code" });
+    }
+    
+    const pass = passResult.rows[0];
+    
+    // Check if already redeemed
+    if (pass.redeemed_by) {
+      return res.status(400).json({ success: false, error: "This code has already been used" });
+    }
+    
+    // Redeem the pass
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+    
+    await query(
+      `UPDATE beta_passes 
+       SET redeemed_by = $1, redeemed_at = NOW(), expires_at = $2 
+       WHERE id = $3`,
+      [user.id, expiresAt, pass.id]
+    );
+    
+    // Update session to reflect premium access immediately
+    (req.session as any).user.tier = 'PREMIUM';
+    (req.session as any).user.betaExpires = expiresAt;
+    
+    res.json({ 
+      success: true, 
+      message: "Beta pass activated! You have 7 days of Premium access.",
+      expiresAt 
+    });
+    
+  } catch (e) {
+    console.error('Redeem beta error:', e);
+    res.status(500).json({ success: false, error: "Failed to redeem code" });
+  }
 });
 
 export default router;

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CreditCard, User, LogOut, Shield } from 'lucide-react';
+import { X, CreditCard, User, LogOut, Shield, Ticket } from 'lucide-react';
 
 interface Props {
   user: { email: string; tier: string };
@@ -11,6 +11,9 @@ interface Props {
 
 export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdminClick }: Props) {
   const [loading, setLoading] = useState(false);
+  const [betaCode, setBetaCode] = useState('');
+  const [redeemLoading, setRedeemLoading] = useState(false);
+  const [redeemMessage, setRedeemMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleManageBilling = async () => {
     setLoading(true);
@@ -29,6 +32,31 @@ export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdmi
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRedeemBeta = async () => {
+    if (!betaCode.trim()) return;
+    setRedeemLoading(true);
+    setRedeemMessage(null);
+    try {
+      const res = await fetch('/api/auth/redeem-beta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: betaCode })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setRedeemMessage({ type: 'success', text: json.message });
+        setBetaCode('');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setRedeemMessage({ type: 'error', text: json.error });
+      }
+    } catch (e) {
+      setRedeemMessage({ type: 'error', text: 'Failed to redeem code' });
+    } finally {
+      setRedeemLoading(false);
     }
   };
 
@@ -76,6 +104,38 @@ export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdmi
               </div>
               <div className="text-xs text-slate-500 group-hover:text-white">Invoices & Cancel</div>
             </button>
+
+            {user.tier !== 'PREMIUM' && (
+              <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Ticket className="h-4 w-4 text-purple-400" />
+                  <span className="text-sm font-medium text-purple-400">Have a Beta Pass?</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={betaCode}
+                    onChange={(e) => setBetaCode(e.target.value.toUpperCase())}
+                    placeholder="BETA-XXXXXXXX"
+                    className="flex-1 bg-slate-950 border border-slate-700 rounded px-3 py-2 text-sm text-white placeholder-slate-500 font-mono"
+                    data-testid="input-beta-code"
+                  />
+                  <button
+                    onClick={handleRedeemBeta}
+                    disabled={redeemLoading || !betaCode.trim()}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    data-testid="button-redeem-beta"
+                  >
+                    {redeemLoading ? '...' : 'Redeem'}
+                  </button>
+                </div>
+                {redeemMessage && (
+                  <div className={`mt-2 text-xs ${redeemMessage.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
+                    {redeemMessage.text}
+                  </div>
+                )}
+              </div>
+            )}
 
             {isAdmin && onAdminClick && (
               <button 

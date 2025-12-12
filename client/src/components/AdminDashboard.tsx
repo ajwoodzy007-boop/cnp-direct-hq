@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, Users, TrendingUp, Award, ArrowLeft, Crown, RefreshCw } from 'lucide-react';
+import { Shield, Users, TrendingUp, Award, ArrowLeft, Crown, RefreshCw, Ticket, Copy, Trash2, Plus } from 'lucide-react';
 
 interface AdminStats {
   users: {
@@ -22,12 +22,25 @@ interface UserRow {
   tier: string;
 }
 
+interface BetaPass {
+  id: string;
+  code: string;
+  created_at: string;
+  expires_at: string;
+  redeemed_by: string | null;
+  redeemed_email: string | null;
+  redeemed_at: string | null;
+}
+
 export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUsers, setShowUsers] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [betaPasses, setBetaPasses] = useState<BetaPass[]>([]);
+  const [generatingPass, setGeneratingPass] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -52,8 +65,49 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const fetchBetaPasses = async () => {
+    try {
+      const res = await fetch('/api/admin/beta-passes');
+      const json = await res.json();
+      if (json.success) setBetaPasses(json.passes);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const generateBetaPass = async () => {
+    setGeneratingPass(true);
+    try {
+      const res = await fetch('/api/admin/beta-passes/generate', { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        fetchBetaPasses();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGeneratingPass(false);
+    }
+  };
+
+  const deleteBetaPass = async (id: string) => {
+    try {
+      await fetch(`/api/admin/beta-passes/${id}`, { method: 'DELETE' });
+      setBetaPasses(betaPasses.filter(p => p.id !== id));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
   useEffect(() => {
     fetchStats();
+    fetchBetaPasses();
   }, []);
 
   const handleToggleTier = async (userId: string, currentTier: string) => {
@@ -201,6 +255,68 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 <div className="text-slate-500 text-sm text-center py-4">No prediction runs yet</div>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Ticket className="h-5 w-5 text-purple-400" /> Beta Passes (7-Day Trial)
+            </h3>
+            <button 
+              onClick={generateBetaPass}
+              disabled={generatingPass}
+              className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-sm rounded-lg flex items-center gap-1.5 transition-all border border-purple-500/30 disabled:opacity-50"
+              data-testid="button-generate-pass"
+            >
+              <Plus className="h-4 w-4" />
+              {generatingPass ? 'Generating...' : 'Generate Pass'}
+            </button>
+          </div>
+          <div className="space-y-3">
+            {betaPasses.map(pass => (
+              <div key={pass.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <code className="bg-slate-950 px-3 py-1.5 rounded text-purple-400 font-mono text-sm">
+                    {pass.code}
+                  </code>
+                  <button
+                    onClick={() => copyCode(pass.code)}
+                    className="text-slate-500 hover:text-cyan-400 transition-colors"
+                    title="Copy code"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  {copiedCode === pass.code && (
+                    <span className="text-xs text-green-400">Copied!</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4">
+                  {pass.redeemed_by ? (
+                    <div className="text-right">
+                      <div className="text-xs text-green-400">Redeemed</div>
+                      <div className="text-xs text-slate-500">{pass.redeemed_email}</div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-500">Available</div>
+                  )}
+                  {!pass.redeemed_by && (
+                    <button
+                      onClick={() => deleteBetaPass(pass.id)}
+                      className="text-slate-500 hover:text-red-400 transition-colors"
+                      title="Delete pass"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            {betaPasses.length === 0 && (
+              <div className="text-slate-500 text-sm text-center py-4">
+                No beta passes yet. Click "Generate Pass" to create one.
+              </div>
+            )}
           </div>
         </div>
 
