@@ -1,6 +1,7 @@
 import express from 'express';
-import YahooFinance from 'yahoo-finance2';
+import * as YahooFinanceModule from 'yahoo-finance2';
 
+const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
 const router = express.Router();
 const yf = new YahooFinance();
 

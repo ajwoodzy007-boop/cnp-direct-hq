@@ -35,6 +35,7 @@ const allowlist = [
 const forceExternal = [
   "stripe",
   "stripe-replit-sync",
+  "yahoo-finance2",
 ];
 
 async function buildAll() {

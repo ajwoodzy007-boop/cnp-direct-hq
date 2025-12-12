@@ -4,7 +4,8 @@ import { requirePremium } from '../middleware/premium';
 import { db } from '../db';
 import { predictions, userPortfolio } from '@shared/schema';
 import { desc, eq, sql } from 'drizzle-orm';
-import yahooFinance from 'yahoo-finance2';
+import * as YahooFinanceModule from 'yahoo-finance2';
+const yahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
 
 const router = express.Router();
 

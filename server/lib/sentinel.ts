@@ -1,8 +1,9 @@
-import YahooFinance from 'yahoo-finance2';
+import * as YahooFinanceModule from 'yahoo-finance2';
 // @ts-ignore - vader-sentiment doesn't have type declarations
 import { SentimentIntensityAnalyzer } from 'vader-sentiment';
 import { RSI } from 'technicalindicators';
 
+const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
 const yf = new YahooFinance();
 
 const getSentimentScore = (text: string): number => {
