@@ -140,6 +140,82 @@ router.post('/playbook', requirePremium, async (req, res) => {
   }
 });
 
+// POST: AI-Powered Crypto Playbook Generation
+router.post('/crypto-playbook', requirePremium, async (req, res) => {
+  const { symbol, capital, timeframe, riskProfile } = req.body;
+
+  if (!symbol) {
+    return res.status(400).json({ success: false, error: "Crypto symbol required" });
+  }
+
+  try {
+    // 1. Get Real-Time Crypto Data (append -USD for Yahoo Finance)
+    const cryptoSymbol = `${symbol.toUpperCase()}-USD`;
+    const quote = await yf.quote(cryptoSymbol) as any;
+    const price = quote.regularMarketPrice;
+    const change24h = quote.regularMarketChangePercent || 0;
+    const high24h = quote.regularMarketDayHigh || price;
+    const low24h = quote.regularMarketDayLow || price;
+    
+    // 2. The Prompt: Ask the AI for a crypto-specific strategy
+    const prompt = `
+      Act as an elite Cryptocurrency Trading Strategist. Create a trading playbook for ${symbol.toUpperCase()}.
+      
+      Current Market Data:
+      - Price: $${price}
+      - 24h Change: ${change24h.toFixed(2)}%
+      - 24h High: $${high24h}
+      - 24h Low: $${low24h}
+      
+      User Profile:
+      - Capital Available: $${capital || 2000}
+      - Trading Timeframe: ${timeframe || 'swing'} (scalp = minutes/hours, swing = days/weeks, hodl = months+)
+      - Risk Tolerance: ${riskProfile || 'Moderate'}
+      
+      Output strictly JSON with these fields:
+      {
+        "strategyName": "Name (e.g. Breakout Entry, DCA Accumulation, Trend Reversal)",
+        "thesis": "Why this trade? (Market conditions, trends, catalysts)",
+        "setup": {
+          "entryZone": "Price range to enter (e.g. $95,000 - $97,000)",
+          "positionSize": "Recommended position size based on capital and risk",
+          "target1": "First profit target price",
+          "target2": "Second profit target price (extended target)",
+          "stopLoss": "Price to exit if trade goes wrong"
+        },
+        "analysis": {
+          "trend": "Current trend direction and strength",
+          "support": "Key support levels to watch",
+          "resistance": "Key resistance levels to watch"
+        },
+        "catalysts": ["Catalyst 1", "Catalyst 2", "Catalyst 3"],
+        "riskScore": 1-10 (10 is high risk)
+      }
+      
+      Consider crypto-specific factors:
+      - 24/7 market volatility
+      - Bitcoin correlation
+      - On-chain metrics if applicable
+      - Macro environment (Fed, regulations)
+      - Upcoming network upgrades or halvings
+    `;
+
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "system", content: prompt }],
+      model: "gpt-4o",
+      response_format: { type: "json_object" }
+    });
+
+    const playbook = JSON.parse(completion.choices[0].message.content || '{}');
+    
+    res.json({ success: true, data: { ...playbook, currentPrice: price, symbol: symbol.toUpperCase() } });
+
+  } catch (error: any) {
+    console.error("Crypto Strategist Error:", error);
+    res.status(500).json({ success: false, error: "Crypto Strategy Generation Failed" });
+  }
+});
+
 router.get('/earnings-scanner', requirePremium, async (req, res) => {
   const watchlist = [
     'NVDA', 'TSLA', 'NFLX', 'AMD', 'META', 'AMZN', 'GOOGL', 'MSFT', 'AAPL', 'COIN', 'MSTR', 'CRWD',

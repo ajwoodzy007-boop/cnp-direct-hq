@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
-import { BrainCircuit, Search, Zap, Shield, TrendingUp, AlertTriangle, Crosshair, DollarSign, Flame } from 'lucide-react';
+import { BrainCircuit, Search, Zap, Shield, TrendingUp, AlertTriangle, Crosshair, DollarSign, Flame, Bitcoin } from 'lucide-react';
 
 export default function TheStrategist() {
-  const [mode, setMode] = useState<'PLAYBOOK' | 'EARNINGS'>('PLAYBOOK');
+  const [mode, setMode] = useState<'PLAYBOOK' | 'CRYPTO' | 'EARNINGS'>('PLAYBOOK');
   
   const [ticker, setTicker] = useState('');
   const [capital, setCapital] = useState('2000');
   const [risk, setRisk] = useState('Moderate');
   const [playbook, setPlaybook] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+
+  // Crypto state
+  const [cryptoSymbol, setCryptoSymbol] = useState('');
+  const [cryptoTimeframe, setCryptoTimeframe] = useState('swing');
+  const [cryptoPlaybook, setCryptoPlaybook] = useState<any>(null);
+  const [cryptoLoading, setCryptoLoading] = useState(false);
 
   const [earningsList, setEarningsList] = useState<any[]>([]);
   const [earningsPlay, setEarningsPlay] = useState<any>(null);
@@ -28,6 +34,42 @@ export default function TheStrategist() {
       const json = await res.json();
       if (json.success) setPlaybook(json.data);
     } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const [cryptoError, setCryptoError] = useState<string | null>(null);
+
+  const handleCryptoGenerate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCryptoLoading(true);
+    setCryptoPlaybook(null);
+    setCryptoError(null);
+    
+    // Normalize symbol: uppercase, remove any -USD suffix (backend will add it)
+    const normalizedSymbol = cryptoSymbol.toUpperCase().replace(/[-_]?USD$/i, '').trim();
+    
+    // Client-side validation to prevent empty symbol submission
+    if (!normalizedSymbol) {
+      setCryptoError('Please enter a valid crypto symbol (e.g., BTC, ETH, SOL)');
+      setCryptoLoading(false);
+      return;
+    }
+    
+    try {
+      const res = await fetch('/api/strategist/crypto-playbook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol: normalizedSymbol, capital, timeframe: cryptoTimeframe, riskProfile: risk })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCryptoPlaybook(json.data);
+      } else {
+        setCryptoError(json.error || 'Failed to generate crypto playbook');
+      }
+    } catch (err) { 
+      console.error(err);
+      setCryptoError('Network error - please try again');
+    } finally { setCryptoLoading(false); }
   };
 
   const scanEarnings = async () => {
@@ -74,7 +116,14 @@ export default function TheStrategist() {
             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'PLAYBOOK' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
             data-testid="tab-playbook"
           >
-            <Crosshair className="h-4 w-4" /> Standard Playbook
+            <Crosshair className="h-4 w-4" /> Stock Playbook
+          </button>
+          <button 
+            onClick={() => setMode('CRYPTO')}
+            className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'CRYPTO' ? 'bg-orange-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
+            data-testid="tab-crypto"
+          >
+            <Bitcoin className="h-4 w-4" /> Crypto Playbook
           </button>
           <button 
             onClick={() => setMode('EARNINGS')}
@@ -207,6 +256,164 @@ export default function TheStrategist() {
                     </div>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {mode === 'CRYPTO' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-slate-900 border border-orange-500/20 p-6 rounded-xl">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Bitcoin className="h-4 w-4 text-orange-400" /> Crypto Parameters
+              </h3>
+              <form onSubmit={handleCryptoGenerate} className="space-y-4">
+                <div>
+                  <label className="text-xs text-slate-500 font-bold uppercase">Target Crypto</label>
+                  <div className="relative">
+                    <Bitcoin className="absolute left-3 top-3 h-4 w-4 text-orange-500" />
+                    <input 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white uppercase font-bold focus:border-orange-500 outline-none" 
+                      placeholder="BTC, ETH, SOL..." 
+                      value={cryptoSymbol} 
+                      onChange={e => setCryptoSymbol(e.target.value)} 
+                      required 
+                      data-testid="input-crypto-symbol"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 font-bold uppercase">Allocated Capital</label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <input 
+                      type="number" 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white font-mono focus:border-orange-500 outline-none" 
+                      value={capital} 
+                      onChange={e => setCapital(e.target.value)} 
+                      data-testid="input-crypto-capital"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 font-bold uppercase">Trading Timeframe</label>
+                  <div className="grid grid-cols-3 gap-2 mt-1">
+                    {['scalp', 'swing', 'hodl'].map(tf => (
+                      <button 
+                        key={tf} 
+                        type="button" 
+                        onClick={() => setCryptoTimeframe(tf)} 
+                        className={`text-xs py-2 rounded border transition-all capitalize ${cryptoTimeframe === tf ? 'bg-orange-600 border-orange-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'}`}
+                        data-testid={`button-timeframe-${tf}`}
+                      >
+                        {tf}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 font-bold uppercase">Risk Profile</label>
+                  <div className="grid grid-cols-3 gap-2 mt-1">
+                    {['Conservative', 'Moderate', 'Aggressive'].map(r => (
+                      <button 
+                        key={r} 
+                        type="button" 
+                        onClick={() => setRisk(r)} 
+                        className={`text-xs py-2 rounded border transition-all ${risk === r ? 'bg-orange-600 border-orange-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600'}`}
+                        data-testid={`button-crypto-risk-${r.toLowerCase()}`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button 
+                  disabled={cryptoLoading} 
+                  className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all mt-4 disabled:opacity-50"
+                  data-testid="button-generate-crypto"
+                >
+                  {cryptoLoading ? <span className="animate-pulse">Analyzing Crypto...</span> : <><Zap className="h-4 w-4" /> Generate Crypto Playbook</>}
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="lg:col-span-8">
+            {cryptoError ? (
+              <div className="h-full min-h-[400px] border-2 border-dashed border-red-500/20 rounded-xl flex flex-col items-center justify-center text-red-500">
+                <AlertTriangle className="h-16 w-16 mb-4 opacity-50" />
+                <p className="font-bold">{cryptoError}</p>
+                <p className="text-slate-500 text-sm mt-2">Try a different symbol (e.g., BTC, ETH, SOL)</p>
+              </div>
+            ) : !cryptoPlaybook ? (
+              <div className="h-full min-h-[400px] border-2 border-dashed border-orange-500/20 rounded-xl flex flex-col items-center justify-center text-slate-600">
+                <Bitcoin className="h-16 w-16 mb-4 opacity-20 text-orange-500" />
+                <p>Select a crypto asset to analyze...</p>
+              </div>
+            ) : (
+              <div className="bg-slate-900 border border-orange-500/30 rounded-xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-2">
+                <div className="bg-gradient-to-r from-orange-900/50 to-slate-900 p-6 border-b border-orange-500/20">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Bitcoin className="h-6 w-6 text-orange-400" />
+                        <h2 className="text-2xl font-bold text-white" data-testid="text-crypto-strategy">{cryptoPlaybook.strategyName}</h2>
+                      </div>
+                      <p className="text-orange-300 text-sm mt-1">{cryptoPlaybook.thesis}</p>
+                    </div>
+                    <div className="bg-slate-950 border border-slate-800 px-4 py-2 rounded-lg text-center">
+                      <div className="text-[10px] text-slate-500 uppercase font-bold">Risk Score</div>
+                      <div className={`text-xl font-bold ${cryptoPlaybook.riskScore > 7 ? 'text-red-500' : 'text-green-500'}`} data-testid="text-crypto-risk">{cryptoPlaybook.riskScore}/10</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-400" /> Entry Strategy</h3>
+                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-3">
+                      <div><div className="text-xs text-orange-500 uppercase">Entry Zone</div><p className="text-lg text-white font-mono">{cryptoPlaybook.setup?.entryZone}</p></div>
+                      <div><div className="text-xs text-orange-500 uppercase">Position Size</div><p className="text-sm text-slate-300">{cryptoPlaybook.setup?.positionSize}</p></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-4 text-center">
+                      <div className="bg-green-900/20 border border-green-500/20 p-3 rounded">
+                        <div className="text-[10px] text-green-500 uppercase">Target 1</div>
+                        <div className="text-white font-mono text-sm">{cryptoPlaybook.setup?.target1}</div>
+                      </div>
+                      <div className="bg-green-900/20 border border-green-500/20 p-3 rounded">
+                        <div className="text-[10px] text-green-500 uppercase">Target 2</div>
+                        <div className="text-white font-mono text-sm">{cryptoPlaybook.setup?.target2}</div>
+                      </div>
+                    </div>
+                    <div className="bg-red-900/20 border border-red-500/20 p-3 rounded text-center">
+                      <div className="text-[10px] text-red-500 uppercase">Stop Loss</div>
+                      <div className="text-white font-mono">{cryptoPlaybook.setup?.stopLoss}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><Shield className="h-4 w-4 text-orange-400" /> Market Analysis</h3>
+                    <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-3">
+                      <div><div className="text-xs text-slate-500 uppercase">Trend</div><p className="text-sm text-slate-300">{cryptoPlaybook.analysis?.trend}</p></div>
+                      <div><div className="text-xs text-slate-500 uppercase">Support Levels</div><p className="text-sm text-slate-300">{cryptoPlaybook.analysis?.support}</p></div>
+                      <div><div className="text-xs text-slate-500 uppercase">Resistance Levels</div><p className="text-sm text-slate-300">{cryptoPlaybook.analysis?.resistance}</p></div>
+                    </div>
+                    <div className="flex items-start gap-2 text-xs text-orange-500 bg-orange-900/10 p-3 rounded border border-orange-900/30">
+                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      Warning: Crypto markets are highly volatile and trade 24/7. Never invest more than you can afford to lose.
+                    </div>
+                  </div>
+                </div>
+                {cryptoPlaybook.catalysts && (
+                  <div className="px-6 pb-6">
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Key Catalysts</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {cryptoPlaybook.catalysts.map((cat: string, i: number) => (
+                        <span key={i} className="text-xs bg-orange-900/20 text-orange-400 px-3 py-1 rounded border border-orange-500/30">{cat}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

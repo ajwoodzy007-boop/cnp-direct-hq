@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Plus, Activity, PieChart, TrendingUp, Clock, AlertCircle, Pencil, Trash2, X } from 'lucide-react';
+import { LayoutDashboard, Plus, Activity, PieChart, TrendingUp, Clock, AlertCircle, Pencil, Trash2, X, Bitcoin } from 'lucide-react';
 import Skeleton from './Skeleton';
 
 export default function TheVault() {
@@ -89,7 +89,8 @@ export default function TheVault() {
   };
 
   const equities = positions.filter(p => p.type === 'SHARE');
-  const options = positions.filter(p => p.type !== 'SHARE');
+  const crypto = positions.filter(p => p.type === 'CRYPTO');
+  const options = positions.filter(p => p.type === 'CALL' || p.type === 'PUT');
   const totalEquity = positions.reduce((acc, p) => acc + (p.marketValue || 0), 0);
 
   return (
@@ -233,6 +234,67 @@ export default function TheVault() {
         </div>
       )}
 
+      {/* CRYPTO TABLE */}
+      {crypto.length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold text-white flex items-center gap-2">
+            <Bitcoin className="text-orange-400 h-5 w-5" /> Crypto Holdings
+          </h3>
+          <div className="bg-slate-900 border border-orange-500/20 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-slate-500 uppercase bg-slate-950">
+                  <tr>
+                    <th className="px-6 py-3">Symbol</th>
+                    <th className="px-6 py-3">Entry</th>
+                    <th className="px-6 py-3">Current</th>
+                    <th className="px-6 py-3">Amount</th>
+                    <th className="px-6 py-3">P/L %</th>
+                    <th className="px-6 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {crypto.map((p) => (
+                    <tr key={p.id} className="border-b border-slate-800 hover:bg-orange-900/10" data-testid={`row-crypto-${p.id}`}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <Bitcoin className="h-4 w-4 text-orange-500" />
+                          <span className="font-bold text-white">{p.ticker}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-slate-400">${p.entryPrice?.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-white">${p.currentPrice?.toFixed(2)}</td>
+                      <td className="px-6 py-4 text-slate-400">{p.shares}</td>
+                      <td className={`px-6 py-4 font-bold ${p.gainPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {p.gainPercent > 0 ? '+' : ''}{p.gainPercent?.toFixed(2)}%
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => openEditModal(p)} 
+                            className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded hover:bg-slate-700"
+                            data-testid={`button-edit-${p.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(p.id)} 
+                            className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded hover:bg-slate-700"
+                            data-testid={`button-delete-${p.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* EQUITIES TABLE */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -317,10 +379,10 @@ export default function TheVault() {
               
               {/* Asset Type Toggle */}
               <div className="flex bg-slate-950 p-1 rounded-lg mb-4 border border-slate-800">
-                {['SHARE', 'CALL', 'PUT'].map(t => (
+                {['SHARE', 'CRYPTO', 'CALL', 'PUT'].map(t => (
                   <button 
                     key={t} type="button" onClick={() => setAssetType(t)}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded ${assetType === t ? 'bg-slate-700 text-white' : 'text-slate-500'}`}
+                    className={`flex-1 py-1.5 text-xs font-bold rounded ${assetType === t ? (t === 'CRYPTO' ? 'bg-orange-600 text-white' : 'bg-slate-700 text-white') : 'text-slate-500'}`}
                     data-testid={`button-type-${t.toLowerCase()}`}
                   >
                     {t}
@@ -329,19 +391,19 @@ export default function TheVault() {
               </div>
 
               <div>
-                <label className="text-xs text-slate-500 uppercase font-bold">Ticker</label>
+                <label className="text-xs text-slate-500 uppercase font-bold">{assetType === 'CRYPTO' ? 'Symbol' : 'Ticker'}</label>
                 <input 
                   className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-white uppercase" 
                   value={newTicker} 
                   onChange={e => setNewTicker(e.target.value)} 
-                  placeholder="AAPL" 
+                  placeholder={assetType === 'CRYPTO' ? 'BTC, ETH, SOL...' : 'AAPL'} 
                   required 
                   data-testid="input-ticker"
                 />
               </div>
 
               {/* Conditional Option Fields */}
-              {assetType !== 'SHARE' && (
+              {(assetType === 'CALL' || assetType === 'PUT') && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                      <label className="text-xs text-slate-500 uppercase font-bold">Strike Price</label>

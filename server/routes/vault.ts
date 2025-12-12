@@ -33,6 +33,13 @@ router.get('/', async (req, res) => {
     portfolio.forEach((p: any) => {
       if (p.type === 'SHARE') {
         symbolsToFetch.push(p.ticker);
+      } else if (p.type === 'CRYPTO') {
+        // Crypto symbols use TICKER-USD format for Yahoo Finance
+        // Handle if user already entered -USD suffix or other formats
+        let cryptoSymbol = p.ticker.toUpperCase().replace(/[-_]?USD$/i, '');
+        cryptoSymbol = `${cryptoSymbol}-USD`;
+        p.realSymbol = cryptoSymbol;
+        symbolsToFetch.push(cryptoSymbol);
       } else if (p.ticker && p.expirationDate && p.strikePrice) {
         const datePart = formatYahooDate(p.expirationDate);
         const typePart = p.type === 'CALL' ? 'C' : 'P';
@@ -62,16 +69,23 @@ router.get('/', async (req, res) => {
       const lookupSymbol = p.type === 'SHARE' ? p.ticker : p.realSymbol;
       const currentPrice = quotes[lookupSymbol] || 0;
       
-      const multiplier = p.type === 'SHARE' ? 1 : 100;
+      // Crypto and shares use 1x multiplier, options use 100x
+      const multiplier = (p.type === 'SHARE' || p.type === 'CRYPTO') ? 1 : 100;
       
-      const marketValue = currentPrice * p.shares * multiplier;
-      const costBasis = p.entryPrice * p.shares * multiplier;
+      // Ensure numeric parsing for shares and entryPrice
+      const shares = parseFloat(p.shares) || 0;
+      const entryPrice = parseFloat(p.entryPrice) || 0;
+      
+      const marketValue = currentPrice * shares * multiplier;
+      const costBasis = entryPrice * shares * multiplier;
       
       const gain = marketValue - costBasis;
       const gainPercent = costBasis > 0 ? (gain / costBasis) * 100 : 0;
 
       return { 
-        ...p, 
+        ...p,
+        shares,
+        entryPrice, 
         currentPrice, 
         marketValue, 
         gain, 
@@ -140,6 +154,7 @@ router.post('/optimize', requirePremium, async (req, res) => {
 
     const holdings = portfolio.map((p: any) => {
       if (p.type === 'SHARE') return `Stock: ${p.ticker}`;
+      if (p.type === 'CRYPTO') return `Crypto: ${p.ticker} (${p.shares} units)`;
       return `Option: ${p.ticker} ${p.type} $${p.strikePrice} Strike, Exp: ${p.expirationDate}`;
     }).join('\n');
 
@@ -150,9 +165,10 @@ router.post('/optimize', requirePremium, async (req, res) => {
       Output JSON:
       {
         "diversityScore": "1-100",
-        "analysis": "Risk summary.",
-        "optionsStrategy": "Critique on options expiration/greeks.",
-        "suggestions": ["Specific actions"]
+        "analysis": "Risk summary including crypto volatility if applicable.",
+        "optionsStrategy": "Critique on options expiration/greeks if applicable.",
+        "cryptoAnalysis": "Crypto allocation and volatility assessment if portfolio contains crypto.",
+        "suggestions": ["Specific actions for stocks, options, and crypto"]
       }
     `;
 
