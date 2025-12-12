@@ -170,7 +170,7 @@ router.post('/fix-all-historical-close-prices', async (req, res) => {
         if (historicalClose && historicalClose > 0 && Math.abs(historicalClose - (pred.outcomePrice || 0)) > 0.01) {
           // Recalculate outcome based on corrected prices
           const profitPercent = ((historicalClose - pred.entryPrice) / pred.entryPrice) * 100;
-          const newOutcome = profitPercent > 0.5 ? 'win' : profitPercent < -0.5 ? 'loss' : 'neutral';
+          const newOutcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
           
           await db.update(predictions)
             .set({ 
@@ -566,7 +566,7 @@ router.post('/finalize', async (req, res) => {
       if (closePrice <= 0) continue;
       
       const profitPercent = ((closePrice - pred.entryPrice) / pred.entryPrice) * 100;
-      const outcome = profitPercent > 0.5 ? 'win' : profitPercent < -0.5 ? 'loss' : 'neutral';
+      const outcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
       
       await db.update(predictions)
         .set({
@@ -681,8 +681,8 @@ router.get('/history', async (req, res) => {
         profitPercent = p.entryPrice > 0 ? ((currentPrice - p.entryPrice) / p.entryPrice) * 100 : 0;
         
         // Define Win/Loss thresholds for unresolved predictions
-        if (profitPercent > 1.0) outcome = 'WIN';
-        else if (profitPercent < -1.0) outcome = 'LOSS';
+        if (profitPercent > 0) outcome = 'WIN';
+        else if (profitPercent < 0) outcome = 'LOSS';
       }
 
       // Count wins/losses
