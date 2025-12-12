@@ -152,6 +152,110 @@ router.get('/daily', async (req, res) => {
   }
 });
 
+// POST /admin/regenerate: Force regenerate today's predictions (admin only, one-time use)
+router.post('/admin/regenerate', async (req, res) => {
+  try {
+    const { adminKey } = req.body;
+    
+    // Simple admin key check (use the session secret as admin key)
+    if (adminKey !== process.env.ADMIN_PASSWORD) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    const today = getTodayDate();
+    
+    // 1. Delete today's stock predictions
+    await db.delete(predictions)
+      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+    
+    console.log(`[ADMIN] Cleared today's stock predictions for ${today}`);
+    
+    // 2. Run fresh Sentinel scan
+    const scanResults = await runMarketScan();
+    
+    // Same selection logic as /daily endpoint
+    const seenTickers = new Set<string>();
+    
+    const allQualified = scanResults
+      .filter(s => s.signal.includes('BUY'))
+      .filter(s => s.rsi >= 30 && s.rsi <= 85)
+      .filter(s => (s.sentimentScore || 0) >= -0.3)
+      .filter(s => (s.rvol || 1) >= 0.1)
+      .map(s => ({
+        ...s,
+        score: (
+          (s.signal === 'MOMENTUM BUY' ? 30 : 15) +
+          (s.rsi >= 50 && s.rsi <= 60 ? 25 : 10) +
+          ((s.sentimentScore || 0) * 20) +
+          (Math.min((s.rvol || 1), 5) * 5)
+        )
+      }))
+      .sort((a, b) => b.score - a.score);
+    
+    const lowPriceStocks = allQualified.filter(s => s.price < 30);
+    const regularStocks = allQualified.filter(s => s.price >= 30);
+    
+    const selectedLowPrice: typeof allQualified = [];
+    const selectedRegular: typeof allQualified = [];
+    
+    for (const s of lowPriceStocks) {
+      if (!seenTickers.has(s.ticker) && selectedLowPrice.length < 2) {
+        seenTickers.add(s.ticker);
+        selectedLowPrice.push(s);
+      }
+    }
+    
+    for (const s of regularStocks) {
+      if (!seenTickers.has(s.ticker) && selectedRegular.length < 8) {
+        seenTickers.add(s.ticker);
+        selectedRegular.push(s);
+      }
+    }
+    
+    let topPicks = [...selectedLowPrice, ...selectedRegular].slice(0, 10);
+    
+    // Fill with WAIT signals if needed
+    if (topPicks.length < 10) {
+      const waitSignals = scanResults
+        .filter(s => s.signal === 'WAIT' && !seenTickers.has(s.ticker))
+        .sort((a, b) => (b.sentimentScore || 0) - (a.sentimentScore || 0));
+      
+      const neededCount = 10 - topPicks.length;
+      for (let i = 0; i < Math.min(neededCount, waitSignals.length); i++) {
+        seenTickers.add(waitSignals[i].ticker);
+        topPicks.push(waitSignals[i] as any);
+      }
+    }
+    
+    // 3. Save new predictions
+    for (const p of topPicks) {
+      await db.insert(predictions).values({
+        ticker: p.ticker,
+        signalType: p.signal,
+        entryPrice: p.price,
+        assetType: 'stock'
+      });
+    }
+    
+    console.log(`[ADMIN] Generated ${topPicks.length} new stock predictions for ${today}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Regenerated ${topPicks.length} predictions for ${today}`,
+      data: topPicks.map(p => ({
+        ticker: p.ticker,
+        entryPrice: p.price,
+        signal: p.signal,
+        confidence: p.signal === 'MOMENTUM BUY' ? 'High' : p.signal === 'SPECULATIVE BUY' ? 'Low' : 'Med'
+      }))
+    });
+    
+  } catch (error) {
+    console.error("[ADMIN] Regenerate Error:", error);
+    res.status(500).json({ success: false, error: "Failed to regenerate predictions" });
+  }
+});
+
 // POST /finalize: Record closing prices and outcomes for today's stock predictions
 router.post('/finalize', async (req, res) => {
   try {
