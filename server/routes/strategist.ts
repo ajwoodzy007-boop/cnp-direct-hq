@@ -3,10 +3,9 @@ import OpenAI from 'openai';
 import * as YahooFinanceModule from 'yahoo-finance2';
 import { requirePremium } from '../middleware/premium';
 
-const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
+const yf = (YahooFinanceModule as any).default || YahooFinanceModule;
 const router = express.Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const yf = new YahooFinance();
 
 function generateOptionPlay(ticker: string, price: number, sentiment: 'BULLISH' | 'BEARISH' | 'NEUTRAL') {
   const strikeRound = (num: number) => Math.round(num);

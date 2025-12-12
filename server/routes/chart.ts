@@ -1,9 +1,8 @@
 import express from 'express';
 import * as YahooFinanceModule from 'yahoo-finance2';
 
-const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
+const yf = (YahooFinanceModule as any).default || YahooFinanceModule;
 const router = express.Router();
-const yf = new YahooFinance();
 
 router.get('/', async (req, res) => {
   const { ticker } = req.query;

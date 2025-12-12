@@ -3,9 +3,8 @@ import * as YahooFinanceModule from 'yahoo-finance2';
 import OpenAI from 'openai';
 import { requirePremium } from '../middleware/premium';
 
-const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
+const yf = (YahooFinanceModule as any).default || YahooFinanceModule;
 const router = express.Router();
-const yf = new YahooFinance();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 let shortCache = { timestamp: 0, data: null as any };

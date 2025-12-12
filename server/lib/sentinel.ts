@@ -3,8 +3,7 @@ import * as YahooFinanceModule from 'yahoo-finance2';
 import { SentimentIntensityAnalyzer } from 'vader-sentiment';
 import { RSI } from 'technicalindicators';
 
-const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
-const yf = new YahooFinance();
+const yf = (YahooFinanceModule as any).default || YahooFinanceModule;
 
 const getSentimentScore = (text: string): number => {
   const analyzer = SentimentIntensityAnalyzer;
