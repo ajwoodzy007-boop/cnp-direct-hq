@@ -649,8 +649,8 @@ router.get('/history', async (req, res) => {
     // 3. Grade predictions and calculate stats
     let wins = 0;
     let losses = 0;
-    let currentStreak = 0;
-    let tempStreak = 0;
+    let totalReturn = 0;
+    let returnCount = 0;
 
     const gradedHistory = allPredictions.map((p, idx) => {
       // Use stored outcome if available, otherwise calculate from live price
@@ -685,18 +685,17 @@ router.get('/history', async (req, res) => {
         else if (profitPercent < 0) outcome = 'LOSS';
       }
 
-      // Count wins/losses
+      // Count wins/losses and track returns
       if (outcome === 'WIN') {
         wins++;
-        tempStreak++;
       } else if (outcome === 'LOSS') {
         losses++;
-        tempStreak = 0;
       }
-
-      // Track streak from most recent trades
-      if (idx < 10) {
-        currentStreak = tempStreak;
+      
+      // Track returns for finalized predictions
+      if (outcome !== 'PENDING' && profitPercent !== 0) {
+        totalReturn += profitPercent;
+        returnCount++;
       }
 
       return {
@@ -710,9 +709,10 @@ router.get('/history', async (req, res) => {
       };
     });
 
-    // 4. Calculate win rate (excluding pending)
+    // 4. Calculate win rate and average return
     const total = wins + losses;
     const winRate = total === 0 ? 0 : Math.round((wins / total) * 100);
+    const avgReturn = returnCount === 0 ? 0 : Number((totalReturn / returnCount).toFixed(2));
 
     res.json({
       success: true,
@@ -720,7 +720,7 @@ router.get('/history', async (req, res) => {
         wins,
         losses,
         winRate,
-        streak: currentStreak
+        avgReturn
       },
       history: gradedHistory
     });
@@ -893,7 +893,7 @@ router.get('/crypto-history', async (req, res) => {
     if (allPredictions.length === 0) {
       return res.json({
         success: true,
-        stats: { wins: 0, losses: 0, winRate: 0, streak: 0 },
+        stats: { wins: 0, losses: 0, winRate: 0, avgReturn: 0 },
         history: []
       });
     }
@@ -916,11 +916,11 @@ router.get('/crypto-history', async (req, res) => {
     // Grade predictions and calculate stats
     let wins = 0;
     let losses = 0;
-    let currentStreak = 0;
-    let tempStreak = 0;
+    let totalReturn = 0;
+    let returnCount = 0;
 
     const gradedHistory = allPredictions.map((p, idx) => {
-      const hasStoredOutcome = p.outcome && (p.outcome.toLowerCase() === 'win' || p.outcome.toLowerCase() === 'loss');
+      const hasStoredOutcome = p.outcome && ['win', 'loss', 'neutral'].includes(p.outcome.toLowerCase());
       
       let currentPrice = p.entryPrice;
       let profitPercent = 0;
@@ -943,20 +943,20 @@ router.get('/crypto-history', async (req, res) => {
         profitPercent = p.entryPrice > 0 ? ((currentPrice - p.entryPrice) / p.entryPrice) * 100 : 0;
         
         // Higher thresholds for crypto
-        if (profitPercent > 2.0) outcome = 'WIN';
-        else if (profitPercent < -2.0) outcome = 'LOSS';
+        if (profitPercent > 0) outcome = 'WIN';
+        else if (profitPercent < 0) outcome = 'LOSS';
       }
 
       if (outcome === 'WIN') {
         wins++;
-        tempStreak++;
       } else if (outcome === 'LOSS') {
         losses++;
-        tempStreak = 0;
       }
-
-      if (idx < 10) {
-        currentStreak = tempStreak;
+      
+      // Track returns for finalized predictions
+      if (outcome !== 'PENDING' && profitPercent !== 0) {
+        totalReturn += profitPercent;
+        returnCount++;
       }
 
       return {
@@ -973,6 +973,7 @@ router.get('/crypto-history', async (req, res) => {
 
     const total = wins + losses;
     const winRate = total === 0 ? 0 : Math.round((wins / total) * 100);
+    const avgReturn = returnCount === 0 ? 0 : Number((totalReturn / returnCount).toFixed(2));
 
     res.json({
       success: true,
@@ -980,7 +981,7 @@ router.get('/crypto-history', async (req, res) => {
         wins,
         losses,
         winRate,
-        streak: currentStreak
+        avgReturn
       },
       history: gradedHistory
     });

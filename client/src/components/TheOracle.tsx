@@ -85,8 +85,8 @@ export default function TheOracle() {
   const [showHistory, setShowHistory] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [cryptoHistoryData, setCryptoHistoryData] = useState<any[]>([]);
-  const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0, streak: 0 });
-  const [cryptoStats, setCryptoStats] = useState({ wins: 0, losses: 0, winRate: 0, streak: 0 });
+  const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0 });
+  const [cryptoStats, setCryptoStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0 });
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
 
   // Fetch real stats & history
@@ -351,10 +351,9 @@ export default function TheOracle() {
               <div className="text-2xl font-bold text-green-400">{currentStats.winRate}%</div>
             </div>
             <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
-              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Current Streak</div>
-              <div className={`text-2xl font-bold ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} flex items-center gap-2`}>
-                {currentStats.streak} Days
-                {currentStats.streak >= 3 && <span className="text-orange-500">🔥</span>}
+              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Avg Return</div>
+              <div className={`text-2xl font-bold ${currentStats.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'} flex items-center gap-2`}>
+                {currentStats.avgReturn >= 0 ? '+' : ''}{currentStats.avgReturn}%
               </div>
             </div>
             <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
