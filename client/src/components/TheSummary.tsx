@@ -16,9 +16,9 @@ interface MarketMover {
 interface Prediction {
   ticker: string;
   signal: string;
-  confidence: number;
-  targetPrice?: number;
-  currentPrice?: number;
+  confidence: string;
+  entryPrice?: number;
+  predictedPrice?: number;
 }
 
 interface PortfolioSummary {
@@ -34,8 +34,8 @@ export default function TheSummary({ onNavigate }: { onNavigate: (tab: string) =
     refetchInterval: 60000,
   });
 
-  const { data: predictionsData, isLoading: predictionsLoading } = useQuery<{ predictions?: Prediction[] }>({
-    queryKey: ['/api/predictions/today'],
+  const { data: predictionsData, isLoading: predictionsLoading } = useQuery<{ success?: boolean; data?: Prediction[] }>({
+    queryKey: ['/api/oracle/daily'],
     refetchInterval: 60000,
   });
 
@@ -45,7 +45,7 @@ export default function TheSummary({ onNavigate }: { onNavigate: (tab: string) =
   });
 
   const marketMovers: MarketMover[] = sentinelData?.data?.slice(0, 5) || [];
-  const topPredictions: Prediction[] = predictionsData?.predictions?.slice(0, 3) || [];
+  const topPredictions: Prediction[] = predictionsData?.data?.slice(0, 3) || [];
   const portfolio: PortfolioSummary | null = portfolioData?.summary || null;
 
   const currentHour = new Date().getHours();
@@ -150,11 +150,13 @@ export default function TheSummary({ onNavigate }: { onNavigate: (tab: string) =
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded ${
-                      pred.signal === 'CALL' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                      pred.signal?.includes('BUY') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                     }`}>
-                      {pred.signal}
+                      {pred.signal?.includes('MOMENTUM') ? 'MOMENTUM' : pred.signal?.includes('VALUE') ? 'VALUE' : pred.signal}
                     </span>
-                    <span className="text-xs text-slate-500">{pred.confidence}%</span>
+                    <span className={`text-xs ${pred.confidence === 'High' ? 'text-green-400' : 'text-amber-400'}`}>
+                      {pred.confidence}
+                    </span>
                   </div>
                 </div>
               ))}
