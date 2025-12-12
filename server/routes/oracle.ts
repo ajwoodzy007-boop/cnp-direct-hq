@@ -218,6 +218,94 @@ router.post('/fix-all-historical-close-prices', async (req, res) => {
   }
 });
 
+// GET /admin/fix-all-prices: Admin endpoint to fix all historical prices (open + close)
+router.get('/admin/fix-all-prices', async (req, res) => {
+  try {
+    const adminKey = req.query.key;
+    if (adminKey !== 'cnp2025fix') {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    // Get all stock predictions
+    const allPredictions = await db.select().from(predictions)
+      .where(sql`${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL`);
+    
+    console.log(`[Admin] Fixing prices for ${allPredictions.length} predictions...`);
+    
+    const updates: any[] = [];
+    
+    for (const pred of allPredictions) {
+      try {
+        const predDate = pred.predictionDate ? new Date(pred.predictionDate) : new Date();
+        
+        // Get historical candle for this date
+        const startOfDay = new Date(predDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(predDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        
+        const chart = await yahooFinance.chart(pred.ticker, {
+          period1: startOfDay,
+          period2: endOfDay,
+          interval: '1d'
+        });
+        
+        if (chart && chart.quotes && chart.quotes.length > 0) {
+          const dayCandle = chart.quotes[0];
+          const historicalOpen = dayCandle.open;
+          const historicalClose = dayCandle.close;
+          
+          if (historicalOpen && historicalOpen > 0) {
+            const updateData: any = { 
+              entryPrice: historicalOpen,
+              openPrice: historicalOpen 
+            };
+            
+            // If we have close price and this prediction has been finalized
+            if (historicalClose && historicalClose > 0 && pred.outcomePrice) {
+              const profitPercent = ((historicalClose - historicalOpen) / historicalOpen) * 100;
+              const newOutcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
+              
+              updateData.outcomePrice = historicalClose;
+              updateData.outcome = newOutcome;
+            }
+            
+            await db.update(predictions)
+              .set(updateData)
+              .where(eq(predictions.id, pred.id));
+            
+            updates.push({
+              ticker: pred.ticker,
+              date: predDate.toISOString().split('T')[0],
+              oldEntry: pred.entryPrice,
+              newEntry: historicalOpen,
+              oldClose: pred.outcomePrice,
+              newClose: historicalClose
+            });
+          }
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 150));
+        
+      } catch (err: any) {
+        console.error(`[Admin] Error fixing ${pred.ticker}:`, err.message);
+      }
+    }
+    
+    console.log(`[Admin] Fixed ${updates.length} predictions`);
+    
+    res.json({ 
+      success: true, 
+      message: `Fixed ${updates.length} predictions`,
+      updates: updates.slice(0, 30)
+    });
+    
+  } catch (error) {
+    console.error("Admin Fix Error:", error);
+    res.status(500).json({ success: false, error: "Fix failed" });
+  }
+});
+
 // POST /fix-all-historical-prices: Update ALL historical predictions with correct open prices
 router.post('/fix-all-historical-prices', async (req, res) => {
   try {
