@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin, Scan } from 'lucide-react';
-import { useLocation } from 'wouter';
+import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, TrendingDown, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin, Scan, BrainCircuit, ChevronRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import PremiumLock from './PremiumLock';
@@ -32,7 +31,6 @@ type SortOption = 'rank' | 'confidence' | 'return' | 'risk';
 type TabType = 'stocks' | 'crypto';
 
 export default function TheOracle() {
-  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>('stocks');
   const [picks, setPicks] = useState<PickData[]>([]);
   const [cryptoPicks, setCryptoPicks] = useState<PickData[]>([]);
@@ -50,6 +48,38 @@ export default function TheOracle() {
   
   const [aiReport, setAiReport] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
+
+  // Deep AI Analysis modal state
+  const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
+  const [deepAnalysis, setDeepAnalysis] = useState<any>(null);
+  const [deepAnalysisLoading, setDeepAnalysisLoading] = useState(false);
+  const [deepAnalysisError, setDeepAnalysisError] = useState<string | null>(null);
+
+  const runDeepAnalysis = async (ticker: string, assetType: string) => {
+    setShowDeepAnalysis(true);
+    setDeepAnalysisLoading(true);
+    setDeepAnalysis(null);
+    setDeepAnalysisError(null);
+    
+    try {
+      const res = await fetch('/api/strategist/quick-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, assetType: assetType === 'crypto' ? 'crypto' : 'stock' })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setDeepAnalysis(json.data);
+      } else {
+        setDeepAnalysisError(json.error || 'Analysis failed');
+      }
+    } catch (err) {
+      console.error(err);
+      setDeepAnalysisError('Network error - please try again');
+    } finally {
+      setDeepAnalysisLoading(false);
+    }
+  };
 
   // History modal state
   const [showHistory, setShowHistory] = useState(false);
@@ -693,11 +723,7 @@ export default function TheOracle() {
               </button>
               <button 
                 onClick={() => {
-                  sessionStorage.setItem('analyzeTickerFromOracle', JSON.stringify({
-                    ticker: selectedPick.ticker,
-                    assetType: selectedPick.assetType || 'stock'
-                  }));
-                  setLocation('/strategist');
+                  runDeepAnalysis(selectedPick.ticker, selectedPick.assetType || 'stock');
                 }}
                 className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2" 
                 data-testid="button-deep-analysis"
@@ -1058,6 +1084,195 @@ export default function TheOracle() {
               <div className="text-[10px] text-slate-600">
                 SENTINEL SIGNAL ANALYSIS • REAL-TIME DATA
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deep AI Analysis Modal */}
+      {showDeepAnalysis && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-cyan-500/30 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-800 bg-gradient-to-r from-cyan-900/30 to-slate-900 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
+                  <BrainCircuit className="h-5 w-5 text-cyan-400" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Deep AI Analysis</h3>
+                  <p className="text-xs text-slate-400">Powered by GPT-4o</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowDeepAnalysis(false)} 
+                className="text-slate-400 hover:text-white p-2 hover:bg-slate-800 rounded-lg transition-colors" 
+                data-testid="button-close-deep-analysis"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="overflow-y-auto flex-1 p-5">
+              {deepAnalysisLoading && (
+                <div className="flex flex-col items-center justify-center py-16 gap-4">
+                  <div className="h-14 w-14 rounded-full border-4 border-cyan-500 border-t-transparent animate-spin" />
+                  <p className="text-slate-400 animate-pulse">AI is analyzing...</p>
+                </div>
+              )}
+              
+              {deepAnalysisError && (
+                <div className="flex items-center gap-3 text-red-400 bg-red-400/10 p-4 rounded-lg border border-red-400/20">
+                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <span>{deepAnalysisError}</span>
+                </div>
+              )}
+              
+              {!deepAnalysisLoading && deepAnalysis && (
+                <div className="space-y-5">
+                  {/* Header with Price */}
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className="text-2xl font-bold text-white">{deepAnalysis.ticker}</h3>
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${deepAnalysis.assetType === 'crypto' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'}`}>
+                          {deepAnalysis.assetType === 'crypto' ? 'CRYPTO' : 'STOCK'}
+                        </span>
+                      </div>
+                      <p className="text-slate-400 text-sm">{deepAnalysis.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-white font-mono">${deepAnalysis.price?.toFixed(2)}</p>
+                      <p className={`text-sm font-medium ${deepAnalysis.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {deepAnalysis.change >= 0 ? '+' : ''}{deepAnalysis.change?.toFixed(2)}%
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Trend & Risk */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className={`px-4 py-2 rounded-lg font-bold ${
+                      deepAnalysis.trend === 'BULLISH' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                      deepAnalysis.trend === 'BEARISH' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                      'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                    }`}>
+                      {deepAnalysis.trend === 'BULLISH' && <TrendingUp className="h-4 w-4 inline mr-2" />}
+                      {deepAnalysis.trend === 'BEARISH' && <TrendingDown className="h-4 w-4 inline mr-2" />}
+                      {deepAnalysis.trend}
+                    </div>
+                    <span className="text-slate-500 text-sm">Strength: <span className="text-white">{deepAnalysis.trendStrength}</span></span>
+                    <span className={`ml-auto px-3 py-1 rounded text-sm font-bold ${
+                      deepAnalysis.riskLevel === 'Low' ? 'bg-green-500/20 text-green-400' :
+                      deepAnalysis.riskLevel === 'High' ? 'bg-red-500/20 text-red-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {deepAnalysis.riskLevel} Risk
+                    </span>
+                  </div>
+                  
+                  {/* Summary */}
+                  <div className="bg-slate-950/50 p-4 rounded-lg border border-slate-800">
+                    <p className="text-slate-300">{deepAnalysis.summary}</p>
+                  </div>
+                  
+                  {/* Technicals & Sentiment */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-lg">
+                      <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
+                        <BarChart2 className="h-4 w-4 text-cyan-400" /> Technical Levels
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Support</span>
+                          <span className="text-green-400 font-mono">{deepAnalysis.technicals?.support}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Resistance</span>
+                          <span className="text-red-400 font-mono">{deepAnalysis.technicals?.resistance}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">RSI Estimate</span>
+                          <span className="text-white">{deepAnalysis.technicals?.rsiEstimate}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-lg">
+                      <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-amber-400" /> Sentiment
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Overall</span>
+                          <span className={`font-bold ${deepAnalysis.sentiment?.overall === 'Positive' ? 'text-green-400' : deepAnalysis.sentiment?.overall === 'Negative' ? 'text-red-400' : 'text-yellow-400'}`}>
+                            {deepAnalysis.sentiment?.overall}
+                          </span>
+                        </div>
+                        {deepAnalysis.sentiment?.catalysts?.slice(0, 2).map((c: string, i: number) => (
+                          <div key={i} className="flex items-start gap-1 text-xs text-slate-400">
+                            <ChevronRight className="h-3 w-3 text-green-400 mt-0.5 shrink-0" /> {c}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Trade Ideas */}
+                  {deepAnalysis.tradeIdeas?.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
+                        <Target className="h-4 w-4 text-cyan-400" /> Trade Ideas
+                      </h4>
+                      {deepAnalysis.tradeIdeas.slice(0, 1).map((idea: any, i: number) => (
+                        <div key={i} className={`border rounded-lg p-4 ${idea.direction === 'LONG' ? 'bg-green-900/10 border-green-500/20' : 'bg-red-900/10 border-red-500/20'}`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${idea.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                              {idea.direction}
+                            </span>
+                            <span className="text-xs text-slate-500">{idea.timeframe}</span>
+                            <span className={`text-xs font-bold ${idea.confidence === 'High' ? 'text-green-400' : idea.confidence === 'Low' ? 'text-red-400' : 'text-yellow-400'}`}>
+                              {idea.confidence} Confidence
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <p className="text-slate-500 text-xs">Entry</p>
+                              <p className="text-white font-mono">{idea.entry}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-500 text-xs">Target</p>
+                              <p className="text-green-400 font-mono">{idea.target}</p>
+                            </div>
+                            <div>
+                              <p className="text-slate-500 text-xs">Stop Loss</p>
+                              <p className="text-red-400 font-mono">{idea.stopLoss}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Verdict */}
+                  <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 p-4 rounded-lg">
+                    <h4 className="text-sm font-bold text-cyan-400 uppercase mb-2">AI Verdict</h4>
+                    <p className="text-white">{deepAnalysis.verdict}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-950 border-t border-slate-800">
+              <button 
+                onClick={() => setShowDeepAnalysis(false)}
+                className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors"
+                data-testid="button-close-deep-analysis-footer"
+              >
+                Close Analysis
+              </button>
             </div>
           </div>
         </div>
