@@ -24,7 +24,7 @@ export async function runStockFinalization(): Promise<FinalizationResult> {
   const today = getTodayDate();
   
   const todaysPredictions = await db.select().from(predictions)
-    .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
+    .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '' OR LOWER(${predictions.outcome}) = 'pending')`);
   
   console.log(`[Finalize] Found ${todaysPredictions.length} predictions to finalize for ${today}`);
   
@@ -101,7 +101,7 @@ export async function runCryptoFinalization(): Promise<FinalizationResult> {
   const today = getTodayDate();
   
   const todaysPredictions = await db.select().from(predictions)
-    .where(sql`DATE(${predictions.predictionDate}) = ${today} AND ${predictions.assetType} = 'crypto' AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
+    .where(sql`DATE(${predictions.predictionDate}) = ${today} AND ${predictions.assetType} = 'crypto' AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '' OR LOWER(${predictions.outcome}) = 'pending')`);
   
   console.log(`[Finalize Crypto] Found ${todaysPredictions.length} crypto predictions to finalize for ${today}`);
   
@@ -171,7 +171,7 @@ export async function runCryptoFinalization(): Promise<FinalizationResult> {
 // Finalize ALL pending predictions regardless of date
 export async function runAllPendingFinalization(): Promise<FinalizationResult> {
   const allPending = await db.select().from(predictions)
-    .where(sql`(${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
+    .where(sql`(${predictions.outcome} IS NULL OR ${predictions.outcome} = '' OR LOWER(${predictions.outcome}) = 'pending')`);
   
   console.log(`[Finalize ALL] Found ${allPending.length} total pending predictions`);
   
