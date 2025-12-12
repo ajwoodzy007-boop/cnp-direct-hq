@@ -226,7 +226,24 @@ function startPredictionScheduler() {
       }
     }
     
-    // 4:15 PM ET - Finalize predictions with close prices
+    // 8:00 AM ET - Generate crypto predictions daily (runs every day, crypto markets are 24/7)
+    if (hour === 8 && minute === 0) {
+      log("Triggering daily crypto prediction generation at 8:00 AM ET", "scheduler");
+      try {
+        const response = await fetch(`http://localhost:${port}/api/oracle/crypto-daily`);
+        if (response.ok) {
+          const data = await response.json();
+          const picks = data.data || [];
+          log(`Daily crypto predictions generated successfully - ${picks.length} picks`, "scheduler");
+        } else {
+          log("Failed to generate daily crypto predictions", "scheduler");
+        }
+      } catch (error) {
+        log(`Error generating crypto predictions: ${error}`, "scheduler");
+      }
+    }
+
+    // 4:15 PM ET - Finalize stock predictions with close prices
     if (isWeekday && hour === 16 && minute === 15) {
       log("Finalizing daily predictions at 4:15 PM ET", "scheduler");
       try {
@@ -278,11 +295,31 @@ function startPredictionScheduler() {
         log(`Error finalizing predictions: ${error}`, "scheduler");
       }
     }
+
+    // 11:59 PM ET - Finalize crypto predictions daily (runs every day)
+    if (hour === 23 && minute === 59) {
+      log("Finalizing daily crypto predictions at 11:59 PM ET", "scheduler");
+      try {
+        const finalizeResponse = await fetch(`http://localhost:${port}/api/oracle/crypto-finalize`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        
+        if (finalizeResponse.ok) {
+          const result = await finalizeResponse.json();
+          log(`Finalized ${result.finalized} crypto predictions`, "scheduler");
+        } else {
+          log("Failed to finalize crypto predictions", "scheduler");
+        }
+      } catch (error) {
+        log(`Error finalizing crypto predictions: ${error}`, "scheduler");
+      }
+    }
   };
   
   // Check every minute
   setInterval(checkAndTriggerPredictions, 60 * 1000);
-  log("Prediction scheduler started - predictions generated at 7:30 AM ET, finalized at 4:15 PM ET", "scheduler");
+  log("Prediction scheduler started - stocks: 7:30 AM/4:15 PM ET, crypto: 8:00 AM/11:59 PM ET", "scheduler");
 }
 
 (async () => {

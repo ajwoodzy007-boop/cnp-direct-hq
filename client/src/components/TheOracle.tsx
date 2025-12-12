@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info, Zap, Loader2, History, CheckCircle, XCircle } from 'lucide-react';
+import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import PremiumLock from './PremiumLock';
@@ -7,6 +7,7 @@ import Skeleton from './Skeleton';
 
 interface PickData {
   ticker: string;
+  name?: string;
   entryPrice: number;
   predictedPrice: number;
   currentPrice?: number;
@@ -22,13 +23,18 @@ interface PickData {
   riskRewardRatio?: number;
   aiReasoning?: string;
   lockedAt?: string;
+  assetType?: string;
 }
 
 type SortOption = 'rank' | 'confidence' | 'return' | 'risk';
+type TabType = 'stocks' | 'crypto';
 
 export default function TheOracle() {
+  const [activeTab, setActiveTab] = useState<TabType>('stocks');
   const [picks, setPicks] = useState<PickData[]>([]);
+  const [cryptoPicks, setCryptoPicks] = useState<PickData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cryptoLoading, setCryptoLoading] = useState(false);
   const [selectedPick, setSelectedPick] = useState<PickData | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('rank');
   const [showSignals, setShowSignals] = useState(false);
@@ -45,7 +51,9 @@ export default function TheOracle() {
   // History modal state
   const [showHistory, setShowHistory] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
+  const [cryptoHistoryData, setCryptoHistoryData] = useState<any[]>([]);
   const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0, streak: 0 });
+  const [cryptoStats, setCryptoStats] = useState({ wins: 0, losses: 0, winRate: 0, streak: 0 });
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
 
   // Fetch real stats & history
@@ -60,9 +68,40 @@ export default function TheOracle() {
     } catch (e) { console.error("Stats Error", e); }
   };
 
+  const fetchCryptoHistory = async () => {
+    try {
+      const res = await fetch('/api/oracle/crypto-history');
+      const json = await res.json();
+      if (json.success) {
+        setCryptoStats(json.stats);
+        setCryptoHistoryData(json.history);
+      }
+    } catch (e) { console.error("Crypto Stats Error", e); }
+  };
+
+  const fetchCryptoPicks = async () => {
+    setCryptoLoading(true);
+    try {
+      const res = await fetch('/api/oracle/crypto-daily');
+      const json = await res.json();
+      if (json.success) setCryptoPicks(json.data);
+    } catch (e) {
+      console.error("Crypto Oracle offline");
+    } finally {
+      setCryptoLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'crypto' && cryptoPicks.length === 0) {
+      fetchCryptoPicks();
+      fetchCryptoHistory();
+    }
+  }, [activeTab]);
   
   const generateAiReport = async (pick: PickData) => {
     setAnalyzing(true);
@@ -172,6 +211,30 @@ export default function TheOracle() {
     }
   }, [picks, sortBy]);
 
+  const sortedCryptoPicks = useMemo(() => {
+    const sorted = [...cryptoPicks];
+    switch (sortBy) {
+      case 'confidence':
+        return sorted.sort((a, b) => (b.confidenceScore || 70) - (a.confidenceScore || 70));
+      case 'return':
+        return sorted.sort((a, b) => {
+          const returnA = ((a.predictedPrice - a.entryPrice) / a.entryPrice) * 100;
+          const returnB = ((b.predictedPrice - b.entryPrice) / b.entryPrice) * 100;
+          return returnB - returnA;
+        });
+      case 'risk':
+        const riskOrder = { 'Low': 1, 'Medium': 2, 'High': 3 };
+        return sorted.sort((a, b) => (riskOrder[a.riskLevel || 'Medium'] || 2) - (riskOrder[b.riskLevel || 'Medium'] || 2));
+      default:
+        return sorted;
+    }
+  }, [cryptoPicks, sortBy]);
+
+  const currentPicks = activeTab === 'stocks' ? sortedPicks : sortedCryptoPicks;
+  const currentLoading = activeTab === 'stocks' ? loading : cryptoLoading;
+  const currentStats = activeTab === 'stocks' ? stats : cryptoStats;
+  const currentHistory = activeTab === 'stocks' ? historyData : cryptoHistoryData;
+
   const getProgressToTarget = (pick: PickData) => {
     const current = pick.currentPrice || pick.entryPrice;
     const target = pick.predictedPrice;
@@ -201,55 +264,89 @@ export default function TheOracle() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500 relative">
       
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950 p-8 rounded-2xl border border-slate-800 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+      <div className={`bg-gradient-to-br ${activeTab === 'crypto' ? 'from-slate-900 via-slate-900 to-orange-950' : 'from-slate-900 via-slate-900 to-cyan-950'} p-8 rounded-2xl border border-slate-800 relative overflow-hidden`}>
+        <div className={`absolute top-0 right-0 w-64 h-64 ${activeTab === 'crypto' ? 'bg-orange-500/10' : 'bg-cyan-500/10'} rounded-full blur-3xl -translate-y-1/2 translate-x-1/2`}></div>
         <div className="relative z-10">
-          <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-            <Target className="text-cyan-400 h-8 w-8" />
-            The Oracle
-          </h2>
-          <p className="text-slate-400 mt-2 max-w-2xl">
-            High-conviction setups filtered by the Sentinel Engine.
-          </p>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+                <Target className={`${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} h-8 w-8`} />
+                The Oracle
+              </h2>
+              <p className="text-slate-400 mt-2 max-w-2xl">
+                {activeTab === 'crypto' 
+                  ? 'AI-powered crypto predictions • 24/7 markets' 
+                  : 'High-conviction setups filtered by the Sentinel Engine.'}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab('stocks')}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all ${
+                  activeTab === 'stocks'
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                    : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white hover:border-slate-600'
+                }`}
+                data-testid="oracle-tab-stocks"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Stocks
+              </button>
+              <button
+                onClick={() => setActiveTab('crypto')}
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all ${
+                  activeTab === 'crypto'
+                    ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
+                    : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white hover:border-slate-600'
+                }`}
+                data-testid="oracle-tab-crypto"
+              >
+                <Bitcoin className="h-4 w-4" />
+                Crypto
+              </button>
+            </div>
+          </div>
           <div 
             onClick={() => setShowHistory(true)}
-            className="flex flex-wrap gap-4 mt-8 cursor-pointer group"
+            className="flex flex-wrap gap-4 cursor-pointer group"
             data-testid="button-view-history"
           >
-            <div className="bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-cyan-500/50 transition-colors">
+            <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-2">
                 Win Rate <History className="h-3 w-3" />
               </div>
-              <div className="text-2xl font-bold text-green-400">{stats.winRate}%</div>
+              <div className="text-2xl font-bold text-green-400">{currentStats.winRate}%</div>
             </div>
-            <div className="bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-cyan-500/50 transition-colors">
+            <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Current Streak</div>
-              <div className="text-2xl font-bold text-cyan-400 flex items-center gap-2">
-                {stats.streak} Days
-                {stats.streak >= 3 && <span className="text-orange-500">🔥</span>}
+              <div className={`text-2xl font-bold ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} flex items-center gap-2`}>
+                {currentStats.streak} Days
+                {currentStats.streak >= 3 && <span className="text-orange-500">🔥</span>}
               </div>
             </div>
-            <div className="bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-cyan-500/50 transition-colors">
+            <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Record</div>
               <div className="text-2xl font-bold">
-                <span className="text-green-400">{stats.wins}W</span>
+                <span className="text-green-400">{currentStats.wins}W</span>
                 <span className="text-slate-600 mx-1">/</span>
-                <span className="text-red-400">{stats.losses}L</span>
+                <span className="text-red-400">{currentStats.losses}L</span>
               </div>
             </div>
-            <div className="flex items-center text-xs text-slate-500 group-hover:text-cyan-400 transition-colors">
+            <div className={`flex items-center text-xs text-slate-500 group-hover:text-${activeTab === 'crypto' ? 'orange' : 'cyan'}-400 transition-colors`}>
               View Proof Log <ArrowRight className="h-3 w-3 ml-1" />
             </div>
           </div>
-          <div className="mt-4">
-            <button
-              onClick={(e) => { e.stopPropagation(); fetchSignals(); }}
-              className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 px-6 py-3 rounded-xl font-bold text-white flex items-center gap-2 transition-all"
-              data-testid="button-live-signals"
-            >
-              <Zap className="h-5 w-5" /> Live Signals
-            </button>
-          </div>
+          {activeTab === 'stocks' && (
+            <div className="mt-4">
+              <button
+                onClick={(e) => { e.stopPropagation(); fetchSignals(); }}
+                className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 px-6 py-3 rounded-xl font-bold text-white flex items-center gap-2 transition-all"
+                data-testid="button-live-signals"
+              >
+                <Zap className="h-5 w-5" /> Live Signals
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -257,9 +354,16 @@ export default function TheOracle() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              Today's Predictions <span className="text-xs font-normal text-slate-500 bg-slate-800 px-2 py-1 rounded ml-2">Live</span>
+              {activeTab === 'crypto' ? "Today's Crypto Predictions" : "Today's Predictions"} 
+              <span className={`text-xs font-normal ${activeTab === 'crypto' ? 'text-orange-400 bg-orange-500/20' : 'text-slate-500 bg-slate-800'} px-2 py-1 rounded ml-2`}>
+                {activeTab === 'crypto' ? '24/7' : 'Live'}
+              </span>
             </h3>
-            <p className="text-xs text-slate-500 mt-1">New picks posted daily at 7:30 AM ET</p>
+            <p className="text-xs text-slate-500 mt-1">
+              {activeTab === 'crypto' 
+                ? 'Crypto picks updated daily • Markets run 24/7' 
+                : 'New picks posted daily at 7:30 AM ET'}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">Sort by:</span>
@@ -277,7 +381,7 @@ export default function TheOracle() {
           </div>
         </div>
 
-        {loading ? (
+        {currentLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-64 flex flex-col justify-between animate-pulse">
@@ -305,13 +409,15 @@ export default function TheOracle() {
               </div>
             ))}
           </div>
-        ) : picks.length === 0 ? (
+        ) : currentPicks.length === 0 ? (
           <div className="p-8 border border-dashed border-slate-700 rounded-xl text-center text-slate-500">
-            No high-conviction signals found today.
+            {activeTab === 'crypto' 
+              ? 'No crypto predictions available. Check back soon!' 
+              : 'No high-conviction signals found today.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedPicks.map((pick, index) => {
+            {currentPicks.map((pick, index) => {
               const confScore = pick.confidenceScore || (pick.confidence === 'High' ? 85 : 60);
               const progress = getProgressToTarget(pick);
               const potentialReturn = ((pick.predictedPrice - pick.entryPrice) / pick.entryPrice * 100).toFixed(1);
@@ -319,31 +425,38 @@ export default function TheOracle() {
               const stopLoss = pick.stopLoss || (pick.entryPrice * 0.95);
               const rr = pick.riskRewardRatio || 2.5;
 
+              const isCrypto = activeTab === 'crypto';
+              const accentColor = isCrypto ? 'orange' : 'cyan';
+
               return (
-                <div key={pick.ticker} className="bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-cyan-500/30 transition-all group" data-testid={`oracle-pick-${pick.ticker}`}>
+                <div key={pick.ticker} className={`bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-${accentColor}-500/30 transition-all group`} data-testid={`oracle-pick-${pick.ticker}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="text-2xl font-bold text-white group-hover:text-cyan-400 transition-colors">
+                        {isCrypto && <Bitcoin className="h-5 w-5 text-orange-400" />}
+                        <h4 className={`text-2xl font-bold text-white group-hover:text-${accentColor}-400 transition-colors`}>
                           {pick.ticker}
                         </h4>
+                        {pick.name && <span className="text-xs text-slate-500 hidden md:inline">{pick.name}</span>}
                         <Popover>
                           <PopoverTrigger asChild>
-                            <button className="text-slate-500 hover:text-cyan-400" data-testid={`button-why-${pick.ticker}`}>
+                            <button className={`text-slate-500 hover:text-${accentColor}-400`} data-testid={`button-why-${pick.ticker}`}>
                               <Info className="h-4 w-4" />
                             </button>
                           </PopoverTrigger>
                           <PopoverContent className="w-72 bg-slate-900 border-slate-700 text-slate-300 text-sm">
-                            <div className="font-bold text-cyan-400 mb-2">Why this pick?</div>
+                            <div className={`font-bold text-${accentColor}-400 mb-2`}>Why this pick?</div>
                             <p className="text-xs leading-relaxed">
-                              {pick.aiReasoning || `Strong ${pick.signal.toLowerCase()} signal detected with ${confScore}% confidence. RSI at ${pick.rsi || 65} indicates ${pick.signal.includes('VALUE') ? 'oversold conditions' : 'momentum continuation'}. Sentiment analysis shows ${(pick.sentimentScore || 0.5) > 0.5 ? 'bullish' : 'neutral'} market tone.`}
+                              {pick.aiReasoning || (isCrypto 
+                                ? `Strong ${pick.signal?.toLowerCase() || 'buy'} signal detected with ${confScore}% confidence. RSI at ${pick.rsi || 50} indicates ${(pick.rsi || 50) < 40 ? 'oversold conditions' : 'momentum opportunity'}. 24/7 crypto markets offer round-the-clock trading.`
+                                : `Strong ${pick.signal.toLowerCase()} signal detected with ${confScore}% confidence. RSI at ${pick.rsi || 65} indicates ${pick.signal.includes('VALUE') ? 'oversold conditions' : 'momentum continuation'}. Sentiment analysis shows ${(pick.sentimentScore || 0.5) > 0.5 ? 'bullish' : 'neutral'} market tone.`)}
                             </p>
                           </PopoverContent>
                         </Popover>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">
-                          {pick.signal}
+                        <span className={`text-xs ${isCrypto ? 'text-orange-400 bg-orange-500/20' : 'text-slate-400 bg-slate-800'} px-2 py-0.5 rounded`}>
+                          {pick.signal || 'CRYPTO BUY'}
                         </span>
                         {getRiskBadge(riskLevel)}
                       </div>
@@ -363,11 +476,19 @@ export default function TheOracle() {
                   <div className="space-y-3 mb-4">
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Entry Zone</span>
-                      <span className="text-white font-mono">${pick.entryPrice.toFixed(2)}</span>
+                      <span className="text-white font-mono">
+                        {isCrypto && pick.entryPrice >= 1000 
+                          ? `$${pick.entryPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                          : `$${pick.entryPrice.toFixed(2)}`}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Target (AI)</span>
-                      <span className="text-cyan-400 font-mono font-bold">${pick.predictedPrice.toFixed(2)}</span>
+                      <span className={`text-${accentColor}-400 font-mono font-bold`}>
+                        {isCrypto && pick.predictedPrice >= 1000 
+                          ? `$${pick.predictedPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                          : `$${pick.predictedPrice.toFixed(2)}`}
+                      </span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Potential</span>
@@ -389,24 +510,28 @@ export default function TheOracle() {
                   <div className="flex justify-between text-xs text-slate-500 mb-4 border-t border-slate-800 pt-3">
                     <div>
                       <span className="text-slate-600">Stop Loss:</span>
-                      <span className="text-red-400 ml-1 font-mono">${stopLoss.toFixed(2)}</span>
+                      <span className="text-red-400 ml-1 font-mono">
+                        {isCrypto && stopLoss >= 1000 
+                          ? `$${stopLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                          : `$${stopLoss.toFixed(2)}`}
+                      </span>
                     </div>
                     <div>
                       <span className="text-slate-600">R:R</span>
-                      <span className="text-cyan-400 ml-1 font-mono">{rr.toFixed(1)}:1</span>
+                      <span className={`text-${accentColor}-400 ml-1 font-mono`}>{rr.toFixed(1)}:1</span>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-slate-600 mb-4">
                     <div className="flex items-center gap-1">
                       <Lock className="h-3 w-3" />
-                      <span>Locked {pick.lockedAt || '7:30 AM ET'}</span>
+                      <span>{isCrypto ? 'Markets: 24/7' : `Locked ${pick.lockedAt || '7:30 AM ET'}`}</span>
                     </div>
                   </div>
 
                   <button 
                     onClick={() => setSelectedPick(pick)}
-                    className="w-full py-2 bg-slate-800 hover:bg-cyan-600 hover:text-white text-slate-300 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
+                    className={`w-full py-2 bg-slate-800 hover:bg-${accentColor}-600 hover:text-white text-slate-300 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2`}
                     data-testid={`button-view-analysis-${pick.ticker}`}
                   >
                     View Analysis <ArrowRight className="h-4 w-4" />

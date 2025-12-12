@@ -15,14 +15,14 @@ function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-// GET /daily: Run Scan & Auto-Save to History
+// GET /daily: Run Scan & Auto-Save to History (stocks only)
 router.get('/daily', async (req, res) => {
   try {
     const today = getTodayDate();
 
-    // 1. Check if we already generated picks for TODAY in DB
+    // 1. Check if we already generated stock picks for TODAY in DB
     const existing = await db.select().from(predictions)
-      .where(sql`DATE(${predictions.predictionDate}) = ${today}`);
+      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
 
     if (existing.length > 0) {
       // Return saved picks (don't re-scan and change them mid-day)
@@ -109,7 +109,8 @@ router.get('/daily', async (req, res) => {
       await db.insert(predictions).values({
         ticker: p.ticker,
         signalType: p.signal,
-        entryPrice: p.price
+        entryPrice: p.price,
+        assetType: 'stock'
       });
     }
 
@@ -131,14 +132,14 @@ router.get('/daily', async (req, res) => {
   }
 });
 
-// POST /finalize: Record closing prices and outcomes for today's predictions
+// POST /finalize: Record closing prices and outcomes for today's stock predictions
 router.post('/finalize', async (req, res) => {
   try {
     const today = getTodayDate();
     
-    // 1. Get today's unfinalized predictions (outcome is NULL or empty)
+    // 1. Get today's unfinalized stock predictions (outcome is NULL or empty)
     const todaysPredictions = await db.select().from(predictions)
-      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
+      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
     
     if (todaysPredictions.length === 0) {
       return res.json({ success: true, message: 'No predictions to finalize', finalized: 0 });
@@ -213,11 +214,12 @@ router.get('/signals', requirePremium, async (req, res) => {
   }
 });
 
-// GET /history: The "Proof Log" with graded predictions
+// GET /history: The "Proof Log" with graded stock predictions
 router.get('/history', async (req, res) => {
   try {
-    // 1. Get all past predictions (last 50)
+    // 1. Get all past stock predictions (last 50) - filter by assetType='stock' or NULL (legacy)
     const allPredictions = await db.select().from(predictions)
+      .where(sql`(${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`)
       .orderBy(desc(predictions.predictionDate))
       .limit(50);
 
