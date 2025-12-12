@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, Users, TrendingUp, Award, ArrowLeft, Crown, RefreshCw, Ticket, Copy, Trash2, Plus } from 'lucide-react';
+import { Shield, Users, TrendingUp, Award, ArrowLeft, Crown, RefreshCw, Ticket, Copy, Trash2, Plus, Zap } from 'lucide-react';
 
 interface AdminStats {
   users: {
@@ -50,6 +50,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [finalizingStocks, setFinalizingStocks] = useState(false);
+  const [finalizingCrypto, setFinalizingCrypto] = useState(false);
+  const [finalizeResult, setFinalizeResult] = useState<string | null>(null);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -122,6 +125,28 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const forceFinalize = async (type: 'stocks' | 'crypto') => {
+    const setLoading = type === 'stocks' ? setFinalizingStocks : setFinalizingCrypto;
+    const endpoint = type === 'stocks' ? '/api/admin/force-finalize' : '/api/admin/force-finalize-crypto';
+    
+    setLoading(true);
+    setFinalizeResult(null);
+    try {
+      const res = await fetch(endpoint, { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        setFinalizeResult(`${type === 'stocks' ? 'Stocks' : 'Crypto'}: ${json.message || 'Finalized successfully'}`);
+        fetchStats();
+      } else {
+        setFinalizeResult(`Error: ${json.error || 'Failed to finalize'}`);
+      }
+    } catch (e: any) {
+      setFinalizeResult(`Error: ${e.message || 'Network error'}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -337,6 +362,47 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Force Finalize Section */}
+        <div className="bg-slate-900 border border-red-800/50 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Zap className="h-5 w-5 text-red-400" /> Force Finalize Predictions
+            </h3>
+          </div>
+          <p className="text-sm text-slate-400 mb-4">
+            Manually finalize today's predictions with closing prices. Use this if the scheduled finalization didn't run.
+          </p>
+          <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={() => forceFinalize('stocks')}
+              disabled={finalizingStocks}
+              className="px-4 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded-lg flex items-center gap-2 border border-cyan-500/30 disabled:opacity-50 transition-all"
+              data-testid="button-force-finalize-stocks"
+            >
+              <Zap className="h-4 w-4" />
+              {finalizingStocks ? 'Finalizing Stocks...' : 'Finalize Stocks'}
+            </button>
+            <button
+              onClick={() => forceFinalize('crypto')}
+              disabled={finalizingCrypto}
+              className="px-4 py-2 bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 rounded-lg flex items-center gap-2 border border-orange-500/30 disabled:opacity-50 transition-all"
+              data-testid="button-force-finalize-crypto"
+            >
+              <Zap className="h-4 w-4" />
+              {finalizingCrypto ? 'Finalizing Crypto...' : 'Finalize Crypto'}
+            </button>
+          </div>
+          {finalizeResult && (
+            <div className={`mt-4 p-3 rounded-lg text-sm ${
+              finalizeResult.startsWith('Error') 
+                ? 'bg-red-900/30 text-red-400 border border-red-500/30' 
+                : 'bg-green-900/30 text-green-400 border border-green-500/30'
+            }`}>
+              {finalizeResult}
+            </div>
+          )}
         </div>
 
         {showUsers && (

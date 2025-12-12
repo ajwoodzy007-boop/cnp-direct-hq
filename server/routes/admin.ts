@@ -243,4 +243,39 @@ router.delete('/beta-passes/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// Force finalize today's predictions (admin only)
+router.post('/force-finalize', requireAdmin, async (req, res) => {
+  try {
+    // Call the oracle finalize endpoint internally
+    const response = await fetch(`http://localhost:${process.env.PORT || 5000}/api/oracle/finalize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const result = await response.json();
+    
+    console.log('[ADMIN] Force finalize result:', result);
+    res.json({ success: true, ...result });
+  } catch (e: any) {
+    console.error('Force finalize error:', e);
+    res.status(500).json({ success: false, error: e.message || "Failed to force finalize" });
+  }
+});
+
+// Force finalize crypto predictions (admin only)
+router.post('/force-finalize-crypto', requireAdmin, async (req, res) => {
+  try {
+    const response = await fetch(`http://localhost:${process.env.PORT || 5000}/api/oracle/crypto-finalize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const result = await response.json();
+    
+    console.log('[ADMIN] Force crypto finalize result:', result);
+    res.json({ success: true, ...result });
+  } catch (e: any) {
+    console.error('Force crypto finalize error:', e);
+    res.status(500).json({ success: false, error: e.message || "Failed to force finalize crypto" });
+  }
+});
+
 export default router;
