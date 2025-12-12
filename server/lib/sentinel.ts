@@ -74,7 +74,7 @@ async function analyzeStock(ticker: string): Promise<SentinelResult | null> {
     else if (currentRSI < 45 && avgSentiment > -0.2) {
       signal = 'VALUE BUY';
     }
-    else if (currentRSI > 80) {
+    else if (currentRSI > 80 || (avgSentiment <= 0 && quote.regularMarketChangePercent < -8)) {
       signal = 'SELL WARNING';
     }
 
@@ -97,16 +97,32 @@ async function analyzeStock(ticker: string): Promise<SentinelResult | null> {
 
 export const runMarketScan = async (): Promise<SentinelResult[]> => {
   try {
-    const screenerResult = await yf.screener({ scrIds: 'day_gainers', count: 10 }) as any;
+    // Scan both gainers (for BUY signals) and losers (for SELL WARNING signals)
+    const [gainersResult, losersResult] = await Promise.all([
+      yf.screener({ scrIds: 'day_gainers', count: 8 }) as any,
+      yf.screener({ scrIds: 'day_losers', count: 5 }) as any
+    ]);
     
-    const tickers = screenerResult.quotes
+    const gainerTickers = gainersResult.quotes
       .map((q: any) => q.symbol)
-      .slice(0, 10);
+      .slice(0, 8);
+    
+    const loserTickers = losersResult.quotes
+      .map((q: any) => q.symbol)
+      .slice(0, 5);
+    
+    // Combine and dedupe
+    const allTickers = Array.from(new Set([...gainerTickers, ...loserTickers]));
 
-    const promises = tickers.map((t: string) => analyzeStock(t));
+    const promises = allTickers.map((t: string) => analyzeStock(t));
     const results = await Promise.all(promises);
 
-    return results.filter((r): r is SentinelResult => r !== null);
+    // Sort: BUY signals first, then WARNING, then WAIT
+    const filtered = results.filter((r): r is SentinelResult => r !== null);
+    return filtered.sort((a, b) => {
+      const order = { 'MOMENTUM BUY': 0, 'VALUE BUY': 1, 'SPECULATIVE BUY': 2, 'SELL WARNING': 3, 'WAIT': 4 };
+      return (order[a.signal] || 5) - (order[b.signal] || 5);
+    });
 
   } catch (error) {
     console.error("Scanner failed:", error);
