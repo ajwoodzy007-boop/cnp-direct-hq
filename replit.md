@@ -151,3 +151,27 @@ The Predictions tab (Top 10 Daily Picks) includes enhanced UI features:
 - Win streak calculated from resolved entries only (ignoring pending)
 - Risk metrics (stopLoss, riskLevel, riskRewardRatio, volatility) have default fallbacks
 - TypeScript interfaces updated: `Top10Pick` includes risk fields, `PredictionStats` includes winStreak
+
+## The Oracle - Crypto Predictions
+
+The Oracle now includes separate tabs for Stock and Crypto predictions with full data isolation:
+
+### Crypto Oracle Endpoints
+- `GET /api/oracle/crypto-daily` - Generate/retrieve daily crypto predictions (10 picks)
+- `POST /api/oracle/crypto-finalize` - Finalize crypto predictions with closing prices
+- `GET /api/oracle/crypto-history` - Retrieve crypto prediction history with stats
+
+### Data Separation
+- **predictions table** now includes `assetType` field ('stock' or 'crypto')
+- All stock endpoints filter by `assetType='stock'` (or NULL for legacy)
+- All crypto endpoints filter by `assetType='crypto'`
+- Complete separation ensures no data leakage between asset classes
+
+### Scheduler Timing
+- **Stocks**: Generate at 7:30 AM ET, finalize at 4:15 PM ET (market hours)
+- **Crypto**: Generate at 8:00 AM ET, finalize at 11:59 PM ET (24/7 markets)
+
+### UI Theming
+- Stocks tab uses cyan accent color (`bg-cyan-600`, `text-cyan-500`)
+- Crypto tab uses orange accent color (`bg-orange-600`, `text-orange-500`)
+- Visual distinction helps users quickly identify asset type
