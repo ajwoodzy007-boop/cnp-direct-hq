@@ -320,3 +320,24 @@ export const insertAiModelMetricSchema = createInsertSchema(aiModelMetrics).omit
 
 export type InsertAiModelMetric = z.infer<typeof insertAiModelMetricSchema>;
 export type AiModelMetric = typeof aiModelMetrics.$inferSelect;
+
+// Beta passes for 7-day trial access
+export const betaPasses = pgTable("beta_passes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  redeemedBy: varchar("redeemed_by").references(() => users.id),
+  redeemedAt: timestamp("redeemed_at"),
+  createdByAdmin: text("created_by_admin"),
+});
+
+export const insertBetaPassSchema = createInsertSchema(betaPasses).omit({
+  id: true,
+  createdAt: true,
+  redeemedBy: true,
+  redeemedAt: true,
+});
+
+export type InsertBetaPass = z.infer<typeof insertBetaPassSchema>;
+export type BetaPass = typeof betaPasses.$inferSelect;
