@@ -73,8 +73,9 @@ export default function AboutModal({ onClose, onSignUp, isLoggedIn }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
-      <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700 w-full max-w-4xl rounded-2xl shadow-2xl my-8">
+    <div className="fixed inset-0 z-[70] bg-slate-950/95 backdrop-blur-md animate-in fade-in duration-300 overflow-y-auto">
+      <div className="min-h-full flex items-start justify-center p-4 py-8">
+        <div className="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-700 w-full max-w-4xl rounded-2xl shadow-2xl">
         
         <div className="relative p-8 border-b border-slate-800 text-center overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-transparent to-cyan-500/5" />
@@ -207,6 +208,7 @@ export default function AboutModal({ onClose, onSignUp, isLoggedIn }: Props) {
           >
             Close
           </button>
+        </div>
         </div>
       </div>
     </div>
