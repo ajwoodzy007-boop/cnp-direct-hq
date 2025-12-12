@@ -15,54 +15,18 @@ function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-// Helper to fetch the actual 9:30 AM market open price using chart data
+// Helper to fetch the official market open price using Yahoo Finance quote API
 async function getActualOpenPrice(ticker: string): Promise<number | null> {
   try {
     const yf = typeof yahooFinance === 'function' ? new yahooFinance() : yahooFinance;
     
-    // Get today's date for the query
-    const now = new Date();
-    const startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
+    // Use the quote API which provides the official regularMarketOpen
+    // This is the actual opening auction price, not the first trade
+    const quote = await yf.quote(ticker);
     
-    // Fetch 1-minute candles for today
-    const chart = await yf.chart(ticker, {
-      period1: startOfDay,
-      period2: now,
-      interval: '1m'
-    });
-    
-    if (chart && chart.quotes && chart.quotes.length > 0) {
-      // Find the first candle at or after 9:30 AM ET (14:30 UTC during EST, 13:30 UTC during EDT)
-      // The first regular session candle should have the true open price
-      for (const candle of chart.quotes) {
-        if (candle.open && candle.open > 0) {
-          const candleTime = new Date(candle.date);
-          const hour = candleTime.getHours();
-          const minute = candleTime.getMinutes();
-          
-          // Check if this is around 9:30 AM ET (convert from UTC)
-          // During EDT: 9:30 AM ET = 13:30 UTC
-          // During EST: 9:30 AM ET = 14:30 UTC
-          // We'll look for candles between 13:30 and 14:35 UTC to be safe
-          const utcHours = candleTime.getUTCHours();
-          const utcMinutes = candleTime.getUTCMinutes();
-          const utcTime = utcHours * 60 + utcMinutes;
-          
-          // 13:30 UTC = 810 minutes, 14:35 UTC = 875 minutes
-          if (utcTime >= 810 && utcTime <= 875) {
-            console.log(`[Oracle] Found 9:30 AM open for ${ticker}: $${candle.open} at ${candleTime.toISOString()}`);
-            return candle.open;
-          }
-        }
-      }
-      
-      // Fallback: just use the first candle's open
-      const firstCandle = chart.quotes.find((c: any) => c.open && c.open > 0);
-      if (firstCandle) {
-        console.log(`[Oracle] Using first available candle open for ${ticker}: $${firstCandle.open}`);
-        return firstCandle.open;
-      }
+    if (quote && quote.regularMarketOpen && quote.regularMarketOpen > 0) {
+      console.log(`[Oracle] Official open for ${ticker}: $${quote.regularMarketOpen}`);
+      return quote.regularMarketOpen;
     }
     
     return null;
