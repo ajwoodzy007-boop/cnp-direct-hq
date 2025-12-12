@@ -8,7 +8,8 @@ import {
   Menu,
   ShieldCheck,
   LogOut,
-  LogIn
+  LogIn,
+  Home
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -27,6 +28,7 @@ export default function AppLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
+    { id: 'summary', label: 'Command Center', icon: Home, desc: 'Overview' },
     { id: 'radar', label: 'The Radar', icon: Radar, desc: 'Scanner & News' },
     { id: 'oracle', label: 'The Oracle', icon: Target, desc: 'Daily Predictions' },
     { id: 'strategist', label: 'The Strategist', icon: BrainCircuit, desc: 'AI Playbooks' },

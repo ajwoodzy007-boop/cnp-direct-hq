@@ -16,6 +16,7 @@ import TheOracle from './components/TheOracle';
 import TheStrategist from './components/TheStrategist';
 import TheVault from './components/TheVault';
 import TheAcademy from './components/TheAcademy';
+import TheSummary from './components/TheSummary';
 import SettingsModal from './components/SettingsModal';
 import Pricing from "@/pages/Pricing";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
@@ -24,7 +25,7 @@ import AiAssistant from './components/AiAssistant';
 import AdminDashboard from './components/AdminDashboard';
 
 function MainDashboard() {
-  const [currentTab, setTab] = useState('radar');
+  const [currentTab, setTab] = useState('summary');
   const [user, setUser] = useState<{ email: string; tier: string } | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -55,12 +56,13 @@ function MainDashboard() {
   const handleLogout = () => {
     fetch('/api/auth/logout', { method: 'POST' }).then(() => {
       setUser(null);
-      setTab('radar');
+      setTab('summary');
     });
   };
 
   const renderContent = () => {
     switch (currentTab) {
+      case 'summary': return <TheSummary onNavigate={setTab} />;
       case 'radar': return <MarketRadar />;
       case 'academy': return <TheAcademy />;
       case 'oracle': 
@@ -74,7 +76,7 @@ function MainDashboard() {
       case 'vault': 
         if (!user) return <AuthLock featureName="The Vault" description="is your secure trading journal. You must be logged in to save your trade history, track your P&L, and analyze your win rate." onLoginClick={() => setShowAuthModal(true)} />;
         return <TheVault />;
-      default: return <MarketRadar />;
+      default: return <TheSummary onNavigate={setTab} />;
     }
   };
 

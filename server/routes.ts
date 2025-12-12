@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { scanMarket, getChartData, getNews, getSentimentTrend } from "./lib/marketData";
 import { runMarketScan as runSentinelScan } from "./lib/sentinel";
 import { storage } from "./storage";
+import { query } from "./db";
 import { insertPredictionSchema, insertWatchlistSchema } from "@shared/schema";
 import OpenAI from "openai";
 import { z } from "zod";
@@ -294,6 +295,71 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Remove from watchlist error:", error);
       res.status(500).json({ success: false, error: "Failed to remove from watchlist" });
+    }
+  });
+
+  // GET /api/predictions/today - Get today's predictions for summary
+  app.get("/api/predictions/today", async (req, res) => {
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const result = await query(
+        `SELECT dpe.* FROM daily_prediction_entries dpe
+         JOIN daily_prediction_runs dpr ON dpe.run_id = dpr.id
+         WHERE dpr.run_date = $1
+         ORDER BY dpe.rank ASC`,
+        [today]
+      );
+      const predictions = result.rows.map((row: any) => ({
+        ticker: row.ticker,
+        signal: row.signal,
+        confidence: row.confidence || 75,
+        targetPrice: row.target_price,
+        currentPrice: row.entry_price
+      }));
+      res.json({ predictions });
+    } catch (error) {
+      console.error("Get today's predictions error:", error);
+      res.json({ predictions: [] });
+    }
+  });
+
+  // GET /api/portfolio/summary - Get portfolio summary for dashboard
+  app.get("/api/portfolio/summary", async (req, res) => {
+    try {
+      const user = (req.session as any)?.user;
+      if (!user) {
+        return res.json({ summary: null });
+      }
+      const holdings = await query(
+        `SELECT * FROM user_portfolio WHERE user_id = $1`,
+        [user.id]
+      );
+      if (holdings.rows.length === 0) {
+        return res.json({ summary: null });
+      }
+      let totalValue = 0;
+      let dayChange = 0;
+      let topHolding: { ticker: string; value: number } | null = null;
+      
+      for (const h of holdings.rows) {
+        const value = (h.shares || 0) * (h.current_price || h.avg_cost || 0);
+        totalValue += value;
+        if (!topHolding || value > topHolding.value) {
+          topHolding = { ticker: h.ticker, value };
+        }
+      }
+      
+      res.json({
+        summary: {
+          totalValue,
+          dayChange: dayChange,
+          dayChangePercent: totalValue > 0 ? (dayChange / totalValue * 100) : 0,
+          topHolding
+        }
+      });
+    } catch (error) {
+      console.error("Get portfolio summary error:", error);
+      res.json({ summary: null });
     }
   });
 
