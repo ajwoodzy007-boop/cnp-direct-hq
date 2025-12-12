@@ -43,6 +43,7 @@ export default function TheOracle() {
   const [showHistory, setShowHistory] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0, streak: 0 });
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
 
   // Fetch real stats & history
   const fetchHistory = async () => {
@@ -550,13 +551,18 @@ export default function TheOracle() {
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   {historyData.map((trade, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/30 transition-colors" data-testid={`history-row-${idx}`}>
+                    <tr 
+                      key={idx} 
+                      onClick={() => setSelectedHistoryItem(trade)}
+                      className="hover:bg-slate-800/50 transition-colors cursor-pointer group" 
+                      data-testid={`history-row-${idx}`}
+                    >
                       <td className="px-4 py-4 font-bold text-white">{trade.ticker}</td>
                       <td className="px-4 py-4 text-slate-400">{trade.date ? new Date(trade.date).toLocaleDateString() : '-'}</td>
                       <td className="px-4 py-4 text-slate-400">{trade.type}</td>
                       <td className="px-4 py-4 font-mono text-slate-300">${Number(trade.entry).toFixed(2)}</td>
                       <td className="px-4 py-4 font-mono text-slate-300">${Number(trade.exit).toFixed(2)}</td>
-                      <td className="px-4 py-4 text-right">
+                      <td className="px-4 py-4 text-right flex items-center justify-end gap-2">
                         <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
                           trade.profitPercent > 0 
                             ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
@@ -565,6 +571,7 @@ export default function TheOracle() {
                           {trade.profitPercent > 0 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
                           {trade.profitPercent > 0 ? '+' : ''}{Number(trade.profitPercent).toFixed(2)}%
                         </div>
+                        <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
                       </td>
                     </tr>
                   ))}
@@ -585,6 +592,83 @@ export default function TheOracle() {
                 AUDIT ID: {Math.floor(Math.random() * 99999999).toString().padStart(8, '0')} • DATA INTEGRITY VERIFIED
               </p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trade Recap Modal (Sub-Modal for History) */}
+      {selectedHistoryItem && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in zoom-in-95 duration-200">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
+            
+            <button 
+              onClick={() => setSelectedHistoryItem(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white"
+              data-testid="button-close-recap"
+            >
+              <X className="h-6 w-6" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-slate-800 border border-slate-700 mb-4">
+                <span className="text-2xl font-bold text-white">{selectedHistoryItem.ticker}</span>
+              </div>
+              <h3 className="text-xl font-bold text-white">Trade Recap</h3>
+              <p className="text-sm text-slate-500 uppercase tracking-wider">
+                {selectedHistoryItem.date ? new Date(selectedHistoryItem.date).toLocaleDateString() : '-'} • {selectedHistoryItem.type}
+              </p>
+            </div>
+
+            {/* P/L Highlight */}
+            <div className={`text-center p-4 rounded-xl border mb-6 ${
+              selectedHistoryItem.profitPercent > 0 
+                ? 'bg-green-500/10 border-green-500/20' 
+                : 'bg-red-500/10 border-red-500/20'
+            }`}>
+              <div className="text-xs font-bold uppercase opacity-70 mb-1">Performance</div>
+              <div className={`text-3xl font-bold ${
+                selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {selectedHistoryItem.profitPercent > 0 ? '+' : ''}{Number(selectedHistoryItem.profitPercent).toFixed(2)}%
+              </div>
+            </div>
+
+            {/* Data Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                  <TrendingUp className="h-3 w-3" /> Entry Price
+                </div>
+                <div className="font-mono text-lg text-white">${Number(selectedHistoryItem.entry).toFixed(2)}</div>
+              </div>
+
+              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                  <Target className="h-3 w-3" /> Exit Price
+                </div>
+                <div className="font-mono text-lg text-white">${Number(selectedHistoryItem.exit).toFixed(2)}</div>
+              </div>
+            </div>
+
+            {/* Dollar Change */}
+            <div className="mt-4 bg-slate-950 p-4 rounded-lg border border-slate-800">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-slate-500">Dollar Change</span>
+                <span className={`font-mono font-bold ${
+                  selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
+                }`}>
+                  {selectedHistoryItem.profitPercent > 0 ? '+' : ''}${(Number(selectedHistoryItem.exit) - Number(selectedHistoryItem.entry)).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="mt-6 text-center">
+              <div className="text-[10px] text-slate-600">
+                SENTINEL AUTO-LOG • RECORDED {selectedHistoryItem.date ? new Date(selectedHistoryItem.date).toLocaleDateString() : '-'}
+              </div>
+            </div>
+
           </div>
         </div>
       )}
