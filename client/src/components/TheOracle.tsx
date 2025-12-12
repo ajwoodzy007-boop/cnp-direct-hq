@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, TrendingDown, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin, Scan, BrainCircuit, ChevronRight } from 'lucide-react';
+import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, TrendingDown, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin, Scan, BrainCircuit, ChevronRight, Clock } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import PremiumLock from './PremiumLock';
@@ -784,12 +784,23 @@ export default function TheOracle() {
                       <td className="px-4 py-4 font-mono text-slate-300">${Number(trade.exit).toFixed(2)}</td>
                       <td className="px-4 py-4 text-right flex items-center justify-end gap-2">
                         <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
-                          trade.profitPercent > 0 
-                            ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          trade.outcome === 'PENDING'
+                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            : trade.profitPercent > 0 
+                              ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
                         }`}>
-                          {trade.profitPercent > 0 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                          {trade.profitPercent > 0 ? '+' : ''}{Number(trade.profitPercent).toFixed(2)}%
+                          {trade.outcome === 'PENDING' ? (
+                            <>
+                              <Clock className="h-3 w-3" />
+                              Pending
+                            </>
+                          ) : (
+                            <>
+                              {trade.profitPercent > 0 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                              {trade.profitPercent > 0 ? '+' : ''}{Number(trade.profitPercent).toFixed(2)}%
+                            </>
+                          )}
                         </div>
                         <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
                       </td>
@@ -841,15 +852,22 @@ export default function TheOracle() {
 
             {/* P/L Highlight */}
             <div className={`text-center p-4 rounded-xl border mb-6 ${
-              selectedHistoryItem.profitPercent > 0 
-                ? 'bg-green-500/10 border-green-500/20' 
-                : 'bg-red-500/10 border-red-500/20'
+              selectedHistoryItem.outcome === 'PENDING'
+                ? 'bg-amber-500/10 border-amber-500/20'
+                : selectedHistoryItem.profitPercent > 0 
+                  ? 'bg-green-500/10 border-green-500/20' 
+                  : 'bg-red-500/10 border-red-500/20'
             }`}>
               <div className="text-xs font-bold uppercase opacity-70 mb-1">Performance</div>
               <div className={`text-3xl font-bold ${
-                selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
+                selectedHistoryItem.outcome === 'PENDING'
+                  ? 'text-amber-400'
+                  : selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
               }`}>
-                {selectedHistoryItem.profitPercent > 0 ? '+' : ''}{Number(selectedHistoryItem.profitPercent).toFixed(2)}%
+                {selectedHistoryItem.outcome === 'PENDING' 
+                  ? 'Pending' 
+                  : `${selectedHistoryItem.profitPercent > 0 ? '+' : ''}${Number(selectedHistoryItem.profitPercent).toFixed(2)}%`
+                }
               </div>
             </div>
 
@@ -875,9 +893,14 @@ export default function TheOracle() {
               <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-500">Dollar Change</span>
                 <span className={`font-mono font-bold ${
-                  selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
+                  selectedHistoryItem.outcome === 'PENDING'
+                    ? 'text-amber-400'
+                    : selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
                 }`}>
-                  {selectedHistoryItem.profitPercent > 0 ? '+' : ''}${(Number(selectedHistoryItem.exit) - Number(selectedHistoryItem.entry)).toFixed(2)}
+                  {selectedHistoryItem.outcome === 'PENDING' 
+                    ? '—' 
+                    : `${selectedHistoryItem.profitPercent > 0 ? '+' : ''}$${(Number(selectedHistoryItem.exit) - Number(selectedHistoryItem.entry)).toFixed(2)}`
+                  }
                 </span>
               </div>
             </div>
