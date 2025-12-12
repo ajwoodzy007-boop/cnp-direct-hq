@@ -11,8 +11,8 @@ export default function TheAcademy() {
 
   const resources = [
     { name: "TradingView Charts", desc: "Advanced Charting Software", link: "#", icon: TrendingUp },
-    { name: "Robinhood / Webull", desc: "Brokerage Account Setup", link: "#", icon: Zap },
-    { name: "Benzinga Pro", desc: "Real-time News Squawk", link: "#", icon: Shield },
+    { name: "Partner Integrations", desc: "Coming Soon", link: "#", icon: Zap },
+    { name: "News & Data Partners", desc: "Coming Soon", link: "#", icon: Shield },
   ];
 
   useEffect(() => {
