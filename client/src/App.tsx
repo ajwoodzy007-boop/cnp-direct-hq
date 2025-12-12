@@ -21,6 +21,7 @@ import Pricing from "@/pages/Pricing";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
 import AiAssistant from './components/AiAssistant';
+import AdminDashboard from './components/AdminDashboard';
 
 function MainDashboard() {
   const [currentTab, setTab] = useState('radar');
@@ -29,6 +30,8 @@ function MainDashboard() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'terms' | 'privacy' | 'risk' | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -39,6 +42,15 @@ function MainDashboard() {
       })
       .catch(() => setLoadingUser(false));
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetch('/api/admin/check')
+        .then(res => res.json())
+        .then(json => setIsAdmin(json.isAdmin))
+        .catch(() => setIsAdmin(false));
+    }
+  }, [user]);
 
   const handleLogout = () => {
     fetch('/api/auth/logout', { method: 'POST' }).then(() => {
@@ -67,6 +79,10 @@ function MainDashboard() {
   };
 
   if (loadingUser) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-cyan-500 animate-pulse font-mono text-sm">Initializing Sentinel OS...</div>;
+
+  if (showAdmin && isAdmin) {
+    return <AdminDashboard onBack={() => setShowAdmin(false)} />;
+  }
 
   if (legalPage) {
     return <LegalPage page={legalPage} onBack={() => setLegalPage(null)} />;
@@ -118,7 +134,9 @@ function MainDashboard() {
         <SettingsModal 
           user={user} 
           onClose={() => setShowSettings(false)} 
-          onLogout={handleLogout} 
+          onLogout={handleLogout}
+          isAdmin={isAdmin}
+          onAdminClick={() => { setShowSettings(false); setShowAdmin(true); }}
         />
       )}
     </>

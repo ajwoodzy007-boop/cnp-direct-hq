@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { X, CreditCard, User, LogOut } from 'lucide-react';
+import { X, CreditCard, User, LogOut, Shield } from 'lucide-react';
 
 interface Props {
   user: { email: string; tier: string };
   onClose: () => void;
   onLogout: () => void;
+  isAdmin?: boolean;
+  onAdminClick?: () => void;
 }
 
-export default function SettingsModal({ user, onClose, onLogout }: Props) {
+export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdminClick }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleManageBilling = async () => {
@@ -74,6 +76,20 @@ export default function SettingsModal({ user, onClose, onLogout }: Props) {
               </div>
               <div className="text-xs text-slate-500 group-hover:text-white">Invoices & Cancel</div>
             </button>
+
+            {isAdmin && onAdminClick && (
+              <button 
+                onClick={onAdminClick}
+                className="w-full bg-red-900/20 hover:bg-red-900/30 text-red-400 p-3 rounded-lg flex items-center justify-between group transition-all border border-red-500/20 hover:border-red-500/40"
+                data-testid="button-admin-dashboard"
+              >
+                <div className="flex items-center gap-3">
+                  <Shield className="h-5 w-5" />
+                  <div className="text-sm font-medium">Admin Dashboard</div>
+                </div>
+                <div className="text-xs text-red-500/70">Command Center</div>
+              </button>
+            )}
 
             <button 
               onClick={onLogout}

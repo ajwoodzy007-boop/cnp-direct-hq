@@ -7,6 +7,7 @@ import { runMigrations } from "stripe-replit-sync";
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import authRouter from "./routes/auth";
+import adminRouter from "./routes/admin";
 import { initDb } from "./db";
 
 const app = express();
@@ -134,6 +135,7 @@ app.use(session({
 
 // Auth routes
 app.use('/api/auth', authRouter);
+app.use('/api/admin', adminRouter);
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {

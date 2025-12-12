@@ -1,0 +1,263 @@
+import { useState, useEffect } from 'react';
+import { Shield, Users, TrendingUp, Award, ArrowLeft, Crown, RefreshCw } from 'lucide-react';
+
+interface AdminStats {
+  users: {
+    total: number;
+    byTier: Record<string, number>;
+  };
+  predictions: {
+    total: number;
+    wins: number;
+    losses: number;
+    winRate: string;
+  };
+  recentUsers: Array<{ id: string; email: string; tier: string }>;
+  recentRuns: Array<{ id: number; run_date: string; created_at: string }>;
+}
+
+interface UserRow {
+  id: string;
+  email: string;
+  tier: string;
+}
+
+export default function AdminDashboard({ onBack }: { onBack: () => void }) {
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [users, setUsers] = useState<UserRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showUsers, setShowUsers] = useState(false);
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  const fetchStats = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/stats');
+      const json = await res.json();
+      if (json.success) setStats(json.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/admin/users');
+      const json = await res.json();
+      if (json.success) setUsers(json.users);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const handleToggleTier = async (userId: string, currentTier: string) => {
+    const newTier = currentTier === 'PREMIUM' ? 'FREE' : 'PREMIUM';
+    setUpdating(userId);
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/tier`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier: newTier })
+      });
+      if (res.ok) {
+        setUsers(users.map(u => u.id === userId ? { ...u, tier: newTier } : u));
+        fetchStats();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const handleShowUsers = () => {
+    setShowUsers(true);
+    fetchUsers();
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-cyan-400 animate-pulse">Loading admin data...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-950 p-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={onBack}
+              className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              data-testid="button-admin-back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-red-600/20 border border-red-500/30 flex items-center justify-center">
+                <Shield className="h-6 w-6 text-red-400" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
+                <p className="text-sm text-slate-500">Sentinel Command Center</p>
+              </div>
+            </div>
+          </div>
+          <button 
+            onClick={fetchStats}
+            className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-cyan-400 transition-colors"
+            data-testid="button-refresh-stats"
+          >
+            <RefreshCw className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <Users className="h-5 w-5 text-cyan-400" />
+              <span className="text-slate-400 text-sm">Total Users</span>
+            </div>
+            <div className="text-3xl font-bold text-white">{stats?.users.total || 0}</div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <Crown className="h-5 w-5 text-amber-400" />
+              <span className="text-slate-400 text-sm">Premium Users</span>
+            </div>
+            <div className="text-3xl font-bold text-amber-400">{stats?.users.byTier?.PREMIUM || 0}</div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <TrendingUp className="h-5 w-5 text-green-400" />
+              <span className="text-slate-400 text-sm">Total Predictions</span>
+            </div>
+            <div className="text-3xl font-bold text-white">{stats?.predictions.total || 0}</div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="flex items-center gap-3 mb-2">
+              <Award className="h-5 w-5 text-green-400" />
+              <span className="text-slate-400 text-sm">Win Rate</span>
+            </div>
+            <div className="text-3xl font-bold text-green-400">{stats?.predictions.winRate || 0}%</div>
+            <div className="text-xs text-slate-500 mt-1">
+              {stats?.predictions.wins || 0}W / {stats?.predictions.losses || 0}L
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">Recent Sign-ups</h3>
+              <button 
+                onClick={handleShowUsers}
+                className="text-sm text-cyan-400 hover:text-cyan-300"
+                data-testid="button-view-all-users"
+              >
+                View All
+              </button>
+            </div>
+            <div className="space-y-3">
+              {stats?.recentUsers?.map(user => (
+                <div key={user.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                  <div className="text-white text-sm">{user.email}</div>
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    user.tier === 'PREMIUM' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400'
+                  }`}>
+                    {user.tier}
+                  </span>
+                </div>
+              ))}
+              {(!stats?.recentUsers || stats.recentUsers.length === 0) && (
+                <div className="text-slate-500 text-sm text-center py-4">No users yet</div>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <h3 className="text-lg font-semibold text-white mb-4">Recent Prediction Runs</h3>
+            <div className="space-y-3">
+              {stats?.recentRuns?.map(run => (
+                <div key={run.id} className="flex items-center justify-between p-3 bg-slate-800/50 rounded-lg">
+                  <div className="text-white text-sm">Daily Top 10</div>
+                  <div className="text-slate-400 text-sm">{run.run_date}</div>
+                </div>
+              ))}
+              {(!stats?.recentRuns || stats.recentRuns.length === 0) && (
+                <div className="text-slate-500 text-sm text-center py-4">No prediction runs yet</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {showUsers && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white">All Users</h3>
+              <button 
+                onClick={() => setShowUsers(false)}
+                className="text-sm text-slate-400 hover:text-white"
+              >
+                Close
+              </button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-800">
+                    <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Email</th>
+                    <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Tier</th>
+                    <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(user => (
+                    <tr key={user.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="py-3 px-4 text-white text-sm">{user.email}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          user.tier === 'PREMIUM' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400'
+                        }`}>
+                          {user.tier}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => handleToggleTier(user.id, user.tier)}
+                          disabled={updating === user.id}
+                          className={`text-xs px-3 py-1.5 rounded transition-colors ${
+                            user.tier === 'PREMIUM' 
+                              ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' 
+                              : 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400'
+                          } disabled:opacity-50`}
+                          data-testid={`button-toggle-tier-${user.id}`}
+                        >
+                          {updating === user.id ? '...' : user.tier === 'PREMIUM' ? 'Downgrade' : 'Upgrade'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
