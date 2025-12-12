@@ -32,6 +32,7 @@ router.get('/daily', async (req, res) => {
         data: existing.map(row => ({
           ticker: row.ticker,
           entryPrice: row.entryPrice,
+          openPrice: row.openPrice || row.entryPrice,
           predictedPrice: row.entryPrice * 1.05,
           signal: row.signalType,
           confidence: row.signalType === 'MOMENTUM BUY' ? 'High' : 'Med',
@@ -477,6 +478,7 @@ router.get('/crypto-daily', async (req, res) => {
         data: existing.map(row => ({
           ticker: row.ticker,
           entryPrice: row.entryPrice,
+          openPrice: row.openPrice || row.entryPrice,
           predictedPrice: row.entryPrice * 1.08,
           signal: row.signalType,
           confidence: row.signalType === 'MOMENTUM BUY' ? 'High' : 'Med',
