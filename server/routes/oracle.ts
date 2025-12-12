@@ -130,6 +130,7 @@ router.get('/daily', async (req, res) => {
         ticker: p.ticker,
         signalType: p.signal,
         entryPrice: p.price,
+        openPrice: p.openPrice || p.price,
         assetType: 'stock'
       });
     }
@@ -234,6 +235,7 @@ router.post('/admin/regenerate', async (req, res) => {
         ticker: p.ticker,
         signalType: p.signal,
         entryPrice: p.price,
+        openPrice: p.openPrice || p.price,
         assetType: 'stock'
       });
     }
@@ -520,6 +522,7 @@ router.get('/crypto-daily', async (req, res) => {
         ticker: p.ticker,
         signalType: p.signal || 'CRYPTO BUY',
         entryPrice: p.price,
+        openPrice: p.openPrice || p.price,
         assetType: 'crypto'
       });
     }

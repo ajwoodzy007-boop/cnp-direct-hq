@@ -23,6 +23,7 @@ export const predictions = pgTable("predictions", {
   ticker: text("ticker").notNull(),
   signalType: text("signal_type").notNull(),
   entryPrice: real("entry_price").notNull(),
+  openPrice: real("open_price"),
   predictionDate: timestamp("prediction_date").notNull().defaultNow(),
   outcome: text("outcome"),
   outcomePrice: real("outcome_price"),
