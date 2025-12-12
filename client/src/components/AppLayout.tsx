@@ -9,7 +9,8 @@ import {
   ShieldCheck,
   LogOut,
   LogIn,
-  Home
+  Home,
+  Info
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -52,17 +53,23 @@ export default function AppLayout({
           md:relative md:translate-x-0
         `}
       >
-        <button 
-          onClick={onAboutClick}
-          className="h-16 flex items-center gap-3 px-6 border-b border-slate-800 w-full hover:bg-slate-800/50 transition-colors group"
-          data-testid="button-about"
-        >
-          <ShieldCheck className="text-cyan-500 h-8 w-8 group-hover:scale-110 transition-transform" />
-          <div className="text-left">
-            <h1 className="font-bold text-white tracking-wide group-hover:text-cyan-400 transition-colors">CNP DIRECT</h1>
-            <p className="text-[10px] text-cyan-500 font-mono tracking-widest">SENTINEL OS v2.0</p>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="text-cyan-500 h-8 w-8" />
+            <div>
+              <h1 className="font-bold text-white tracking-wide">CNP DIRECT</h1>
+              <p className="text-[10px] text-cyan-500 font-mono tracking-widest">SENTINEL OS v2.0</p>
+            </div>
           </div>
-        </button>
+          <button 
+            onClick={onAboutClick}
+            className="h-8 w-8 rounded-lg bg-slate-800 hover:bg-cyan-500/20 border border-slate-700 hover:border-cyan-500/50 flex items-center justify-center transition-all group"
+            title="About CNP Direct"
+            data-testid="button-about"
+          >
+            <Info className="h-4 w-4 text-slate-400 group-hover:text-cyan-400 transition-colors" />
+          </button>
+        </div>
 
         <nav className="p-4 space-y-2">
           {navItems.map((item) => {
@@ -126,10 +133,17 @@ export default function AppLayout({
       <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
         
         <header className="md:hidden h-16 bg-slate-900 border-b border-slate-800 flex items-center px-4 justify-between shrink-0">
-          <button onClick={onAboutClick} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="flex items-center gap-2">
             <ShieldCheck className="text-cyan-500 h-6 w-6" />
             <span className="font-bold text-white">CNP DIRECT</span>
-          </button>
+            <button 
+              onClick={onAboutClick}
+              className="ml-1 h-6 w-6 rounded bg-slate-800 hover:bg-cyan-500/20 flex items-center justify-center"
+              title="About"
+            >
+              <Info className="h-3.5 w-3.5 text-slate-400" />
+            </button>
+          </div>
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 p-2 hover:text-white">
             <Menu className="h-6 w-6" />
           </button>
