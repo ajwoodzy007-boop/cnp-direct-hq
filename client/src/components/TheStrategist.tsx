@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrainCircuit, Search, Zap, Shield, TrendingUp, AlertTriangle, Crosshair, DollarSign, Flame, Bitcoin, Scan, Target, ChevronRight, TrendingDown, BarChart3 } from 'lucide-react';
 
 export default function TheStrategist() {
@@ -28,23 +28,16 @@ export default function TheStrategist() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
 
-  const handleQuickAnalyze = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const runAnalysis = async (tickerToAnalyze: string, assetTypeToAnalyze: 'stock' | 'crypto') => {
     setAnalyzing(true);
     setAnalysis(null);
     setAnalyzeError(null);
-    
-    if (!analyzeTicker.trim()) {
-      setAnalyzeError('Please enter a ticker symbol');
-      setAnalyzing(false);
-      return;
-    }
     
     try {
       const res = await fetch('/api/strategist/quick-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticker: analyzeTicker.trim(), assetType: analyzeType })
+        body: JSON.stringify({ ticker: tickerToAnalyze.trim(), assetType: assetTypeToAnalyze })
       });
       const json = await res.json();
       if (json.success) {
@@ -58,6 +51,33 @@ export default function TheStrategist() {
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  // Check for ticker passed from Oracle
+  useEffect(() => {
+    const stored = sessionStorage.getItem('analyzeTickerFromOracle');
+    if (stored) {
+      try {
+        const { ticker, assetType } = JSON.parse(stored);
+        sessionStorage.removeItem('analyzeTickerFromOracle');
+        setAnalyzeTicker(ticker);
+        setAnalyzeType(assetType === 'crypto' ? 'crypto' : 'stock');
+        setMode('ANALYZE');
+        // Auto-run analysis
+        setTimeout(() => runAnalysis(ticker, assetType === 'crypto' ? 'crypto' : 'stock'), 100);
+      } catch (e) {
+        console.error('Failed to parse Oracle ticker', e);
+      }
+    }
+  }, []);
+
+  const handleQuickAnalyze = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!analyzeTicker.trim()) {
+      setAnalyzeError('Please enter a ticker symbol');
+      return;
+    }
+    runAnalysis(analyzeTicker, analyzeType);
   };
 
   const handleGenerate = async (e: React.FormEvent) => {

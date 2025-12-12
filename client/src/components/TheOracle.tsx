@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin } from 'lucide-react';
+import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin, Scan } from 'lucide-react';
+import { useLocation } from 'wouter';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import PremiumLock from './PremiumLock';
@@ -31,6 +32,7 @@ type SortOption = 'rank' | 'confidence' | 'return' | 'risk';
 type TabType = 'stocks' | 'crypto';
 
 export default function TheOracle() {
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>('stocks');
   const [picks, setPicks] = useState<PickData[]>([]);
   const [cryptoPicks, setCryptoPicks] = useState<PickData[]>([]);
@@ -689,8 +691,18 @@ export default function TheOracle() {
               >
                 Close Report
               </button>
-              <button className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-medium transition-colors" data-testid="button-add-watchlist">
-                Add to Watchlist
+              <button 
+                onClick={() => {
+                  sessionStorage.setItem('analyzeTickerFromOracle', JSON.stringify({
+                    ticker: selectedPick.ticker,
+                    assetType: selectedPick.assetType || 'stock'
+                  }));
+                  setLocation('/strategist');
+                }}
+                className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2" 
+                data-testid="button-deep-analysis"
+              >
+                <Scan className="h-4 w-4" /> Deep AI Analysis
               </button>
             </div>
           </div>
