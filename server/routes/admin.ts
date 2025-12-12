@@ -28,12 +28,14 @@ router.get('/check', (req, res) => {
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
     const usersResult = await query('SELECT COUNT(*) as total, tier FROM users GROUP BY tier');
+    // Query the predictions table (where Oracle saves data)
     const predictionsResult = await query(`
       SELECT 
         COUNT(*) as total,
-        COUNT(CASE WHEN outcome = 'WIN' THEN 1 END) as wins,
-        COUNT(CASE WHEN outcome = 'LOSS' THEN 1 END) as losses
-      FROM daily_prediction_entries
+        COUNT(CASE WHEN LOWER(outcome) = 'win' THEN 1 END) as wins,
+        COUNT(CASE WHEN LOWER(outcome) = 'loss' THEN 1 END) as losses
+      FROM predictions
+      WHERE outcome IS NOT NULL AND outcome != '' AND outcome != 'pending'
     `);
     
     const recentUsersResult = await query(`
