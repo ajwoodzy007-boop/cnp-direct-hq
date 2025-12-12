@@ -18,6 +18,7 @@ import TheVault from './components/TheVault';
 import TheAcademy from './components/TheAcademy';
 import TheSummary from './components/TheSummary';
 import SettingsModal from './components/SettingsModal';
+import AboutModal from './components/AboutModal';
 import Pricing from "@/pages/Pricing";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
@@ -33,6 +34,7 @@ function MainDashboard() {
   const [legalPage, setLegalPage] = useState<'terms' | 'privacy' | 'risk' | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -101,6 +103,7 @@ function MainDashboard() {
              onLoginClick={() => {}} 
              onLogoutClick={() => {}}
              onLegalClick={() => {}}
+             onAboutClick={() => {}}
            >
              {renderContent()}
            </AppLayout>
@@ -128,6 +131,7 @@ function MainDashboard() {
         onLoginClick={() => setShowAuthModal(true)}
         onLogoutClick={() => setShowSettings(true)}
         onLegalClick={(page) => setLegalPage(page)}
+        onAboutClick={() => setShowAbout(true)}
       >
         {renderContent()}
       </AppLayout>
@@ -139,6 +143,14 @@ function MainDashboard() {
           onLogout={handleLogout}
           isAdmin={isAdmin}
           onAdminClick={() => { setShowSettings(false); setShowAdmin(true); }}
+        />
+      )}
+
+      {showAbout && (
+        <AboutModal 
+          onClose={() => setShowAbout(false)}
+          onSignUp={() => { setShowAbout(false); setShowAuthModal(true); }}
+          isLoggedIn={!!user}
         />
       )}
     </>
