@@ -337,4 +337,121 @@ router.post('/earnings-play', requirePremium, async (req, res) => {
   }
 });
 
+// POST: Comprehensive AI Analysis for any ticker (stock or crypto)
+router.post('/quick-analyze', requirePremium, async (req, res) => {
+  const { ticker, assetType } = req.body;
+
+  if (!ticker) {
+    return res.status(400).json({ success: false, error: "Ticker required" });
+  }
+
+  try {
+    const normalizedTicker = ticker.toUpperCase().trim();
+    const isCrypto = assetType === 'crypto';
+    
+    // Fetch market data
+    let symbol = normalizedTicker;
+    if (isCrypto) {
+      symbol = `${normalizedTicker.replace(/[-_]?USD$/i, '')}-USD`;
+    }
+    
+    const quote = await yf.quote(symbol) as any;
+    if (!quote || !quote.regularMarketPrice) {
+      return res.status(404).json({ success: false, error: `Could not find data for ${normalizedTicker}` });
+    }
+    
+    const price = quote.regularMarketPrice;
+    const change = quote.regularMarketChangePercent || 0;
+    const volume = quote.regularMarketVolume || 0;
+    const avgVolume = quote.averageDailyVolume10Day || volume;
+    const high52 = quote.fiftyTwoWeekHigh || price;
+    const low52 = quote.fiftyTwoWeekLow || price;
+    const marketCap = quote.marketCap || 0;
+    const name = quote.shortName || quote.longName || normalizedTicker;
+    
+    // Calculate relative volume
+    const rvol = avgVolume > 0 ? (volume / avgVolume).toFixed(2) : '1.00';
+    
+    // Calculate distance from 52-week levels
+    const distFromHigh = ((price - high52) / high52 * 100).toFixed(1);
+    const distFromLow = ((price - low52) / low52 * 100).toFixed(1);
+    
+    // AI Analysis
+    const prompt = `
+You are an elite financial analyst. Provide a comprehensive analysis for ${normalizedTicker} (${name}).
+
+Current Market Data:
+- Price: $${price.toFixed(2)}
+- Daily Change: ${change.toFixed(2)}%
+- Volume: ${volume.toLocaleString()}
+- Relative Volume (RVOL): ${rvol}x
+- 52-Week High: $${high52.toFixed(2)} (${distFromHigh}% away)
+- 52-Week Low: $${low52.toFixed(2)} (+${distFromLow}% from low)
+${marketCap > 0 ? `- Market Cap: $${(marketCap / 1e9).toFixed(2)}B` : ''}
+- Asset Type: ${isCrypto ? 'Cryptocurrency' : 'Stock'}
+
+Output strictly JSON with these fields:
+{
+  "summary": "2-3 sentence executive summary of current state",
+  "trend": "BULLISH | BEARISH | NEUTRAL",
+  "trendStrength": "Strong | Moderate | Weak",
+  "technicals": {
+    "support": "Key support price level",
+    "resistance": "Key resistance price level",
+    "rsiEstimate": "Estimated RSI (oversold <30, overbought >70)",
+    "pattern": "Any notable chart pattern if applicable"
+  },
+  "sentiment": {
+    "overall": "Positive | Negative | Mixed",
+    "catalysts": ["List of 2-3 potential catalysts or news themes"],
+    "risks": ["List of 2-3 key risks"]
+  },
+  "tradeIdeas": [
+    {
+      "type": "${isCrypto ? 'Long/Short Spot' : 'Options or Shares'}",
+      "direction": "LONG | SHORT",
+      "entry": "Entry price or zone",
+      "target": "Target price",
+      "stopLoss": "Stop loss price",
+      "timeframe": "Day trade / Swing / Position",
+      "confidence": "High | Medium | Low"
+    }
+  ],
+  "verdict": "One sentence actionable recommendation",
+  "riskLevel": "Low | Medium | High"
+}
+`;
+
+    const completion = await openai.chat.completions.create({
+      messages: [{ role: "system", content: prompt }],
+      model: "gpt-4o",
+      response_format: { type: "json_object" }
+    });
+
+    const analysis = JSON.parse(completion.choices[0].message.content || '{}');
+    
+    res.json({
+      success: true,
+      data: {
+        ticker: normalizedTicker,
+        name,
+        price,
+        change,
+        volume,
+        rvol: parseFloat(rvol),
+        high52,
+        low52,
+        marketCap,
+        assetType: isCrypto ? 'crypto' : 'stock',
+        ...analysis,
+        generatedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error: any) {
+    console.error("Quick Analyze Error:", error);
+    res.status(500).json({ success: false, error: error.message || "Analysis Failed" });
+  }
+});
+
 export default router;

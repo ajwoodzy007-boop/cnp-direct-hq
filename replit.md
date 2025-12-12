@@ -46,6 +46,7 @@ Key API endpoints:
 - `POST /api/ai/playbook/patterns` - Generate pattern recognition analysis
 - `POST /api/ai/playbook/earnings` - Generate earnings play analysis
 - `POST /api/ai/playbook/options` - Generate options trading signals
+- `POST /api/strategist/quick-analyze` - Comprehensive AI analysis for any ticker
 - `GET /api/user/premium-status` - Check user's premium subscription status
 
 ### Data Storage

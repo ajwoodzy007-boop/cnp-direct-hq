@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { BrainCircuit, Search, Zap, Shield, TrendingUp, AlertTriangle, Crosshair, DollarSign, Flame, Bitcoin } from 'lucide-react';
+import { BrainCircuit, Search, Zap, Shield, TrendingUp, AlertTriangle, Crosshair, DollarSign, Flame, Bitcoin, Scan, Target, ChevronRight, TrendingDown, BarChart3 } from 'lucide-react';
 
 export default function TheStrategist() {
-  const [mode, setMode] = useState<'PLAYBOOK' | 'CRYPTO' | 'EARNINGS'>('PLAYBOOK');
+  const [mode, setMode] = useState<'ANALYZE' | 'PLAYBOOK' | 'CRYPTO' | 'EARNINGS'>('ANALYZE');
   
   const [ticker, setTicker] = useState('');
   const [capital, setCapital] = useState('2000');
@@ -20,6 +20,45 @@ export default function TheStrategist() {
   const [earningsPlay, setEarningsPlay] = useState<any>(null);
   const [scanning, setScanning] = useState(false);
   const [generating, setGenerating] = useState(false);
+
+  // Quick Analyze state
+  const [analyzeTicker, setAnalyzeTicker] = useState('');
+  const [analyzeType, setAnalyzeType] = useState<'stock' | 'crypto'>('stock');
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
+  const handleQuickAnalyze = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAnalyzing(true);
+    setAnalysis(null);
+    setAnalyzeError(null);
+    
+    if (!analyzeTicker.trim()) {
+      setAnalyzeError('Please enter a ticker symbol');
+      setAnalyzing(false);
+      return;
+    }
+    
+    try {
+      const res = await fetch('/api/strategist/quick-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker: analyzeTicker.trim(), assetType: analyzeType })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setAnalysis(json.data);
+      } else {
+        setAnalyzeError(json.error || 'Analysis failed');
+      }
+    } catch (err) {
+      console.error(err);
+      setAnalyzeError('Network error - please try again');
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +149,14 @@ export default function TheStrategist() {
           <p className="text-slate-400 mt-2">Institutional-grade derivatives analysis and strategy generation.</p>
         </div>
         
-        <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800">
+        <div className="flex flex-wrap bg-slate-900 p-1 rounded-lg border border-slate-800">
+          <button 
+            onClick={() => setMode('ANALYZE')}
+            className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'ANALYZE' ? 'bg-cyan-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
+            data-testid="tab-analyze"
+          >
+            <Scan className="h-4 w-4" /> Quick Analyze
+          </button>
           <button 
             onClick={() => setMode('PLAYBOOK')}
             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'PLAYBOOK' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
@@ -134,6 +180,263 @@ export default function TheStrategist() {
           </button>
         </div>
       </div>
+
+      {mode === 'ANALYZE' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-slate-900 border border-cyan-500/20 p-6 rounded-xl">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Scan className="h-4 w-4 text-cyan-400" /> Quick Analysis
+              </h3>
+              <form onSubmit={handleQuickAnalyze} className="space-y-4">
+                <div>
+                  <label className="text-xs text-slate-500 font-bold uppercase">Ticker Symbol</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <input 
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white uppercase font-bold focus:border-cyan-500 outline-none" 
+                      placeholder="TSLA, BTC, AAPL..." 
+                      value={analyzeTicker} 
+                      onChange={e => setAnalyzeTicker(e.target.value)} 
+                      required 
+                      data-testid="input-analyze-ticker"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 font-bold uppercase">Asset Type</label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <button 
+                      type="button" 
+                      onClick={() => setAnalyzeType('stock')} 
+                      className={`py-2 rounded-lg text-sm font-bold transition-all ${analyzeType === 'stock' ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                      data-testid="button-type-stock"
+                    >
+                      Stock
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => setAnalyzeType('crypto')} 
+                      className={`py-2 rounded-lg text-sm font-bold transition-all ${analyzeType === 'crypto' ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                      data-testid="button-type-crypto"
+                    >
+                      Crypto
+                    </button>
+                  </div>
+                </div>
+                {analyzeError && (
+                  <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 p-3 rounded-lg border border-red-400/20">
+                    <AlertTriangle className="h-4 w-4" />
+                    {analyzeError}
+                  </div>
+                )}
+                <button 
+                  type="submit" 
+                  disabled={analyzing}
+                  className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50"
+                  data-testid="button-analyze"
+                >
+                  {analyzing ? <span className="animate-pulse">Analyzing...</span> : <><BrainCircuit className="h-5 w-5" /> Analyze with AI</>}
+                </button>
+              </form>
+            </div>
+            <div className="bg-slate-900/50 border border-slate-800 p-4 rounded-xl text-sm text-slate-400">
+              <p className="font-bold text-white mb-2">What you'll get:</p>
+              <ul className="space-y-1 text-xs">
+                <li>• Trend analysis (Bullish/Bearish/Neutral)</li>
+                <li>• Key support & resistance levels</li>
+                <li>• Sentiment assessment & catalysts</li>
+                <li>• Risk evaluation</li>
+                <li>• Trade ideas with entry/target/stop</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div className="lg:col-span-8">
+            {analyzing && (
+              <div className="bg-slate-900 border border-cyan-500/20 rounded-xl p-8 h-full flex items-center justify-center">
+                <div className="text-center">
+                  <div className="h-12 w-12 rounded-full border-4 border-cyan-500 border-t-transparent animate-spin mx-auto mb-4" />
+                  <p className="text-slate-400">AI is analyzing {analyzeTicker.toUpperCase()}...</p>
+                </div>
+              </div>
+            )}
+            {!analyzing && analysis && (
+              <div className="bg-slate-900 border border-cyan-500/20 rounded-xl overflow-hidden">
+                <div className="p-6 border-b border-slate-800 bg-gradient-to-r from-cyan-900/20 to-transparent">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-2xl font-bold text-white">{analysis.ticker}</h3>
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${analysis.assetType === 'crypto' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'}`}>
+                          {analysis.assetType === 'crypto' ? 'CRYPTO' : 'STOCK'}
+                        </span>
+                      </div>
+                      <p className="text-slate-400 text-sm">{analysis.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-white font-mono">${analysis.price?.toFixed(2)}</p>
+                      <p className={`text-sm font-medium ${analysis.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                        {analysis.change >= 0 ? '+' : ''}{analysis.change?.toFixed(2)}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-6 space-y-6">
+                  <div className="flex items-center gap-4">
+                    <div className={`px-4 py-2 rounded-lg font-bold text-lg ${
+                      analysis.trend === 'BULLISH' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
+                      analysis.trend === 'BEARISH' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                      'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                    }`}>
+                      {analysis.trend === 'BULLISH' && <TrendingUp className="h-5 w-5 inline mr-2" />}
+                      {analysis.trend === 'BEARISH' && <TrendingDown className="h-5 w-5 inline mr-2" />}
+                      {analysis.trend}
+                    </div>
+                    <span className="text-slate-500">Trend Strength: <span className="text-white">{analysis.trendStrength}</span></span>
+                    <span className={`ml-auto px-3 py-1 rounded text-sm font-bold ${
+                      analysis.riskLevel === 'Low' ? 'bg-green-500/20 text-green-400' :
+                      analysis.riskLevel === 'High' ? 'bg-red-500/20 text-red-400' :
+                      'bg-yellow-500/20 text-yellow-400'
+                    }`}>
+                      {analysis.riskLevel} Risk
+                    </span>
+                  </div>
+                  
+                  <div className="bg-slate-950/50 p-4 rounded-lg">
+                    <p className="text-slate-300">{analysis.summary}</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-lg">
+                      <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-cyan-400" /> Technical Levels
+                      </h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Support</span>
+                          <span className="text-green-400 font-mono">{analysis.technicals?.support}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Resistance</span>
+                          <span className="text-red-400 font-mono">{analysis.technicals?.resistance}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">RSI Estimate</span>
+                          <span className="text-white">{analysis.technicals?.rsiEstimate}</span>
+                        </div>
+                        {analysis.technicals?.pattern && (
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Pattern</span>
+                            <span className="text-cyan-400">{analysis.technicals?.pattern}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-lg">
+                      <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
+                        <Zap className="h-4 w-4 text-amber-400" /> Sentiment
+                      </h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500">Overall</span>
+                          <span className={`font-bold ${analysis.sentiment?.overall === 'Positive' ? 'text-green-400' : analysis.sentiment?.overall === 'Negative' ? 'text-red-400' : 'text-yellow-400'}`}>
+                            {analysis.sentiment?.overall}
+                          </span>
+                        </div>
+                        {analysis.sentiment?.catalysts?.length > 0 && (
+                          <div>
+                            <p className="text-slate-500 mb-1">Catalysts:</p>
+                            <ul className="text-xs text-slate-300 space-y-1">
+                              {analysis.sentiment.catalysts.map((c: string, i: number) => (
+                                <li key={i} className="flex items-start gap-1">
+                                  <ChevronRight className="h-3 w-3 text-green-400 mt-0.5 shrink-0" /> {c}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {analysis.sentiment?.risks?.length > 0 && (
+                    <div className="bg-red-900/10 border border-red-500/20 p-4 rounded-lg">
+                      <h4 className="text-sm font-bold text-red-400 uppercase mb-2 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4" /> Key Risks
+                      </h4>
+                      <ul className="text-sm text-slate-300 space-y-1">
+                        {analysis.sentiment.risks.map((r: string, i: number) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-red-400">•</span> {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {analysis.tradeIdeas?.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
+                        <Target className="h-4 w-4 text-cyan-400" /> Trade Ideas
+                      </h4>
+                      <div className="space-y-3">
+                        {analysis.tradeIdeas.map((idea: any, i: number) => (
+                          <div key={i} className={`border rounded-lg p-4 ${idea.direction === 'LONG' ? 'bg-green-900/10 border-green-500/20' : 'bg-red-900/10 border-red-500/20'}`}>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${idea.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                {idea.direction}
+                              </span>
+                              <span className="text-xs text-slate-500">{idea.type} • {idea.timeframe}</span>
+                              <span className={`text-xs font-bold ${idea.confidence === 'High' ? 'text-green-400' : idea.confidence === 'Low' ? 'text-red-400' : 'text-yellow-400'}`}>
+                                {idea.confidence} Confidence
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                              <div>
+                                <p className="text-slate-500 text-xs">Entry</p>
+                                <p className="text-white font-mono">{idea.entry}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-500 text-xs">Target</p>
+                                <p className="text-green-400 font-mono">{idea.target}</p>
+                              </div>
+                              <div>
+                                <p className="text-slate-500 text-xs">Stop Loss</p>
+                                <p className="text-red-400 font-mono">{idea.stopLoss}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="bg-gradient-to-r from-cyan-900/20 to-blue-900/20 border border-cyan-500/30 p-4 rounded-lg">
+                    <h4 className="text-sm font-bold text-cyan-400 uppercase mb-2">AI Verdict</h4>
+                    <p className="text-white">{analysis.verdict}</p>
+                  </div>
+                  
+                  <p className="text-xs text-slate-600 text-center">
+                    Analysis generated at {new Date(analysis.generatedAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )}
+            {!analyzing && !analysis && (
+              <div className="h-full border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-600 min-h-[400px]">
+                <div className="text-center">
+                  <Scan className="h-12 w-12 mx-auto mb-4 text-slate-700" />
+                  <p className="text-lg">Enter any ticker to get AI analysis</p>
+                  <p className="text-sm mt-1">Stocks, ETFs, or Cryptocurrencies</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {mode === 'PLAYBOOK' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
