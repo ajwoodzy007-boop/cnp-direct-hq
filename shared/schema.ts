@@ -118,6 +118,7 @@ export const dailyPredictionEntries = pgTable("daily_prediction_entries", {
   confidence: real("confidence").notNull(),
   reasoning: text("reasoning"),
   entryPrice: real("entry_price").notNull(),
+  openPrice: real("open_price"), // Market open price at 9:30 AM ET
   predictedPrice: real("predicted_price"), // Target price prediction for end of day
   closePrice: real("close_price"),
   currentPrice: real("current_price"),
