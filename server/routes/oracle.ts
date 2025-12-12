@@ -445,6 +445,7 @@ router.get('/daily', async (req, res) => {
           ticker: row.ticker,
           entryPrice: row.entryPrice,
           openPrice: row.openPrice || row.entryPrice,
+          outcomePrice: row.outcomePrice || null,
           predictedPrice: row.predictedPrice || calculateDynamicTarget(row.entryPrice, row.signalType || 'VALUE BUY', undefined, undefined, undefined, 'stock'),
           signal: row.signalType,
           confidence: row.signalType === 'MOMENTUM BUY' ? 'High' : 'Med',
