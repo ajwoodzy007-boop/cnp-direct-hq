@@ -73,54 +73,67 @@ router.get('/diagnostics', requireAdmin, async (req, res) => {
 
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
-    // Get user counts - handle if tier column doesn't exist
-    let usersResult;
+    // Get total user count first
+    const totalUsersResult = await query('SELECT COUNT(*) as total FROM users');
+    const totalUsers = parseInt(totalUsersResult.rows[0]?.total || '0');
+    
+    // Get premium count separately
+    let premiumCount = 0;
     try {
-      usersResult = await query('SELECT COUNT(*) as total, COALESCE(tier, \'FREE\') as tier FROM users GROUP BY tier');
+      const premiumResult = await query("SELECT COUNT(*) as count FROM users WHERE tier = 'PREMIUM'");
+      premiumCount = parseInt(premiumResult.rows[0]?.count || '0');
     } catch (e) {
-      console.error('Users query failed, trying simple count:', e);
-      usersResult = await query('SELECT COUNT(*) as total, \'FREE\' as tier FROM users');
+      console.error('Premium count failed:', e);
     }
     
-    // Query the predictions table (where Oracle saves data)
-    let predictionsResult;
+    // Query all predictions for total count
+    const allPredictionsResult = await query('SELECT COUNT(*) as total FROM predictions');
+    const totalPredictions = parseInt(allPredictionsResult.rows[0]?.total || '0');
+    
+    // Query finalized predictions for win/loss
+    let wins = 0, losses = 0;
     try {
-      predictionsResult = await query(`
+      const finalizedResult = await query(`
         SELECT 
-          COUNT(*) as total,
           COUNT(CASE WHEN LOWER(outcome) = 'win' THEN 1 END) as wins,
           COUNT(CASE WHEN LOWER(outcome) = 'loss' THEN 1 END) as losses
         FROM predictions
-        WHERE outcome IS NOT NULL AND outcome != '' AND outcome != 'pending'
+        WHERE outcome IS NOT NULL AND outcome != '' AND LOWER(outcome) != 'pending'
+      `);
+      wins = parseInt(finalizedResult.rows[0]?.wins || '0');
+      losses = parseInt(finalizedResult.rows[0]?.losses || '0');
+    } catch (e) {
+      console.error('Finalized predictions query failed:', e);
+    }
+    
+    // Get recent users - handle missing columns gracefully
+    let recentUsersResult: { rows: any[] } = { rows: [] };
+    try {
+      recentUsersResult = await query(`SELECT id, email, COALESCE(tier, 'FREE') as tier FROM users LIMIT 10`);
+    } catch (e) {
+      console.error('Recent users query failed:', e);
+      try {
+        recentUsersResult = await query(`SELECT id, email, 'FREE' as tier FROM users LIMIT 10`);
+      } catch (e2) {
+        console.error('Fallback users query failed:', e2);
+      }
+    }
+    
+    // Get daily runs
+    let dailyRunsResult: { rows: any[] } = { rows: [] };
+    try {
+      dailyRunsResult = await query(`
+        SELECT id, run_date, created_at 
+        FROM daily_prediction_runs 
+        ORDER BY created_at DESC 
+        LIMIT 5
       `);
     } catch (e) {
-      console.error('Predictions query failed:', e);
-      predictionsResult = { rows: [{ total: 0, wins: 0, losses: 0 }] };
-    }
-    
-    const recentUsersResult = await query(`
-      SELECT id, email, tier 
-      FROM users 
-      LIMIT 10
-    `);
-    
-    const dailyRunsResult = await query(`
-      SELECT id, run_date, created_at 
-      FROM daily_prediction_runs 
-      ORDER BY created_at DESC 
-      LIMIT 5
-    `);
-
-    const tierCounts: Record<string, number> = {};
-    let totalUsers = 0;
-    for (const row of usersResult.rows) {
-      tierCounts[row.tier] = parseInt(row.total);
-      totalUsers += parseInt(row.total);
+      console.error('Daily runs query failed:', e);
     }
 
-    const predStats = predictionsResult.rows[0] || { total: 0, wins: 0, losses: 0 };
-    const winRate = predStats.total > 0 
-      ? ((parseInt(predStats.wins) / (parseInt(predStats.wins) + parseInt(predStats.losses))) * 100).toFixed(1)
+    const winRate = (wins + losses) > 0 
+      ? ((wins / (wins + losses)) * 100).toFixed(1)
       : '0';
 
     res.json({
@@ -128,12 +141,12 @@ router.get('/stats', requireAdmin, async (req, res) => {
       data: {
         users: {
           total: totalUsers,
-          byTier: tierCounts
+          byTier: { PREMIUM: premiumCount, FREE: totalUsers - premiumCount }
         },
         predictions: {
-          total: parseInt(predStats.total),
-          wins: parseInt(predStats.wins),
-          losses: parseInt(predStats.losses),
+          total: totalPredictions,
+          wins: wins,
+          losses: losses,
           winRate
         },
         recentUsers: recentUsersResult.rows,
