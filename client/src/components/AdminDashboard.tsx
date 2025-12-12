@@ -32,6 +32,13 @@ interface BetaPass {
   redeemed_at: string | null;
 }
 
+interface Diagnostics {
+  users: { count: number; error: string | null };
+  predictions: { count: number; error: string | null };
+  beta_passes: { count: number; error: string | null };
+  tables: string[] | { error: string };
+}
+
 export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -41,6 +48,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [betaPasses, setBetaPasses] = useState<BetaPass[]>([]);
   const [generatingPass, setGeneratingPass] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] = useState<Diagnostics | null>(null);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const fetchStats = async () => {
     setLoading(true);
@@ -70,6 +79,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       const res = await fetch('/api/admin/beta-passes');
       const json = await res.json();
       if (json.success) setBetaPasses(json.passes);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchDiagnostics = async () => {
+    try {
+      const res = await fetch('/api/admin/diagnostics');
+      const json = await res.json();
+      if (json.success) setDiagnostics(json.diagnostics);
     } catch (e) {
       console.error(e);
     }
@@ -372,6 +391,53 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             </div>
           </div>
         )}
+
+        {/* Diagnostics Section */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Database Diagnostics</h3>
+            <button 
+              onClick={() => { setShowDiagnostics(!showDiagnostics); if (!diagnostics) fetchDiagnostics(); }}
+              className="text-sm text-cyan-400 hover:text-cyan-300"
+              data-testid="button-toggle-diagnostics"
+            >
+              {showDiagnostics ? 'Hide' : 'Run Diagnostics'}
+            </button>
+          </div>
+          {showDiagnostics && (
+            <div className="space-y-3">
+              {diagnostics ? (
+                <>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-slate-800/50 rounded-lg p-3">
+                      <div className="text-xs text-slate-400">Users Table</div>
+                      <div className="text-xl font-bold text-white">{diagnostics.users.count}</div>
+                      {diagnostics.users.error && <div className="text-xs text-red-400">{diagnostics.users.error}</div>}
+                    </div>
+                    <div className="bg-slate-800/50 rounded-lg p-3">
+                      <div className="text-xs text-slate-400">Predictions Table</div>
+                      <div className="text-xl font-bold text-white">{diagnostics.predictions.count}</div>
+                      {diagnostics.predictions.error && <div className="text-xs text-red-400">{diagnostics.predictions.error}</div>}
+                    </div>
+                    <div className="bg-slate-800/50 rounded-lg p-3">
+                      <div className="text-xs text-slate-400">Beta Passes Table</div>
+                      <div className="text-xl font-bold text-white">{diagnostics.beta_passes.count}</div>
+                      {diagnostics.beta_passes.error && <div className="text-xs text-red-400">{diagnostics.beta_passes.error}</div>}
+                    </div>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-3">
+                    <div className="text-xs text-slate-400 mb-2">All Database Tables</div>
+                    <div className="text-sm text-white font-mono">
+                      {Array.isArray(diagnostics.tables) ? diagnostics.tables.join(', ') : 'Error loading tables'}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="text-slate-500 text-sm text-center py-4">Loading diagnostics...</div>
+              )}
+            </div>
+          )}
+        </div>
 
       </div>
     </div>
