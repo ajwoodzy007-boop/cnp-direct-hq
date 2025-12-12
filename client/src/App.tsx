@@ -20,6 +20,7 @@ import SettingsModal from './components/SettingsModal';
 import Pricing from "@/pages/Pricing";
 import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
+import AiAssistant from './components/AiAssistant';
 
 function MainDashboard() {
   const [currentTab, setTab] = useState('radar');
@@ -138,6 +139,7 @@ export default function App() {
             <Route path="/checkout/cancel" component={CheckoutCancel} />
             <Route component={MainDashboard} />
           </Switch>
+          <AiAssistant />
         </TooltipProvider>
       </SettingsProvider>
     </QueryClientProvider>
