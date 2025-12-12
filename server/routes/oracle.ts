@@ -15,6 +15,112 @@ function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+// Helper to fetch the actual 9:30 AM market open price using chart data
+async function getActualOpenPrice(ticker: string): Promise<number | null> {
+  try {
+    const yf = typeof yahooFinance === 'function' ? new yahooFinance() : yahooFinance;
+    
+    // Get today's date for the query
+    const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    // Fetch 1-minute candles for today
+    const chart = await yf.chart(ticker, {
+      period1: startOfDay,
+      period2: now,
+      interval: '1m'
+    });
+    
+    if (chart && chart.quotes && chart.quotes.length > 0) {
+      // Find the first candle at or after 9:30 AM ET (14:30 UTC during EST, 13:30 UTC during EDT)
+      // The first regular session candle should have the true open price
+      for (const candle of chart.quotes) {
+        if (candle.open && candle.open > 0) {
+          const candleTime = new Date(candle.date);
+          const hour = candleTime.getHours();
+          const minute = candleTime.getMinutes();
+          
+          // Check if this is around 9:30 AM ET (convert from UTC)
+          // During EDT: 9:30 AM ET = 13:30 UTC
+          // During EST: 9:30 AM ET = 14:30 UTC
+          // We'll look for candles between 13:30 and 14:35 UTC to be safe
+          const utcHours = candleTime.getUTCHours();
+          const utcMinutes = candleTime.getUTCMinutes();
+          const utcTime = utcHours * 60 + utcMinutes;
+          
+          // 13:30 UTC = 810 minutes, 14:35 UTC = 875 minutes
+          if (utcTime >= 810 && utcTime <= 875) {
+            console.log(`[Oracle] Found 9:30 AM open for ${ticker}: $${candle.open} at ${candleTime.toISOString()}`);
+            return candle.open;
+          }
+        }
+      }
+      
+      // Fallback: just use the first candle's open
+      const firstCandle = chart.quotes.find((c: any) => c.open && c.open > 0);
+      if (firstCandle) {
+        console.log(`[Oracle] Using first available candle open for ${ticker}: $${firstCandle.open}`);
+        return firstCandle.open;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`[Oracle] Error fetching open price for ${ticker}:`, error);
+    return null;
+  }
+}
+
+// POST /update-open-prices: Update today's predictions with actual 9:30 AM open prices
+router.post('/update-open-prices', async (req, res) => {
+  try {
+    const today = getTodayDate();
+    
+    // Get today's stock predictions
+    const todayPredictions = await db.select().from(predictions)
+      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+    
+    if (todayPredictions.length === 0) {
+      return res.json({ success: false, error: 'No predictions found for today' });
+    }
+    
+    const updates: { ticker: string; oldPrice: number; newPrice: number }[] = [];
+    
+    for (const pred of todayPredictions) {
+      const actualOpen = await getActualOpenPrice(pred.ticker);
+      
+      if (actualOpen && actualOpen > 0) {
+        // Update both entryPrice and openPrice to the actual 9:30 AM open
+        await db.update(predictions)
+          .set({ 
+            entryPrice: actualOpen,
+            openPrice: actualOpen 
+          })
+          .where(eq(predictions.id, pred.id));
+        
+        updates.push({
+          ticker: pred.ticker,
+          oldPrice: pred.entryPrice,
+          newPrice: actualOpen
+        });
+      }
+    }
+    
+    console.log(`[Oracle] Updated ${updates.length} predictions with actual open prices`);
+    
+    res.json({ 
+      success: true, 
+      message: `Updated ${updates.length} predictions with actual 9:30 AM open prices`,
+      updates 
+    });
+    
+  } catch (error) {
+    console.error("Update Open Prices Error:", error);
+    res.status(500).json({ success: false, error: "Failed to update open prices" });
+  }
+});
+
 // GET /daily: Run Scan & Auto-Save to History (stocks only)
 router.get('/daily', async (req, res) => {
   try {

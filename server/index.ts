@@ -226,6 +226,25 @@ function startPredictionScheduler() {
       }
     }
     
+    // 9:35 AM ET - Update predictions with actual 9:30 AM open prices
+    if (isWeekday && hour === 9 && minute === 35) {
+      log("Updating predictions with actual 9:30 AM open prices", "scheduler");
+      try {
+        const response = await fetch(`http://localhost:${port}/api/oracle/update-open-prices`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          log(`Updated ${data.updates?.length || 0} predictions with actual open prices`, "scheduler");
+        } else {
+          log("Failed to update open prices", "scheduler");
+        }
+      } catch (error) {
+        log(`Error updating open prices: ${error}`, "scheduler");
+      }
+    }
+    
     // 8:00 AM ET - Generate crypto predictions daily (runs every day, crypto markets are 24/7)
     if (hour === 8 && minute === 0) {
       log("Triggering daily crypto prediction generation at 8:00 AM ET", "scheduler");
