@@ -149,18 +149,63 @@ export default function AuthPage({ onLogin }: AuthProps) {
       <div className="w-full lg:w-1/2 xl:w-2/5 flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md">
           
-          <div className="lg:hidden text-center mb-8">
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30 mb-4">
-              <ShieldCheck className="h-8 w-8 text-white" />
+          <div className="lg:hidden text-center mb-6">
+            <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30 mb-3">
+              <ShieldCheck className="h-7 w-7 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-wide">CNP DIRECT</h1>
-            <p className="text-xs text-cyan-400 tracking-widest mt-1">SENTINEL TRADING INTELLIGENCE</p>
+            <h1 className="text-xl font-bold text-white tracking-wide">CNP DIRECT</h1>
+            <p className="text-xs text-cyan-400 tracking-widest mt-1">AI TRADING INTELLIGENCE</p>
           </div>
 
-          <div className="bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-500/30 rounded-xl p-4 mb-6 flex items-center gap-3">
+          {/* Mobile Feature Showcase */}
+          <div className="lg:hidden mb-5 space-y-3">
+            {/* The Oracle Card */}
+            <div className="bg-gradient-to-r from-cyan-900/20 to-slate-900/50 border border-cyan-500/30 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
+                  <Target className="h-5 w-5 text-cyan-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-bold text-white">The Oracle</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">10 AI stock picks daily at 9:00 AM with entry, target & stop-loss</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* The Strategist Card */}
+            <div className="bg-gradient-to-r from-purple-900/20 to-slate-900/50 border border-purple-500/30 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
+                  <BrainCircuit className="h-5 w-5 text-purple-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-bold text-white">The Strategist</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Deep AI analysis on any stock or crypto in seconds</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Quick Stats Row */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-2 text-center">
+                <div className="text-lg font-bold text-cyan-400">10</div>
+                <div className="text-[10px] text-slate-500">Daily Picks</div>
+              </div>
+              <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-2 text-center">
+                <div className="text-lg font-bold text-purple-400">8</div>
+                <div className="text-[10px] text-slate-500">AI Tools</div>
+              </div>
+              <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-2 text-center">
+                <div className="text-lg font-bold text-green-400">24/7</div>
+                <div className="text-[10px] text-slate-500">Access</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-500/30 rounded-xl p-3 mb-5 flex items-center gap-3">
             <Gift className="h-5 w-5 text-amber-400 shrink-0" />
             <div className="text-sm">
-              <span className="text-amber-300 font-semibold">Beta Pricing:</span>
+              <span className="text-amber-300 font-semibold">Beta:</span>
               <span className="text-slate-300 ml-1">$29/mo locked forever</span>
             </div>
           </div>
