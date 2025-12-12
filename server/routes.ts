@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { scanMarket, getChartData, getNews, getSentimentTrend } from "./lib/marketData";
 import { runMarketScan as runSentinelScan } from "./lib/sentinel";
+import { runCryptoScan } from "./lib/cryptoScanner";
 import { storage } from "./storage";
 import { query } from "./db";
 import { insertPredictionSchema, insertWatchlistSchema } from "@shared/schema";
@@ -159,6 +160,29 @@ export async function registerRoutes(
     } catch (error) {
       console.error("Sentinel scan error:", error);
       res.status(500).json({ success: false, error: 'Sentinel Scan Failed' });
+    }
+  });
+
+  // GET /api/market/crypto - Crypto scanner with RSI, RVOL, and signals
+  app.get("/api/market/crypto", async (req, res) => {
+    try {
+      const results = await runCryptoScan();
+      
+      const sorted = results.sort((a, b) => {
+        if (a.signal.includes('BUY') && !b.signal.includes('BUY')) return -1;
+        if (!a.signal.includes('BUY') && b.signal.includes('BUY')) return 1;
+        return Math.abs(b.changePercent) - Math.abs(a.changePercent);
+      });
+
+      res.json({
+        success: true,
+        count: sorted.length,
+        timestamp: new Date().toISOString(),
+        data: sorted
+      });
+    } catch (error) {
+      console.error("Crypto scan error:", error);
+      res.status(500).json({ success: false, error: 'Crypto Scan Failed' });
     }
   });
 
