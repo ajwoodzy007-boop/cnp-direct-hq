@@ -3,6 +3,41 @@ import { predictions } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import yahooFinance from 'yahoo-finance2';
 
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
+
+async function fetchPriceWithFallback(ticker: string, isCrypto: boolean = false): Promise<number> {
+  // Try Yahoo Finance first
+  try {
+    const yf = typeof yahooFinance === 'function' ? new (yahooFinance as any)() : yahooFinance;
+    const symbol = isCrypto ? `${ticker}-USD` : ticker;
+    const q = await yf.quote(symbol) as any;
+    if (q?.regularMarketPrice && q.regularMarketPrice > 0) {
+      console.log(`[Price] ${ticker}: $${q.regularMarketPrice} (Yahoo)`);
+      return q.regularMarketPrice;
+    }
+  } catch (err: any) {
+    console.log(`[Price] Yahoo failed for ${ticker}: ${err.message}`);
+  }
+
+  // Try Finnhub as fallback (stocks only, Finnhub doesn't have good crypto data)
+  if (!isCrypto && FINNHUB_API_KEY) {
+    try {
+      const url = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_API_KEY}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data?.c && data.c > 0) {
+        console.log(`[Price] ${ticker}: $${data.c} (Finnhub)`);
+        return data.c; // 'c' is current price
+      }
+    } catch (err: any) {
+      console.log(`[Price] Finnhub failed for ${ticker}: ${err.message}`);
+    }
+  }
+
+  console.log(`[Price] No price found for ${ticker}`);
+  return 0;
+}
+
 function getTodayDate(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -188,43 +223,24 @@ export async function runAllPendingFinalization(): Promise<FinalizationResult> {
   const closingPrices: Record<string, number> = {};
   const errors: string[] = [];
   
-  const yf = typeof yahooFinance === 'function' ? new (yahooFinance as any)() : yahooFinance;
-  
-  // Fetch stock prices
+  // Fetch stock prices with Finnhub fallback
   for (const ticker of uniqueStockTickers) {
-    try {
-      const q = await yf.quote(ticker) as any;
-      if (q?.regularMarketPrice && q.regularMarketPrice > 0) {
-        closingPrices[ticker] = q.regularMarketPrice;
-        console.log(`[Finalize ALL] ${ticker}: $${q.regularMarketPrice}`);
-      } else {
-        errors.push(`${ticker}: no data`);
-        closingPrices[ticker] = 0;
-      }
-    } catch (err: any) {
-      errors.push(`${ticker}: ${err.message}`);
-      closingPrices[ticker] = 0;
+    const price = await fetchPriceWithFallback(ticker, false);
+    closingPrices[ticker] = price;
+    if (price <= 0) {
+      errors.push(`${ticker}: no price data`);
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
   
-  // Fetch crypto prices
+  // Fetch crypto prices (Yahoo only for crypto)
   for (const ticker of uniqueCryptoTickers) {
-    try {
-      const yahooSymbol = `${ticker}-USD`;
-      const q = await yf.quote(yahooSymbol) as any;
-      if (q?.regularMarketPrice && q.regularMarketPrice > 0) {
-        closingPrices[ticker] = q.regularMarketPrice;
-        console.log(`[Finalize ALL] ${ticker}: $${q.regularMarketPrice}`);
-      } else {
-        errors.push(`${ticker}: no data`);
-        closingPrices[ticker] = 0;
-      }
-    } catch (err: any) {
-      errors.push(`${ticker}: ${err.message}`);
-      closingPrices[ticker] = 0;
+    const price = await fetchPriceWithFallback(ticker, true);
+    closingPrices[ticker] = price;
+    if (price <= 0) {
+      errors.push(`${ticker}: no price data`);
     }
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
   
   let finalized = 0;
