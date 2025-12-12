@@ -684,30 +684,56 @@ router.post('/finalize', async (req, res) => {
     const todaysPredictions = await db.select().from(predictions)
       .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
     
+    console.log(`[Finalize] Found ${todaysPredictions.length} predictions to finalize for ${today}`);
+    
     if (todaysPredictions.length === 0) {
-      return res.json({ success: true, message: 'No predictions to finalize', finalized: 0 });
+      return res.json({ success: true, message: 'No predictions to finalize', finalized: 0, date: today });
     }
     
-    // 2. Fetch current (closing) prices for each ticker
+    // 2. Fetch current (closing) prices for each ticker - try quote first, fallback to chart
     const uniqueTickers = Array.from(new Set(todaysPredictions.map(p => p.ticker)));
     const closingPrices: Record<string, number> = {};
+    const errors: string[] = [];
     
-    await Promise.all(
-      uniqueTickers.map(async (ticker) => {
-        try {
-          const q = await yahooFinance.quote(ticker) as any;
-          closingPrices[ticker] = q?.regularMarketPrice || 0;
-        } catch {
-          closingPrices[ticker] = 0;
+    const yf = typeof yahooFinance === 'function' ? new yahooFinance() : yahooFinance;
+    
+    for (const ticker of uniqueTickers) {
+      try {
+        // Try quote API first
+        const q = await yf.quote(ticker) as any;
+        if (q?.regularMarketPrice && q.regularMarketPrice > 0) {
+          closingPrices[ticker] = q.regularMarketPrice;
+          console.log(`[Finalize] ${ticker}: $${q.regularMarketPrice} (quote)`);
+        } else {
+          // Fallback to chart API for latest close
+          const chart = await yf.chart(ticker, { period1: '1d', interval: '1d' });
+          if (chart?.quotes?.length > 0) {
+            const lastQuote = chart.quotes[chart.quotes.length - 1];
+            closingPrices[ticker] = lastQuote.close || lastQuote.open || 0;
+            console.log(`[Finalize] ${ticker}: $${closingPrices[ticker]} (chart fallback)`);
+          } else {
+            errors.push(`${ticker}: no data`);
+            closingPrices[ticker] = 0;
+          }
         }
-      })
-    );
+      } catch (err: any) {
+        errors.push(`${ticker}: ${err.message}`);
+        closingPrices[ticker] = 0;
+        console.error(`[Finalize] Error fetching ${ticker}:`, err.message);
+      }
+      // Small delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
     
     // 3. Update each prediction with outcome
     let finalized = 0;
+    let skipped = 0;
     for (const pred of todaysPredictions) {
       const closePrice = closingPrices[pred.ticker];
-      if (closePrice <= 0) continue;
+      if (closePrice <= 0) {
+        skipped++;
+        continue;
+      }
       
       const profitPercent = ((closePrice - pred.entryPrice) / pred.entryPrice) * 100;
       const outcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
@@ -720,6 +746,7 @@ router.post('/finalize', async (req, res) => {
         })
         .where(eq(predictions.id, pred.id));
       
+      console.log(`[Finalize] ${pred.ticker}: $${pred.entryPrice} -> $${closePrice} = ${outcome} (${profitPercent.toFixed(2)}%)`);
       finalized++;
     }
     
@@ -727,6 +754,8 @@ router.post('/finalize', async (req, res) => {
       success: true, 
       message: `Finalized ${finalized} predictions`,
       finalized,
+      skipped,
+      errors: errors.length > 0 ? errors : undefined,
       date: today
     });
     
