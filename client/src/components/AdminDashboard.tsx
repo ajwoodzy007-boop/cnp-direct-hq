@@ -52,6 +52,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [finalizingStocks, setFinalizingStocks] = useState(false);
   const [finalizingCrypto, setFinalizingCrypto] = useState(false);
+  const [finalizingAll, setFinalizingAll] = useState(false);
   const [finalizeResult, setFinalizeResult] = useState<string | null>(null);
 
   const fetchStats = async () => {
@@ -146,6 +147,25 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       setFinalizeResult(`Error: ${e.message || 'Network error'}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const forceFinallizeAll = async () => {
+    setFinalizingAll(true);
+    setFinalizeResult(null);
+    try {
+      const res = await fetch('/api/admin/force-finalize-all', { method: 'POST' });
+      const json = await res.json();
+      if (json.success) {
+        setFinalizeResult(`ALL PENDING: ${json.message || 'Finalized successfully'}`);
+        fetchStats();
+      } else {
+        setFinalizeResult(`Error: ${json.error || 'Failed to finalize all'}`);
+      }
+    } catch (e: any) {
+      setFinalizeResult(`Error: ${e.message || 'Network error'}`);
+    } finally {
+      setFinalizingAll(false);
     }
   };
 
@@ -372,7 +392,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             </h3>
           </div>
           <p className="text-sm text-slate-400 mb-4">
-            Manually finalize today's predictions with closing prices. Use this if the scheduled finalization didn't run.
+            Manually finalize predictions with closing prices. Use <strong className="text-red-400">FINALIZE ALL PENDING</strong> to process ALL unfilled predictions from any date.
           </p>
           <div className="flex gap-3 flex-wrap">
             <button
@@ -392,6 +412,15 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             >
               <Zap className="h-4 w-4" />
               {finalizingCrypto ? 'Finalizing Crypto...' : 'Finalize Crypto'}
+            </button>
+            <button
+              onClick={forceFinallizeAll}
+              disabled={finalizingAll}
+              className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg flex items-center gap-2 border border-red-500/30 disabled:opacity-50 transition-all font-semibold"
+              data-testid="button-force-finalize-all"
+            >
+              <Zap className="h-4 w-4" />
+              {finalizingAll ? 'Finalizing All...' : 'FINALIZE ALL PENDING'}
             </button>
           </div>
           {finalizeResult && (

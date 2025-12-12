@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { query } from '../db';
-import { runStockFinalization, runCryptoFinalization } from '../lib/finalizationService';
+import { runStockFinalization, runCryptoFinalization, runAllPendingFinalization } from '../lib/finalizationService';
 
 const router = Router();
 
@@ -267,6 +267,19 @@ router.post('/force-finalize-crypto', requireAdmin, async (req, res) => {
   } catch (e: any) {
     console.error('Force crypto finalize error:', e);
     res.status(500).json({ success: false, error: e.message || "Failed to force finalize crypto" });
+  }
+});
+
+// Force finalize ALL pending predictions (stocks + crypto, any date)
+router.post('/force-finalize-all', requireAdmin, async (req, res) => {
+  try {
+    console.log('[ADMIN] Force finalize ALL pending triggered');
+    const result = await runAllPendingFinalization();
+    console.log('[ADMIN] Force finalize ALL result:', result);
+    res.json(result);
+  } catch (e: any) {
+    console.error('Force finalize all error:', e);
+    res.status(500).json({ success: false, error: e.message || "Failed to force finalize all" });
   }
 });
 
