@@ -85,8 +85,8 @@ export default function TheOracle() {
   const [showHistory, setShowHistory] = useState(false);
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [cryptoHistoryData, setCryptoHistoryData] = useState<any[]>([]);
-  const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0 });
-  const [cryptoStats, setCryptoStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0 });
+  const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0, bestPick: null as { ticker: string; return: number } | null });
+  const [cryptoStats, setCryptoStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0, bestPick: null as { ticker: string; return: number } | null });
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
 
   // Fetch real stats & history
@@ -364,6 +364,14 @@ export default function TheOracle() {
                 <span className="text-red-400">{currentStats.losses}L</span>
               </div>
             </div>
+            {currentStats.bestPick && (
+              <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
+                <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Best Pick</div>
+                <div className="text-2xl font-bold text-green-400 flex items-center gap-2">
+                  {currentStats.bestPick.ticker} <span className="text-lg">+{currentStats.bestPick.return}%</span>
+                </div>
+              </div>
+            )}
             <div className={`flex items-center text-xs text-slate-500 group-hover:text-${activeTab === 'crypto' ? 'orange' : 'cyan'}-400 transition-colors`}>
               View Proof Log <ArrowRight className="h-3 w-3 ml-1" />
             </div>

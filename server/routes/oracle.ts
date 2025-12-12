@@ -709,10 +709,16 @@ router.get('/history', async (req, res) => {
       };
     });
 
-    // 4. Calculate win rate and average return
+    // 4. Calculate win rate, average return, and best pick
     const total = wins + losses;
     const winRate = total === 0 ? 0 : Math.round((wins / total) * 100);
     const avgReturn = returnCount === 0 ? 0 : Number((totalReturn / returnCount).toFixed(2));
+    
+    // Find best pick (highest profit %)
+    const bestPick = gradedHistory.reduce((best, current) => {
+      if (!best || current.profitPercent > best.profitPercent) return current;
+      return best;
+    }, null as any);
 
     res.json({
       success: true,
@@ -720,7 +726,8 @@ router.get('/history', async (req, res) => {
         wins,
         losses,
         winRate,
-        avgReturn
+        avgReturn,
+        bestPick: bestPick ? { ticker: bestPick.ticker, return: Number(bestPick.profitPercent.toFixed(2)) } : null
       },
       history: gradedHistory
     });
@@ -974,6 +981,12 @@ router.get('/crypto-history', async (req, res) => {
     const total = wins + losses;
     const winRate = total === 0 ? 0 : Math.round((wins / total) * 100);
     const avgReturn = returnCount === 0 ? 0 : Number((totalReturn / returnCount).toFixed(2));
+    
+    // Find best pick
+    const bestPick = gradedHistory.reduce((best, current) => {
+      if (!best || current.profitPercent > best.profitPercent) return current;
+      return best;
+    }, null as any);
 
     res.json({
       success: true,
@@ -981,7 +994,8 @@ router.get('/crypto-history', async (req, res) => {
         wins,
         losses,
         winRate,
-        avgReturn
+        avgReturn,
+        bestPick: bestPick ? { ticker: bestPick.ticker, return: Number(bestPick.profitPercent.toFixed(2)) } : null
       },
       history: gradedHistory
     });
