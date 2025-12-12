@@ -9,6 +9,7 @@ interface PickData {
   ticker: string;
   name?: string;
   entryPrice: number;
+  openPrice?: number;
   predictedPrice: number;
   currentPrice?: number;
   outcome: string;
@@ -475,13 +476,41 @@ export default function TheOracle() {
 
                   <div className="space-y-3 mb-4">
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Entry Zone</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <span className="text-slate-500 cursor-help flex items-center gap-1">
+                            Entry Price <Info className="h-3 w-3 text-slate-600" />
+                          </span>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-56 bg-slate-900 border-slate-700 text-xs text-slate-300">
+                          Price when prediction was generated (7:30 AM ET for stocks, 8:00 AM ET for crypto)
+                        </PopoverContent>
+                      </Popover>
                       <span className="text-white font-mono">
                         {isCrypto && pick.entryPrice >= 1000 
                           ? `$${pick.entryPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                           : `$${pick.entryPrice.toFixed(2)}`}
                       </span>
                     </div>
+                    {pick.openPrice && pick.openPrice !== pick.entryPrice && (
+                      <div className="flex justify-between text-sm">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <span className="text-slate-500 cursor-help flex items-center gap-1">
+                              Open Price <Info className="h-3 w-3 text-slate-600" />
+                            </span>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-56 bg-slate-900 border-slate-700 text-xs text-slate-300">
+                            Market open price for the trading day
+                          </PopoverContent>
+                        </Popover>
+                        <span className="text-slate-400 font-mono">
+                          {isCrypto && pick.openPrice >= 1000 
+                            ? `$${pick.openPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                            : `$${pick.openPrice.toFixed(2)}`}
+                        </span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-slate-500">Target (AI)</span>
                       <span className={`text-${accentColor}-400 font-mono font-bold`}>

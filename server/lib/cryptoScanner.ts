@@ -26,6 +26,7 @@ export interface CryptoResult {
   ticker: string;
   name: string;
   price: number;
+  openPrice: number;
   changePercent: number;
   rsi: number;
   rvol: number;
@@ -84,6 +85,7 @@ async function analyzeCrypto(ticker: string): Promise<CryptoResult | null> {
       ticker: displayName,
       name: quote.shortName || quote.longName || displayName,
       price: quote.regularMarketPrice || 0,
+      openPrice: quote.regularMarketOpen || quote.regularMarketPrice || 0,
       changePercent: changePercent,
       rsi: Math.round(currentRSI),
       rvol: parseFloat(rvol.toFixed(2)),

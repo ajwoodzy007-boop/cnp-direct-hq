@@ -138,6 +138,7 @@ router.get('/daily', async (req, res) => {
     const formattedPicks = topPicks.map(p => ({
       ticker: p.ticker,
       entryPrice: p.price,
+      openPrice: p.openPrice || p.price,
       predictedPrice: p.price * 1.05,
       signal: p.signal,
       confidence: p.signal === 'MOMENTUM BUY' ? 'High' : p.signal === 'SPECULATIVE BUY' ? 'Low' : 'Med',
@@ -528,6 +529,7 @@ router.get('/crypto-daily', async (req, res) => {
       ticker: p.ticker,
       name: p.name,
       entryPrice: p.price,
+      openPrice: p.openPrice || p.price,
       predictedPrice: p.price * 1.08,
       signal: p.signal || 'CRYPTO BUY',
       confidence: p.signal === 'MOMENTUM BUY' ? 'High' : 'Med',

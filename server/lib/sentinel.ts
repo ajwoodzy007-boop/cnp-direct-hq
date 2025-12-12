@@ -16,6 +16,7 @@ const getSentimentScore = (text: string): number => {
 export interface SentinelResult {
   ticker: string;
   price: number;
+  openPrice: number;
   changePercent: number;
   rsi: number;
   rvol: number;
@@ -81,6 +82,7 @@ async function analyzeStock(ticker: string): Promise<SentinelResult | null> {
     return {
       ticker: ticker.toUpperCase(),
       price: quote.regularMarketPrice || 0,
+      openPrice: quote.regularMarketOpen || quote.regularMarketPrice || 0,
       changePercent: quote.regularMarketChangePercent || 0,
       rsi: Math.round(currentRSI),
       rvol: parseFloat(rvol.toFixed(2)),
