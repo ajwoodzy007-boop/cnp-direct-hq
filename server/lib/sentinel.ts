@@ -21,7 +21,7 @@ export interface SentinelResult {
   rvol: number;
   sentimentScore: number;
   verdict: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
-  signal: 'MOMENTUM BUY' | 'VALUE BUY' | 'SELL WARNING' | 'WAIT';
+  signal: 'MOMENTUM BUY' | 'VALUE BUY' | 'SPECULATIVE BUY' | 'SELL WARNING' | 'WAIT';
 }
 
 async function analyzeStock(ticker: string): Promise<SentinelResult | null> {
@@ -68,10 +68,10 @@ async function analyzeStock(ticker: string): Promise<SentinelResult | null> {
 
     let signal: SentinelResult['signal'] = 'WAIT';
 
-    if (rvol > 2.0 && avgSentiment > 0 && currentRSI < 85) {
+    if (rvol > 0.8 && avgSentiment >= 0 && currentRSI < 80 && currentRSI > 40) {
       signal = 'MOMENTUM BUY';
     }
-    else if (currentRSI < 35 && avgSentiment > -0.1) {
+    else if (currentRSI < 45 && avgSentiment > -0.2) {
       signal = 'VALUE BUY';
     }
     else if (currentRSI > 80) {

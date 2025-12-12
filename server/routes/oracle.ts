@@ -52,9 +52,9 @@ router.get('/daily', async (req, res) => {
     
     const allQualified = scanResults
       .filter(s => s.signal.includes('BUY'))
-      .filter(s => s.rsi >= 45 && s.rsi <= 70) // Optimal RSI range
-      .filter(s => (s.sentimentScore || 0) >= 0.05) // Positive sentiment
-      .filter(s => (s.rvol || 1) >= 1.2) // Volume confirmation
+      .filter(s => s.rsi >= 30 && s.rsi <= 85) // Wide RSI range to capture all BUY signals
+      .filter(s => (s.sentimentScore || 0) >= -0.3) // Allow slightly negative sentiment
+      .filter(s => (s.rvol || 1) >= 0.1) // Very low volume threshold
       .map(s => ({
         ...s,
         // Weighted scoring: prioritize momentum, optimal RSI, high sentiment
@@ -100,9 +100,29 @@ router.get('/daily', async (req, res) => {
     }
     
     // Combine and sort by score for final ranking
-    const topPicks = [...selectedLowPrice, ...selectedRegular]
+    let topPicks = [...selectedLowPrice, ...selectedRegular]
       .sort((a, b) => b.score - a.score)
       .slice(0, 10); // 10 unique picks per day
+
+    // FALLBACK: If not enough BUY signals, add best WAIT signals as SPECULATIVE BUY
+    if (topPicks.length < 10) {
+      const waitSignals = scanResults
+        .filter(s => s.signal === 'WAIT' && !seenTickers.has(s.ticker))
+        .filter(s => s.rsi >= 40 && s.rsi <= 70) // Good RSI range
+        .filter(s => (s.sentimentScore || 0) >= 0) // Positive sentiment
+        .map(s => ({
+          ...s,
+          signal: 'SPECULATIVE BUY' as const,
+          score: ((s.sentimentScore || 0) * 30) + (Math.min((s.rvol || 1), 3) * 10) + 20
+        }))
+        .sort((a, b) => b.score - a.score);
+      
+      const neededCount = 10 - topPicks.length;
+      for (let i = 0; i < Math.min(neededCount, waitSignals.length); i++) {
+        seenTickers.add(waitSignals[i].ticker);
+        topPicks.push(waitSignals[i] as any);
+      }
+    }
 
     // 3. AUTO-SAVE to database (The "Paper Trail")
     for (const p of topPicks) {
@@ -120,7 +140,7 @@ router.get('/daily', async (req, res) => {
       entryPrice: p.price,
       predictedPrice: p.price * 1.05,
       signal: p.signal,
-      confidence: p.signal === 'MOMENTUM BUY' ? 'High' : 'Med',
+      confidence: p.signal === 'MOMENTUM BUY' ? 'High' : p.signal === 'SPECULATIVE BUY' ? 'Low' : 'Med',
       outcome: 'pending'
     }));
 
