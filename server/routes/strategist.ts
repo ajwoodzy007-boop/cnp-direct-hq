@@ -1,10 +1,11 @@
 import express from 'express';
 import OpenAI from 'openai';
-import * as YahooFinanceModule from 'yahoo-finance2';
+import YahooFinanceDefault from 'yahoo-finance2';
 import { requirePremium } from '../middleware/premium';
 
-const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
-const yf = new YahooFinance();
+// Handle both ESM (dev) and CJS (production) module formats
+const YahooFinance = (YahooFinanceDefault as any).default || YahooFinanceDefault;
+const yf = typeof YahooFinance === 'function' ? new YahooFinance() : YahooFinance;
 const router = express.Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 

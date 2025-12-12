@@ -1,8 +1,9 @@
 import express from 'express';
-import * as YahooFinanceModule from 'yahoo-finance2';
+import YahooFinanceDefault from 'yahoo-finance2';
 
-const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
-const yf = new YahooFinance();
+// Handle both ESM (dev) and CJS (production) module formats
+const YahooFinance = (YahooFinanceDefault as any).default || YahooFinanceDefault;
+const yf = typeof YahooFinance === 'function' ? new YahooFinance() : YahooFinance;
 const router = express.Router();
 
 router.get('/', async (req, res) => {
