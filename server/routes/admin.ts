@@ -25,18 +25,78 @@ router.get('/check', (req, res) => {
   res.json({ isAdmin });
 });
 
+// Diagnostic endpoint to check database state
+router.get('/diagnostics', requireAdmin, async (req, res) => {
+  try {
+    const diagnostics: Record<string, any> = {};
+    
+    // Check users table
+    try {
+      const usersCount = await query('SELECT COUNT(*) as count FROM users');
+      diagnostics.users = { count: parseInt(usersCount.rows[0]?.count || '0'), error: null };
+    } catch (e: any) {
+      diagnostics.users = { count: 0, error: e.message };
+    }
+    
+    // Check predictions table
+    try {
+      const predCount = await query('SELECT COUNT(*) as count FROM predictions');
+      diagnostics.predictions = { count: parseInt(predCount.rows[0]?.count || '0'), error: null };
+    } catch (e: any) {
+      diagnostics.predictions = { count: 0, error: e.message };
+    }
+    
+    // Check beta_passes table
+    try {
+      const betaCount = await query('SELECT COUNT(*) as count FROM beta_passes');
+      diagnostics.beta_passes = { count: parseInt(betaCount.rows[0]?.count || '0'), error: null };
+    } catch (e: any) {
+      diagnostics.beta_passes = { count: 0, error: e.message };
+    }
+    
+    // List all tables in database
+    try {
+      const tables = await query(`
+        SELECT table_name FROM information_schema.tables 
+        WHERE table_schema = 'public' ORDER BY table_name
+      `);
+      diagnostics.tables = tables.rows.map((r: any) => r.table_name);
+    } catch (e: any) {
+      diagnostics.tables = { error: e.message };
+    }
+    
+    res.json({ success: true, diagnostics });
+  } catch (e: any) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 router.get('/stats', requireAdmin, async (req, res) => {
   try {
-    const usersResult = await query('SELECT COUNT(*) as total, tier FROM users GROUP BY tier');
+    // Get user counts - handle if tier column doesn't exist
+    let usersResult;
+    try {
+      usersResult = await query('SELECT COUNT(*) as total, COALESCE(tier, \'FREE\') as tier FROM users GROUP BY tier');
+    } catch (e) {
+      console.error('Users query failed, trying simple count:', e);
+      usersResult = await query('SELECT COUNT(*) as total, \'FREE\' as tier FROM users');
+    }
+    
     // Query the predictions table (where Oracle saves data)
-    const predictionsResult = await query(`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(CASE WHEN LOWER(outcome) = 'win' THEN 1 END) as wins,
-        COUNT(CASE WHEN LOWER(outcome) = 'loss' THEN 1 END) as losses
-      FROM predictions
-      WHERE outcome IS NOT NULL AND outcome != '' AND outcome != 'pending'
-    `);
+    let predictionsResult;
+    try {
+      predictionsResult = await query(`
+        SELECT 
+          COUNT(*) as total,
+          COUNT(CASE WHEN LOWER(outcome) = 'win' THEN 1 END) as wins,
+          COUNT(CASE WHEN LOWER(outcome) = 'loss' THEN 1 END) as losses
+        FROM predictions
+        WHERE outcome IS NOT NULL AND outcome != '' AND outcome != 'pending'
+      `);
+    } catch (e) {
+      console.error('Predictions query failed:', e);
+      predictionsResult = { rows: [{ total: 0, wins: 0, losses: 0 }] };
+    }
     
     const recentUsersResult = await query(`
       SELECT id, email, tier 
