@@ -1,7 +1,8 @@
 import express from 'express';
 import * as YahooFinanceModule from 'yahoo-finance2';
 
-const yf = (YahooFinanceModule as any).default || YahooFinanceModule;
+const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
+const yf = new YahooFinance();
 const router = express.Router();
 
 router.get('/', async (req, res) => {

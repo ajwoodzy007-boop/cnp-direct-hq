@@ -306,7 +306,7 @@ export async function registerRoutes(
         `SELECT dpe.* FROM daily_prediction_entries dpe
          JOIN daily_prediction_runs dpr ON dpe.run_id = dpr.id
          WHERE dpr.run_date = $1
-         ORDER BY dpe.rank ASC`,
+         ORDER BY dpe.confidence DESC`,
         [today]
       );
       const predictions = result.rows.map((row: any) => ({

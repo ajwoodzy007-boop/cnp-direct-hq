@@ -4,7 +4,8 @@ import OpenAI from 'openai';
 import { query } from '../db';
 import { requirePremium } from '../middleware/premium';
 
-const yf = (YahooFinanceModule as any).default || YahooFinanceModule;
+const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
+const yf = new YahooFinance();
 const router = express.Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
