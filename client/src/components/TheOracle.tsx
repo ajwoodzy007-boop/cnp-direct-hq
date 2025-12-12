@@ -255,9 +255,12 @@ export default function TheOracle() {
 
       <div>
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            Today's Predictions <span className="text-xs font-normal text-slate-500 bg-slate-800 px-2 py-1 rounded ml-2">Live</span>
-          </h3>
+          <div>
+            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+              Today's Predictions <span className="text-xs font-normal text-slate-500 bg-slate-800 px-2 py-1 rounded ml-2">Live</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">New picks posted daily at 7:30 AM ET</p>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">Sort by:</span>
             <select 
