@@ -350,34 +350,62 @@ export async function registerRoutes(
   // GET /api/portfolio/summary - Get portfolio summary for dashboard
   app.get("/api/portfolio/summary", async (req, res) => {
     try {
-      const user = (req.session as any)?.user;
-      if (!user) {
-        return res.json({ summary: null });
-      }
+      // Use the same portfolio table as The Vault (no user filter for now)
       const holdings = await query(
-        `SELECT * FROM user_portfolio WHERE user_id = $1`,
-        [user.id]
+        `SELECT * FROM portfolio WHERE status = $1`,
+        ['OPEN']
       );
       if (holdings.rows.length === 0) {
         return res.json({ summary: null });
       }
+      
+      // Fetch current prices - match The Vault's approach exactly
+      const YahooFinanceModule = await import('yahoo-finance2');
+      const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
+      const yf = typeof YahooFinance === 'function' ? new YahooFinance() : YahooFinance;
+      
       let totalValue = 0;
-      let dayChange = 0;
+      let totalCost = 0;
       let topHolding: { ticker: string; value: number } | null = null;
       
-      for (const h of holdings.rows) {
-        const value = (h.shares || 0) * (h.current_price || h.avg_cost || 0);
-        totalValue += value;
-        if (!topHolding || value > topHolding.value) {
-          topHolding = { ticker: h.ticker, value };
+      // Only fetch shares for simplicity (skip options for summary)
+      const shareHoldings = holdings.rows.filter((h: any) => h.type === 'SHARE' || h.type === 'CRYPTO');
+      
+      for (const h of shareHoldings) {
+        try {
+          let symbol = h.ticker;
+          if (h.type === 'CRYPTO') {
+            symbol = `${h.ticker.toUpperCase().replace(/[-_]?USD$/i, '')}-USD`;
+          }
+          
+          const quote = await yf.quote(symbol);
+          const currentPrice = quote?.regularMarketPrice || 0;
+          const shares = parseFloat(h.shares) || 0;
+          const entryPrice = parseFloat(h.entryPrice || h.entryprice) || 0;
+          const multiplier = 1;
+          
+          const value = currentPrice * shares * multiplier;
+          const cost = entryPrice * shares * multiplier;
+          
+          totalValue += value;
+          totalCost += cost;
+          
+          if (!topHolding || value > topHolding.value) {
+            topHolding = { ticker: h.ticker, value };
+          }
+        } catch (e: any) {
+          console.warn(`[Portfolio Summary] Failed to fetch ${h.ticker}:`, e.message);
         }
       }
+      
+      const dayChange = totalValue - totalCost;
+      const dayChangePercent = totalCost > 0 ? (dayChange / totalCost * 100) : 0;
       
       res.json({
         summary: {
           totalValue,
-          dayChange: dayChange,
-          dayChangePercent: totalValue > 0 ? (dayChange / totalValue * 100) : 0,
+          dayChange,
+          dayChangePercent,
           topHolding
         }
       });
