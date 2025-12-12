@@ -116,6 +116,108 @@ async function getHistoricalOpenPrice(ticker: string, date: Date): Promise<numbe
   }
 }
 
+// Helper to fetch historical close price for a specific date
+async function getHistoricalClosePrice(ticker: string, date: Date): Promise<number | null> {
+  try {
+    const yf = typeof yahooFinance === 'function' ? new yahooFinance() : yahooFinance;
+    
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const chart = await yf.chart(ticker, {
+      period1: startOfDay,
+      period2: endOfDay,
+      interval: '1d'
+    });
+    
+    if (chart && chart.quotes && chart.quotes.length > 0) {
+      const dayCandle = chart.quotes[0];
+      if (dayCandle && dayCandle.close && dayCandle.close > 0) {
+        return dayCandle.close;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`[Oracle] Error fetching historical close for ${ticker}:`, error);
+    return null;
+  }
+}
+
+// POST /fix-all-historical-close-prices: Update ALL historical predictions with correct close prices
+router.post('/fix-all-historical-close-prices', async (req, res) => {
+  try {
+    // Get all finalized stock predictions (have outcomePrice set)
+    const allPredictions = await db.select().from(predictions)
+      .where(sql`(${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND ${predictions.outcomePrice} IS NOT NULL`);
+    
+    if (allPredictions.length === 0) {
+      return res.json({ success: false, error: 'No finalized predictions found' });
+    }
+    
+    console.log(`[Oracle] Fixing close prices for ${allPredictions.length} historical predictions...`);
+    
+    const updates: { ticker: string; date: string; oldClose: number; newClose: number; oldOutcome: string; newOutcome: string }[] = [];
+    const errors: { ticker: string; date: string; error: string }[] = [];
+    
+    for (const pred of allPredictions) {
+      try {
+        const predDate = pred.predictionDate ? new Date(pred.predictionDate) : new Date();
+        const historicalClose = await getHistoricalClosePrice(pred.ticker, predDate);
+        
+        if (historicalClose && historicalClose > 0 && Math.abs(historicalClose - (pred.outcomePrice || 0)) > 0.01) {
+          // Recalculate outcome based on corrected prices
+          const profitPercent = ((historicalClose - pred.entryPrice) / pred.entryPrice) * 100;
+          const newOutcome = profitPercent > 0.5 ? 'win' : profitPercent < -0.5 ? 'loss' : 'neutral';
+          
+          await db.update(predictions)
+            .set({ 
+              outcomePrice: historicalClose,
+              outcome: newOutcome
+            })
+            .where(eq(predictions.id, pred.id));
+          
+          updates.push({
+            ticker: pred.ticker,
+            date: predDate.toISOString().split('T')[0],
+            oldClose: pred.outcomePrice || 0,
+            newClose: historicalClose,
+            oldOutcome: pred.outcome || '',
+            newOutcome
+          });
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (err: any) {
+        errors.push({
+          ticker: pred.ticker,
+          date: pred.predictionDate?.toISOString().split('T')[0] || 'unknown',
+          error: err.message
+        });
+      }
+    }
+    
+    console.log(`[Oracle] Fixed ${updates.length} close prices, ${errors.length} errors`);
+    
+    res.json({ 
+      success: true, 
+      message: `Updated ${updates.length} historical predictions with correct close prices`,
+      totalProcessed: allPredictions.length,
+      updated: updates.length,
+      errors: errors.length,
+      updates: updates.slice(0, 50),
+      errorDetails: errors.slice(0, 10)
+    });
+    
+  } catch (error) {
+    console.error("Fix Historical Close Prices Error:", error);
+    res.status(500).json({ success: false, error: "Failed to fix historical close prices" });
+  }
+});
+
 // POST /fix-all-historical-prices: Update ALL historical predictions with correct open prices
 router.post('/fix-all-historical-prices', async (req, res) => {
   try {
