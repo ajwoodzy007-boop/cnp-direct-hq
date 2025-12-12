@@ -174,7 +174,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Scheduler for daily predictions at 7:30 AM Eastern time
+// Scheduler for daily predictions at 9:00 AM Eastern time
 function startPredictionScheduler() {
   const port = process.env.PORT || 5000;
   
@@ -194,9 +194,9 @@ function startPredictionScheduler() {
     // Check if it's a weekday (Mon-Fri)
     const isWeekday = day >= 1 && day <= 5;
     
-    // 7:30 AM ET - Generate and save predictions
-    if (isWeekday && hour === 7 && minute === 30) {
-      log("Triggering daily prediction generation at 7:30 AM ET", "scheduler");
+    // 9:00 AM ET - Generate and save predictions (30 min before market open for best pre-market data)
+    if (isWeekday && hour === 9 && minute === 0) {
+      log("Triggering daily prediction generation at 9:00 AM ET", "scheduler");
       try {
         // Force regenerate predictions for the new day
         const response = await fetch(`http://localhost:${port}/api/market/top10-today?refresh=true`);
@@ -319,7 +319,7 @@ function startPredictionScheduler() {
   
   // Check every minute
   setInterval(checkAndTriggerPredictions, 60 * 1000);
-  log("Prediction scheduler started - stocks: 7:30 AM/4:15 PM ET, crypto: 8:00 AM/11:59 PM ET", "scheduler");
+  log("Prediction scheduler started - stocks: 9:00 AM/4:15 PM ET, crypto: 8:00 AM/11:59 PM ET", "scheduler");
 }
 
 (async () => {

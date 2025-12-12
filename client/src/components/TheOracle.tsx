@@ -483,7 +483,7 @@ export default function TheOracle() {
                           </span>
                         </PopoverTrigger>
                         <PopoverContent className="w-56 bg-slate-900 border-slate-700 text-xs text-slate-300">
-                          Price when prediction was generated (7:30 AM ET for stocks, 8:00 AM ET for crypto)
+                          Price when prediction was generated (9:00 AM ET for stocks, 8:00 AM ET for crypto)
                         </PopoverContent>
                       </Popover>
                       <span className="text-white font-mono">
@@ -554,7 +554,7 @@ export default function TheOracle() {
                   <div className="flex items-center justify-between text-xs text-slate-600 mb-4">
                     <div className="flex items-center gap-1">
                       <Lock className="h-3 w-3" />
-                      <span>{isCrypto ? 'Markets: 24/7' : `Locked ${pick.lockedAt || '7:30 AM ET'}`}</span>
+                      <span>{isCrypto ? 'Markets: 24/7' : `Locked ${pick.lockedAt || '9:00 AM ET'}`}</span>
                     </div>
                   </div>
 

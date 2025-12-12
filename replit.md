@@ -168,7 +168,7 @@ The Oracle now includes separate tabs for Stock and Crypto predictions with full
 - Complete separation ensures no data leakage between asset classes
 
 ### Scheduler Timing
-- **Stocks**: Generate at 7:30 AM ET, finalize at 4:15 PM ET (market hours)
+- **Stocks**: Generate at 9:00 AM ET (30 min before market open for best pre-market data), finalize at 4:15 PM ET
 - **Crypto**: Generate at 8:00 AM ET, finalize at 11:59 PM ET (24/7 markets)
 
 ### UI Theming
