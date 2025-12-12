@@ -24,12 +24,17 @@ const allowlist = [
   "passport",
   "passport-local",
   "pg",
-  "stripe",
   "uuid",
   "ws",
   "xlsx",
   "zod",
   "zod-validation-error",
+];
+
+// These packages must be external (not bundled) due to CommonJS export issues
+const forceExternal = [
+  "stripe",
+  "stripe-replit-sync",
 ];
 
 async function buildAll() {
@@ -44,7 +49,10 @@ async function buildAll() {
     ...Object.keys(pkg.dependencies || {}),
     ...Object.keys(pkg.devDependencies || {}),
   ];
-  const externals = allDeps.filter((dep) => !allowlist.includes(dep));
+  const externals = [
+    ...allDeps.filter((dep) => !allowlist.includes(dep)),
+    ...forceExternal,
+  ];
 
   await esbuild({
     entryPoints: ["server/index.ts"],
