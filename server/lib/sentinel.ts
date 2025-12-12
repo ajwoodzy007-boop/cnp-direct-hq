@@ -69,13 +69,20 @@ async function analyzeStock(ticker: string): Promise<SentinelResult | null> {
 
     let signal: SentinelResult['signal'] = 'WAIT';
 
-    if (rvol > 0.8 && avgSentiment >= 0 && currentRSI < 80 && currentRSI > 40) {
+    // TIGHTENED THRESHOLDS for higher win rate:
+    // MOMENTUM BUY: High conviction - strong volume, positive sentiment, good RSI
+    if (rvol > 1.5 && avgSentiment > 0.1 && currentRSI >= 45 && currentRSI <= 65) {
       signal = 'MOMENTUM BUY';
     }
-    else if (currentRSI < 45 && avgSentiment > -0.2) {
+    // VALUE BUY: Oversold with positive sentiment confirmation
+    else if (currentRSI < 35 && avgSentiment > 0.1) {
       signal = 'VALUE BUY';
     }
-    else if (currentRSI > 80 || (avgSentiment <= 0 && quote.regularMarketChangePercent < -8)) {
+    // SPECULATIVE BUY: Looser criteria (lower priority in selection)
+    else if (rvol > 1.0 && avgSentiment >= 0 && currentRSI >= 40 && currentRSI <= 70) {
+      signal = 'SPECULATIVE BUY';
+    }
+    else if (currentRSI > 80 || (avgSentiment <= -0.1 && quote.regularMarketChangePercent < -8)) {
       signal = 'SELL WARNING';
     }
 

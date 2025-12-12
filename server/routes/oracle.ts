@@ -458,84 +458,64 @@ router.get('/daily', async (req, res) => {
     // 2. Run Sentinel Engine for new picks
     const scanResults = await runMarketScan();
 
-    // IMPROVED FILTERS for higher win rate:
-    // - RSI in optimal range (45-65) - not overbought
-    // - Sentiment >= 0.1 (clearly positive news)
+    // HIGH CONVICTION FILTERS for better win rate:
+    // - Only MOMENTUM BUY and VALUE BUY signals (skip SPECULATIVE)
+    // - RSI 35-65 (not overbought, not extremely oversold)
+    // - Sentiment >= 0.1 (clearly positive news required)
     // - RVOL >= 1.5 (real institutional interest)
-    // - Prioritize MOMENTUM BUY over VALUE BUY
+    // - Reduce to 5 picks (quality over quantity)
     const seenTickers = new Set<string>();
     
-    const allQualified = scanResults
-      .filter(s => s.signal.includes('BUY'))
-      .filter(s => s.rsi >= 30 && s.rsi <= 85) // Wide RSI range to capture all BUY signals
-      .filter(s => (s.sentimentScore || 0) >= -0.3) // Allow slightly negative sentiment
-      .filter(s => (s.rvol || 1) >= 0.1) // Very low volume threshold
+    // First pass: High conviction picks only (MOMENTUM BUY, VALUE BUY with strict filters)
+    const highConviction = scanResults
+      .filter(s => s.signal === 'MOMENTUM BUY' || s.signal === 'VALUE BUY')
+      .filter(s => s.rsi >= 35 && s.rsi <= 65) // Optimal RSI range
+      .filter(s => (s.sentimentScore || 0) >= 0.1) // Positive sentiment required
+      .filter(s => (s.rvol || 1) >= 1.5) // Volume confirmation required
       .map(s => ({
         ...s,
-        // Weighted scoring: prioritize momentum, optimal RSI, high sentiment
+        // Scoring: heavily weight signal type and sentiment
         score: (
-          (s.signal === 'MOMENTUM BUY' ? 30 : 15) + // Signal type weight
-          (s.rsi >= 50 && s.rsi <= 60 ? 25 : 10) + // Optimal RSI bonus
-          ((s.sentimentScore || 0) * 20) + // Sentiment weight
-          (Math.min((s.rvol || 1), 5) * 5) // RVOL weight (capped)
+          (s.signal === 'MOMENTUM BUY' ? 50 : 35) + // MOMENTUM preferred
+          (s.rsi >= 45 && s.rsi <= 55 ? 20 : 10) + // Optimal RSI bonus
+          ((s.sentimentScore || 0) * 40) + // Strong sentiment weight
+          (Math.min((s.rvol || 1), 5) * 8) // RVOL weight
         )
       }))
       .sort((a, b) => b.score - a.score);
     
-    // Separate into price tiers: under $30 and $30+
-    const lowPriceStocks = allQualified.filter(s => s.price < 30);
-    const regularStocks = allQualified.filter(s => s.price >= 30);
-    
-    // Ensure at least 2 low-price picks (under $30)
-    const selectedLowPrice: typeof allQualified = [];
-    const selectedRegular: typeof allQualified = [];
-    
-    for (const s of lowPriceStocks) {
-      if (!seenTickers.has(s.ticker) && selectedLowPrice.length < 2) {
+    // Take top 5 unique high-conviction picks
+    let topPicks: typeof highConviction = [];
+    for (const s of highConviction) {
+      if (!seenTickers.has(s.ticker) && topPicks.length < 5) {
         seenTickers.add(s.ticker);
-        selectedLowPrice.push(s);
+        topPicks.push(s);
       }
     }
     
-    // Fill remaining spots with regular stocks (up to 10 total)
-    const remainingSlots = 10 - selectedLowPrice.length;
-    for (const s of regularStocks) {
-      if (!seenTickers.has(s.ticker) && selectedRegular.length < remainingSlots) {
-        seenTickers.add(s.ticker);
-        selectedRegular.push(s);
-      }
-    }
-    
-    // If we need more low-price stocks to hit 10, add them
-    for (const s of lowPriceStocks) {
-      if (!seenTickers.has(s.ticker) && (selectedLowPrice.length + selectedRegular.length) < 10) {
-        seenTickers.add(s.ticker);
-        selectedLowPrice.push(s);
-      }
-    }
-    
-    // Combine and sort by score for final ranking
-    let topPicks = [...selectedLowPrice, ...selectedRegular]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10); // 10 unique picks per day
-
-    // FALLBACK: If not enough BUY signals, add best WAIT signals as SPECULATIVE BUY
-    if (topPicks.length < 10) {
-      const waitSignals = scanResults
-        .filter(s => s.signal === 'WAIT' && !seenTickers.has(s.ticker))
-        .filter(s => s.rsi >= 40 && s.rsi <= 70) // Good RSI range
-        .filter(s => (s.sentimentScore || 0) >= 0) // Positive sentiment
+    // FALLBACK: If we have fewer than 3 picks, relax criteria slightly BUT ONLY FOR MOMENTUM/VALUE
+    if (topPicks.length < 3) {
+      const fallbackPicks = scanResults
+        .filter(s => (s.signal === 'MOMENTUM BUY' || s.signal === 'VALUE BUY') && !seenTickers.has(s.ticker))
+        .filter(s => s.rsi >= 40 && s.rsi <= 70) // Slightly wider RSI
+        .filter(s => (s.sentimentScore || 0) >= 0) // At least neutral sentiment
+        .filter(s => (s.rvol || 1) >= 1.2) // Slightly lower RVOL
         .map(s => ({
           ...s,
-          signal: 'SPECULATIVE BUY' as const,
-          score: ((s.sentimentScore || 0) * 30) + (Math.min((s.rvol || 1), 3) * 10) + 20
+          score: (
+            (s.signal === 'MOMENTUM BUY' ? 40 : 30) +
+            ((s.sentimentScore || 0) * 30) +
+            (Math.min((s.rvol || 1), 4) * 6)
+          )
         }))
         .sort((a, b) => b.score - a.score);
       
-      const neededCount = 10 - topPicks.length;
-      for (let i = 0; i < Math.min(neededCount, waitSignals.length); i++) {
-        seenTickers.add(waitSignals[i].ticker);
-        topPicks.push(waitSignals[i] as any);
+      const neededCount = 5 - topPicks.length;
+      for (let i = 0; i < Math.min(neededCount, fallbackPicks.length); i++) {
+        if (!seenTickers.has(fallbackPicks[i].ticker)) {
+          seenTickers.add(fallbackPicks[i].ticker);
+          topPicks.push(fallbackPicks[i]);
+        }
       }
     }
 
@@ -548,7 +528,7 @@ router.get('/daily', async (req, res) => {
         openPrice: p.openPrice || p.price,
         predictedPrice: dynamicTarget,
         signal: p.signal,
-        confidence: p.signal === 'MOMENTUM BUY' ? 'High' : p.signal === 'SPECULATIVE BUY' ? 'Low' : 'Med',
+        confidence: p.signal === 'MOMENTUM BUY' ? 'High' : 'Med',
         outcome: 'pending'
       };
     });
@@ -593,57 +573,56 @@ router.post('/admin/regenerate', async (req, res) => {
     // 2. Run fresh Sentinel scan
     const scanResults = await runMarketScan();
     
-    // Same selection logic as /daily endpoint
+    // HIGH CONVICTION FILTERS (same as /daily endpoint)
     const seenTickers = new Set<string>();
     
-    const allQualified = scanResults
-      .filter(s => s.signal.includes('BUY'))
-      .filter(s => s.rsi >= 30 && s.rsi <= 85)
-      .filter(s => (s.sentimentScore || 0) >= -0.3)
-      .filter(s => (s.rvol || 1) >= 0.1)
+    const highConviction = scanResults
+      .filter(s => s.signal === 'MOMENTUM BUY' || s.signal === 'VALUE BUY')
+      .filter(s => s.rsi >= 35 && s.rsi <= 65)
+      .filter(s => (s.sentimentScore || 0) >= 0.1)
+      .filter(s => (s.rvol || 1) >= 1.5)
       .map(s => ({
         ...s,
         score: (
-          (s.signal === 'MOMENTUM BUY' ? 30 : 15) +
-          (s.rsi >= 50 && s.rsi <= 60 ? 25 : 10) +
-          ((s.sentimentScore || 0) * 20) +
-          (Math.min((s.rvol || 1), 5) * 5)
+          (s.signal === 'MOMENTUM BUY' ? 50 : 35) +
+          (s.rsi >= 45 && s.rsi <= 55 ? 20 : 10) +
+          ((s.sentimentScore || 0) * 40) +
+          (Math.min((s.rvol || 1), 5) * 8)
         )
       }))
       .sort((a, b) => b.score - a.score);
     
-    const lowPriceStocks = allQualified.filter(s => s.price < 30);
-    const regularStocks = allQualified.filter(s => s.price >= 30);
-    
-    const selectedLowPrice: typeof allQualified = [];
-    const selectedRegular: typeof allQualified = [];
-    
-    for (const s of lowPriceStocks) {
-      if (!seenTickers.has(s.ticker) && selectedLowPrice.length < 2) {
+    let topPicks: typeof highConviction = [];
+    for (const s of highConviction) {
+      if (!seenTickers.has(s.ticker) && topPicks.length < 5) {
         seenTickers.add(s.ticker);
-        selectedLowPrice.push(s);
+        topPicks.push(s);
       }
     }
     
-    for (const s of regularStocks) {
-      if (!seenTickers.has(s.ticker) && selectedRegular.length < 8) {
-        seenTickers.add(s.ticker);
-        selectedRegular.push(s);
-      }
-    }
-    
-    let topPicks = [...selectedLowPrice, ...selectedRegular].slice(0, 10);
-    
-    // Fill with WAIT signals if needed
-    if (topPicks.length < 10) {
-      const waitSignals = scanResults
-        .filter(s => s.signal === 'WAIT' && !seenTickers.has(s.ticker))
-        .sort((a, b) => (b.sentimentScore || 0) - (a.sentimentScore || 0));
+    // Fallback if fewer than 3 picks - ONLY MOMENTUM/VALUE signals allowed
+    if (topPicks.length < 3) {
+      const fallbackPicks = scanResults
+        .filter(s => (s.signal === 'MOMENTUM BUY' || s.signal === 'VALUE BUY') && !seenTickers.has(s.ticker))
+        .filter(s => s.rsi >= 40 && s.rsi <= 70)
+        .filter(s => (s.sentimentScore || 0) >= 0)
+        .filter(s => (s.rvol || 1) >= 1.2)
+        .map(s => ({
+          ...s,
+          score: (
+            (s.signal === 'MOMENTUM BUY' ? 40 : 30) +
+            ((s.sentimentScore || 0) * 30) +
+            (Math.min((s.rvol || 1), 4) * 6)
+          )
+        }))
+        .sort((a, b) => b.score - a.score);
       
-      const neededCount = 10 - topPicks.length;
-      for (let i = 0; i < Math.min(neededCount, waitSignals.length); i++) {
-        seenTickers.add(waitSignals[i].ticker);
-        topPicks.push(waitSignals[i] as any);
+      const neededCount = 5 - topPicks.length;
+      for (let i = 0; i < Math.min(neededCount, fallbackPicks.length); i++) {
+        if (!seenTickers.has(fallbackPicks[i].ticker)) {
+          seenTickers.add(fallbackPicks[i].ticker);
+          topPicks.push(fallbackPicks[i]);
+        }
       }
     }
     
@@ -667,7 +646,7 @@ router.post('/admin/regenerate', async (req, res) => {
         ticker: p.ticker,
         entryPrice: p.price,
         signal: p.signal,
-        confidence: p.signal === 'MOMENTUM BUY' ? 'High' : p.signal === 'SPECULATIVE BUY' ? 'Low' : 'Med'
+        confidence: p.signal === 'MOMENTUM BUY' ? 'High' : 'Med'
       }))
     });
     
