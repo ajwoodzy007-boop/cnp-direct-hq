@@ -64,11 +64,11 @@ export default function MarketRadar() {
         <button 
           onClick={fetchScan} 
           disabled={loading} 
-          className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg flex items-center gap-2 transition-all"
+          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 text-sm rounded-lg flex items-center gap-1.5 transition-all border border-slate-700 hover:border-cyan-500/30"
           data-testid="button-initiate-scan"
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          {loading ? 'Scanning...' : 'Scan Sector'}
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'Scanning...' : 'Refresh'}
         </button>
       </div>
 
@@ -94,7 +94,7 @@ export default function MarketRadar() {
 
         {data.length === 0 && !loading && (
           <div className="text-center py-12 text-slate-500">
-            Radar Offline. Click "Scan Sector" to begin.
+            Radar Offline. Click "Refresh" to begin.
           </div>
         )}
 
