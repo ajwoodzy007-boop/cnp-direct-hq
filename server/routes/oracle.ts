@@ -85,6 +85,105 @@ router.post('/update-open-prices', async (req, res) => {
   }
 });
 
+// Helper to fetch historical open price for a specific date
+async function getHistoricalOpenPrice(ticker: string, date: Date): Promise<number | null> {
+  try {
+    const yf = typeof yahooFinance === 'function' ? new yahooFinance() : yahooFinance;
+    
+    // Get chart data for that specific date
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const chart = await yf.chart(ticker, {
+      period1: startOfDay,
+      period2: endOfDay,
+      interval: '1d'
+    });
+    
+    if (chart && chart.quotes && chart.quotes.length > 0) {
+      const dayCandle = chart.quotes[0];
+      if (dayCandle && dayCandle.open && dayCandle.open > 0) {
+        return dayCandle.open;
+      }
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`[Oracle] Error fetching historical open for ${ticker}:`, error);
+    return null;
+  }
+}
+
+// POST /fix-all-historical-prices: Update ALL historical predictions with correct open prices
+router.post('/fix-all-historical-prices', async (req, res) => {
+  try {
+    // Get all stock predictions
+    const allPredictions = await db.select().from(predictions)
+      .where(sql`${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL`);
+    
+    if (allPredictions.length === 0) {
+      return res.json({ success: false, error: 'No predictions found' });
+    }
+    
+    console.log(`[Oracle] Fixing open prices for ${allPredictions.length} historical predictions...`);
+    
+    const updates: { ticker: string; date: string; oldPrice: number; newPrice: number }[] = [];
+    const errors: { ticker: string; date: string; error: string }[] = [];
+    
+    for (const pred of allPredictions) {
+      try {
+        const predDate = pred.predictionDate ? new Date(pred.predictionDate) : new Date();
+        const historicalOpen = await getHistoricalOpenPrice(pred.ticker, predDate);
+        
+        if (historicalOpen && historicalOpen > 0 && Math.abs(historicalOpen - pred.entryPrice) > 0.01) {
+          // Update both entryPrice and openPrice
+          await db.update(predictions)
+            .set({ 
+              entryPrice: historicalOpen,
+              openPrice: historicalOpen 
+            })
+            .where(eq(predictions.id, pred.id));
+          
+          updates.push({
+            ticker: pred.ticker,
+            date: predDate.toISOString().split('T')[0],
+            oldPrice: pred.entryPrice,
+            newPrice: historicalOpen
+          });
+        }
+        
+        // Small delay to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (err: any) {
+        errors.push({
+          ticker: pred.ticker,
+          date: pred.predictionDate?.toISOString().split('T')[0] || 'unknown',
+          error: err.message
+        });
+      }
+    }
+    
+    console.log(`[Oracle] Fixed ${updates.length} predictions, ${errors.length} errors`);
+    
+    res.json({ 
+      success: true, 
+      message: `Updated ${updates.length} historical predictions with correct open prices`,
+      totalProcessed: allPredictions.length,
+      updated: updates.length,
+      errors: errors.length,
+      updates: updates.slice(0, 50), // Return first 50 updates
+      errorDetails: errors.slice(0, 10) // Return first 10 errors
+    });
+    
+  } catch (error) {
+    console.error("Fix Historical Prices Error:", error);
+    res.status(500).json({ success: false, error: "Failed to fix historical prices" });
+  }
+});
+
 // GET /daily: Run Scan & Auto-Save to History (stocks only)
 router.get('/daily', async (req, res) => {
   try {
