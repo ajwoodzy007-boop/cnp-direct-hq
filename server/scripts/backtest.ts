@@ -142,7 +142,7 @@ async function getGainersForDate(date: Date): Promise<string[]> {
       continue;
     }
     
-    await new Promise(r => setTimeout(r, 50));
+    await new Promise(r => setTimeout(r, 20));
   }
   
   return gains
@@ -176,10 +176,12 @@ async function runBacktest(): Promise<void> {
   const endDate = new Date();
   endDate.setDate(endDate.getDate() - 1);
   const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - 1);
+  startDate.setMonth(startDate.getMonth() - 6);
   
-  const tradingDays = getTradingDays(startDate, endDate);
-  console.log(`Testing ${tradingDays.length} trading days from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}\n`);
+  const allTradingDays = getTradingDays(startDate, endDate);
+  // Sample every 3rd day for faster backtesting (still statistically valid)
+  const tradingDays = allTradingDays.filter((_, i) => i % 3 === 0);
+  console.log(`Testing ${tradingDays.length} sampled trading days (every 3rd day) from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}\n`);
   
   const allResults: DailySummary[] = [];
   let totalWins = 0;
@@ -227,7 +229,7 @@ async function runBacktest(): Promise<void> {
         console.log(`  ${win ? '✓' : '✗'} ${ticker}: ${signal} | Open: $${data.open.toFixed(2)} → Close: $${data.close.toFixed(2)} | ${returnPercent >= 0 ? '+' : ''}${returnPercent.toFixed(2)}%`);
       }
       
-      await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 50));
     }
     
     if (qualifiedPicks.length === 0) {
