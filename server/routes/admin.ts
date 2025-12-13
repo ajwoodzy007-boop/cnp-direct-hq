@@ -4,7 +4,12 @@ import { runStockFinalization, runCryptoFinalization, runAllPendingFinalization 
 
 const router = Router();
 
-const ADMIN_EMAIL = 'ajwoodzy007@gmail.com';
+// Admin emails from environment variable (comma-separated for multiple admins)
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(e => e);
+
+function isAdminEmail(email: string): boolean {
+  return ADMIN_EMAILS.includes(email.toLowerCase());
+}
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const user = (req.session as any).user;
@@ -13,7 +18,7 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
     return res.status(401).json({ success: false, error: "Not authenticated" });
   }
   
-  if (user.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+  if (!user.email || !isAdminEmail(user.email)) {
     return res.status(403).json({ success: false, error: "Admin access required" });
   }
   
@@ -22,7 +27,7 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
 
 router.get('/check', (req, res) => {
   const user = (req.session as any).user;
-  const isAdmin = user && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const isAdmin = user && user.email && isAdminEmail(user.email);
   res.json({ isAdmin });
 });
 
@@ -216,6 +221,7 @@ router.get('/beta-passes', requireAdmin, async (req, res) => {
 
 router.post('/beta-passes/generate', requireAdmin, async (req, res) => {
   try {
+    const user = (req.session as any).user;
     const code = generatePassCode();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
@@ -224,7 +230,7 @@ router.post('/beta-passes/generate', requireAdmin, async (req, res) => {
       `INSERT INTO beta_passes (code, expires_at, created_by_admin) 
        VALUES ($1, $2, $3) 
        RETURNING *`,
-      [code, expiresAt, ADMIN_EMAIL]
+      [code, expiresAt, user.email]
     );
     
     res.json({ success: true, pass: result.rows[0] });
