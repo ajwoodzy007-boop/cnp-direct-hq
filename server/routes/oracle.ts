@@ -737,6 +737,50 @@ router.post('/admin/cleanup-date', async (req, res) => {
   }
 });
 
+// POST /admin/insert-historical: Insert predictions for a specific date (for backfilling)
+router.post('/admin/insert-historical', async (req, res) => {
+  try {
+    const { adminKey, date, picks } = req.body;
+    
+    if (adminKey !== process.env.ADMIN_PASSWORD) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    if (!date || !picks || !Array.isArray(picks)) {
+      return res.status(400).json({ success: false, error: 'Invalid request. Need date and picks array.' });
+    }
+    
+    // First delete any existing predictions for that date
+    await db.delete(predictions)
+      .where(sql`DATE(${predictions.predictionDate}) = ${date} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+    
+    // Insert the new predictions with the specified date
+    for (const p of picks) {
+      await db.insert(predictions).values({
+        ticker: p.ticker,
+        signalType: p.signal,
+        entryPrice: p.entryPrice,
+        openPrice: p.openPrice || p.entryPrice,
+        predictedPrice: p.predictedPrice || p.entryPrice * 1.03,
+        predictionDate: new Date(date + 'T09:30:00Z'),
+        assetType: 'stock'
+      });
+    }
+    
+    console.log(`[ADMIN] Inserted ${picks.length} historical predictions for ${date}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Inserted ${picks.length} predictions for ${date}`,
+      data: picks
+    });
+    
+  } catch (error) {
+    console.error("[ADMIN] Insert Historical Error:", error);
+    res.status(500).json({ success: false, error: "Failed to insert historical predictions" });
+  }
+});
+
 // POST /finalize: Record closing prices and outcomes for today's stock predictions
 router.post('/finalize', async (req, res) => {
   try {
