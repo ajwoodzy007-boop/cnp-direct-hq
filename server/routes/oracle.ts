@@ -10,6 +10,26 @@ const yahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
 
 const router = express.Router();
 
+// GET /cleanup-weekend: Remove invalid weekend predictions (one-time fix)
+router.get('/cleanup-weekend', async (req, res) => {
+  try {
+    // Find and delete predictions created on weekends (Saturday=6, Sunday=0)
+    const result = await db.delete(predictions)
+      .where(sql`EXTRACT(DOW FROM ${predictions.predictionDate}) IN (0, 6) AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+    
+    console.log('[Oracle] Cleaned up weekend predictions');
+    
+    res.json({ 
+      success: true, 
+      message: 'Weekend predictions removed successfully. Refresh the app to see correct data.',
+      note: 'This endpoint removes predictions created on Saturdays and Sundays which have invalid entry prices.'
+    });
+  } catch (error) {
+    console.error("Cleanup Error:", error);
+    res.status(500).json({ success: false, error: "Cleanup failed" });
+  }
+});
+
 // Helper to get today's date in YYYY-MM-DD format
 function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
