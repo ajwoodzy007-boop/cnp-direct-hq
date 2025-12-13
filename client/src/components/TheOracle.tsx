@@ -1700,6 +1700,52 @@ export default function TheOracle() {
                 </div>
               </div>
 
+              {/* 6-Month Day-by-Day Details */}
+              <div className="mt-4">
+                {!detailed6Month ? (
+                  <button
+                    onClick={loadDetailed6Month}
+                    disabled={loading6Month}
+                    className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                    data-testid="button-load-6month-details"
+                  >
+                    {loading6Month ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
+                    {loading6Month ? 'Loading...' : 'View Day-by-Day Details'}
+                  </button>
+                ) : detailed6Month.days && detailed6Month.days.length > 0 ? (
+                  <div className="bg-slate-800 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-700 sticky top-0">
+                        <tr>
+                          <th className="px-3 py-2 text-left text-xs text-slate-400">Date</th>
+                          <th className="px-3 py-2 text-left text-xs text-slate-400">Picks</th>
+                          <th className="px-3 py-2 text-left text-xs text-slate-400">W/L</th>
+                          <th className="px-3 py-2 text-right text-xs text-slate-400">Avg Ret</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-700">
+                        {detailed6Month.days.map((day: any, idx: number) => (
+                          <tr key={idx} className="hover:bg-slate-700/50">
+                            <td className="px-3 py-2 text-white">{day.date}</td>
+                            <td className="px-3 py-2 text-slate-400">{day.picks?.length || 0}</td>
+                            <td className="px-3 py-2">
+                              <span className="text-green-400">{day.winCount}W</span>
+                              <span className="text-slate-500"> / </span>
+                              <span className="text-red-400">{day.lossCount}L</span>
+                            </td>
+                            <td className={`px-3 py-2 text-right font-mono ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-4 text-slate-500 text-sm">No detailed data available yet</div>
+                )}
+              </div>
+
               <p className="text-xs text-slate-600 text-center italic">
                 Performance data based on historical backtest analysis. Past performance does not guarantee future results.
               </p>
