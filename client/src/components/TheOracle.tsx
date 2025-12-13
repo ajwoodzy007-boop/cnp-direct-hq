@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, TrendingDown, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin, Scan, BrainCircuit, ChevronRight, Clock } from 'lucide-react';
+import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, TrendingDown, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin, Scan, BrainCircuit, ChevronRight, Clock, Trophy, Calendar, Award, BarChart3 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import PremiumLock from './PremiumLock';
 import Skeleton from './Skeleton';
-import TrackRecord from './TrackRecord';
 
 interface PickData {
   ticker: string;
@@ -31,6 +32,53 @@ interface PickData {
 type SortOption = 'rank' | 'confidence' | 'return' | 'risk';
 type TabType = 'stocks' | 'crypto';
 
+interface BacktestPick {
+  ticker: string;
+  signal: string;
+  openPrice: number;
+  closePrice: number;
+  returnPercent: number;
+  win: boolean;
+}
+
+interface DayResult {
+  date: string;
+  picks: BacktestPick[];
+  winCount: number;
+  lossCount: number;
+  avgReturn: number;
+}
+
+interface BacktestSummary {
+  totalDays: number;
+  totalPicks: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  avgReturn: number;
+  cumulativeReturn: number;
+  winningDays: number;
+  losingDays: number;
+  dayWinRate: number;
+  days: DayResult[];
+}
+
+interface BacktestSummaryData {
+  thirtyDay: {
+    winRate: number;
+    avgReturn: number;
+    totalPicks: number;
+    wins: number;
+    losses: number;
+  };
+  sixMonth: {
+    winRate: number;
+    avgReturn: number;
+    totalPicks: number;
+    cumulativeReturn: number;
+  } | null;
+}
+
 export default function TheOracle() {
   const [activeTab, setActiveTab] = useState<TabType>('stocks');
   const [picks, setPicks] = useState<PickData[]>([]);
@@ -49,6 +97,14 @@ export default function TheOracle() {
   
   const [aiReport, setAiReport] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
+
+  // Backtest Track Record state
+  const [backtestSummary, setBacktestSummary] = useState<BacktestSummaryData | null>(null);
+  const [show30DayModal, setShow30DayModal] = useState(false);
+  const [show6MonthModal, setShow6MonthModal] = useState(false);
+  const [thirtyDayData, setThirtyDayData] = useState<BacktestSummary | null>(null);
+  const [sixMonthData, setSixMonthData] = useState<BacktestSummary | null>(null);
+  const [loadingBacktestDetail, setLoadingBacktestDetail] = useState(false);
 
   // Deep AI Analysis modal state
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
@@ -113,6 +169,63 @@ export default function TheOracle() {
     } catch (e) { console.error("Crypto Stats Error", e); }
   };
 
+  const fetchBacktestSummary = async () => {
+    try {
+      const res = await fetch('/api/backtest/summary');
+      const data = await res.json();
+      if (data.success) {
+        setBacktestSummary(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch backtest summary:', error);
+    }
+  };
+
+  const fetch30DayData = async () => {
+    if (thirtyDayData) {
+      setShow30DayModal(true);
+      return;
+    }
+    setLoadingBacktestDetail(true);
+    setShow30DayModal(true);
+    try {
+      const res = await fetch('/api/backtest/30-day');
+      const data = await res.json();
+      if (data.success) {
+        setThirtyDayData(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch 30-day data:', error);
+    } finally {
+      setLoadingBacktestDetail(false);
+    }
+  };
+
+  const fetch6MonthData = async () => {
+    if (sixMonthData) {
+      setShow6MonthModal(true);
+      return;
+    }
+    setLoadingBacktestDetail(true);
+    setShow6MonthModal(true);
+    try {
+      const res = await fetch('/api/backtest/6-month');
+      const data = await res.json();
+      if (data.success) {
+        setSixMonthData(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch 6-month data:', error);
+    } finally {
+      setLoadingBacktestDetail(false);
+    }
+  };
+
+  const formatBacktestDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   const fetchCryptoPicks = async () => {
     setCryptoLoading(true);
     try {
@@ -128,6 +241,7 @@ export default function TheOracle() {
 
   useEffect(() => {
     fetchHistory();
+    fetchBacktestSummary();
   }, []);
 
   useEffect(() => {
@@ -295,19 +409,39 @@ export default function TheOracle() {
     }
   };
 
+  const backtestChartData = thirtyDayData?.days?.slice().reverse().map(day => ({
+    date: formatBacktestDate(day.date),
+    return: day.avgReturn,
+    wins: day.winCount,
+    losses: day.lossCount
+  })) || [];
+
+  const sixMonthChartData = sixMonthData?.days?.slice().reverse().map((day, idx) => {
+    let cumulative = 0;
+    for (let i = 0; i <= idx; i++) {
+      const d = sixMonthData.days[sixMonthData.days.length - 1 - i];
+      cumulative += d.picks.reduce((sum, p) => sum + p.returnPercent, 0);
+    }
+    return {
+      date: formatBacktestDate(day.date),
+      cumulative: parseFloat(cumulative.toFixed(2)),
+      return: day.avgReturn
+    };
+  }) || [];
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 relative">
       
-      <TrackRecord />
-      
       <div className={`bg-gradient-to-br ${activeTab === 'crypto' ? 'from-slate-900 via-slate-900 to-orange-950' : 'from-slate-900 via-slate-900 to-cyan-950'} p-8 rounded-2xl border border-slate-800 relative overflow-hidden`}>
         <div className={`absolute top-0 right-0 w-64 h-64 ${activeTab === 'crypto' ? 'bg-orange-500/10' : 'bg-cyan-500/10'} rounded-full blur-3xl -translate-y-1/2 translate-x-1/2`}></div>
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2"></div>
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
               <h2 className="text-3xl font-bold text-white flex items-center gap-3">
                 <Target className={`${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} h-8 w-8`} />
                 The Oracle
+                <Trophy className="text-emerald-400 h-6 w-6" />
               </h2>
               <p className="text-slate-400 mt-2 max-w-2xl">
                 {activeTab === 'crypto' 
@@ -342,54 +476,102 @@ export default function TheOracle() {
               </button>
             </div>
           </div>
-          <div 
-            onClick={() => setShowHistory(true)}
-            className="flex flex-wrap gap-4 cursor-pointer group"
-            data-testid="button-view-history"
-          >
-            <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
-              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-2">
+
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
+            <div 
+              onClick={() => setShowHistory(true)}
+              className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-700/50 hover:border-cyan-500/50 transition-colors cursor-pointer"
+              data-testid="button-view-history"
+            >
+              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
                 Win Rate <History className="h-3 w-3" />
               </div>
               <div className="text-2xl font-bold text-green-400">{currentStats.winRate}%</div>
+              <div className="text-xs text-slate-600">{currentStats.wins}W / {currentStats.losses}L</div>
             </div>
-            <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
+
+            <div 
+              onClick={() => setShowHistory(true)}
+              className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-700/50 hover:border-cyan-500/50 transition-colors cursor-pointer"
+            >
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Avg Return</div>
-              <div className={`text-2xl font-bold ${currentStats.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'} flex items-center gap-2`}>
+              <div className={`text-2xl font-bold ${currentStats.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {currentStats.avgReturn >= 0 ? '+' : ''}{currentStats.avgReturn}%
               </div>
+              <div className="text-xs text-slate-600">Per Pick</div>
             </div>
-            <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
-              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Record</div>
-              <div className="text-2xl font-bold">
-                <span className="text-green-400">{currentStats.wins}W</span>
-                <span className="text-slate-600 mx-1">/</span>
-                <span className="text-red-400">{currentStats.losses}L</span>
-              </div>
-            </div>
-            {currentStats.bestPick && (
-              <div className={`bg-slate-950/50 backdrop-blur-md px-6 py-3 rounded-xl border border-slate-700/50 group-hover:border-${activeTab === 'crypto' ? 'orange' : 'cyan'}-500/50 transition-colors`}>
-                <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Best Pick</div>
-                <div className="text-2xl font-bold text-green-400 flex items-center gap-2">
-                  {currentStats.bestPick.ticker} <span className="text-lg">+{currentStats.bestPick.return}%</span>
+
+            {backtestSummary && (
+              <>
+                <div 
+                  onClick={fetch30DayData}
+                  className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-colors cursor-pointer"
+                  data-testid="button-view-30day"
+                >
+                  <div className="text-xs text-emerald-500 uppercase font-bold tracking-wider flex items-center gap-1">
+                    30-Day <Calendar className="h-3 w-3" />
+                  </div>
+                  <div className="text-2xl font-bold text-emerald-400">{backtestSummary.thirtyDay.winRate}%</div>
+                  <div className="text-xs text-slate-600">{backtestSummary.thirtyDay.wins}W / {backtestSummary.thirtyDay.losses}L</div>
                 </div>
-              </div>
+
+                <div 
+                  onClick={fetch30DayData}
+                  className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-colors cursor-pointer"
+                >
+                  <div className="text-xs text-emerald-500 uppercase font-bold tracking-wider">30-Day Avg</div>
+                  <div className="text-2xl font-bold text-green-400">+{backtestSummary.thirtyDay.avgReturn}%</div>
+                  <div className="text-xs text-slate-600">Per Pick</div>
+                </div>
+
+                {backtestSummary.sixMonth && (
+                  <>
+                    <div 
+                      onClick={fetch6MonthData}
+                      className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-yellow-500/30 hover:border-yellow-500/60 transition-colors cursor-pointer"
+                      data-testid="button-view-6month"
+                    >
+                      <div className="text-xs text-yellow-500 uppercase font-bold tracking-wider flex items-center gap-1">
+                        6-Month <Award className="h-3 w-3" />
+                      </div>
+                      <div className="text-2xl font-bold text-emerald-400">{backtestSummary.sixMonth.winRate}%</div>
+                      <div className="text-xs text-slate-600">{backtestSummary.sixMonth.totalPicks} Picks</div>
+                    </div>
+
+                    <div 
+                      onClick={fetch6MonthData}
+                      className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-yellow-500/30 hover:border-yellow-500/60 transition-colors cursor-pointer"
+                    >
+                      <div className="text-xs text-yellow-500 uppercase font-bold tracking-wider">Cumulative</div>
+                      <div className="text-2xl font-bold text-yellow-400">+{backtestSummary.sixMonth.cumulativeReturn}%</div>
+                      <div className="text-xs text-slate-600">6 Months</div>
+                    </div>
+                  </>
+                )}
+              </>
             )}
-            <div className={`flex items-center text-xs text-slate-500 group-hover:text-${activeTab === 'crypto' ? 'orange' : 'cyan'}-400 transition-colors`}>
-              View Proof Log <ArrowRight className="h-3 w-3 ml-1" />
-            </div>
           </div>
-          {activeTab === 'stocks' && (
-            <div className="mt-4">
+
+          <div className="flex flex-wrap gap-3 items-center">
+            {activeTab === 'stocks' && (
               <button
                 onClick={(e) => { e.stopPropagation(); fetchSignals(); }}
-                className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 px-6 py-3 rounded-xl font-bold text-white flex items-center gap-2 transition-all"
+                className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 px-5 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 transition-all text-sm"
                 data-testid="button-live-signals"
               >
-                <Zap className="h-5 w-5" /> Live Signals
+                <Zap className="h-4 w-4" /> Live Signals
               </button>
-            </div>
-          )}
+            )}
+            <button
+              onClick={() => setShowHistory(true)}
+              className="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-xl font-medium text-slate-300 flex items-center gap-2 transition-all text-sm border border-slate-700"
+            >
+              <History className="h-4 w-4" /> View Proof Log
+            </button>
+            <p className="text-xs text-slate-600 italic ml-auto">
+              Past performance does not guarantee future results
+            </p>
+          </div>
         </div>
       </div>
 
@@ -1349,6 +1531,241 @@ export default function TheOracle() {
           </div>
         </div>
       )}
+
+      {/* 30-Day Backtest Modal */}
+      <Dialog open={show30DayModal} onOpenChange={setShow30DayModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
+              <Calendar className="text-emerald-400 h-5 w-5" />
+              30-Day Rolling Performance
+            </DialogTitle>
+          </DialogHeader>
+          
+          {loadingBacktestDetail ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+              <span className="ml-3 text-slate-400">Loading backtest data...</span>
+            </div>
+          ) : thirtyDayData ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-slate-800 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-emerald-400">{thirtyDayData.winRate}%</div>
+                  <div className="text-xs text-slate-500">Win Rate</div>
+                </div>
+                <div className="bg-slate-800 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-400">+{thirtyDayData.avgReturn}%</div>
+                  <div className="text-xs text-slate-500">Avg Return</div>
+                </div>
+                <div className="bg-slate-800 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-white">{thirtyDayData.totalPicks}</div>
+                  <div className="text-xs text-slate-500">Total Picks</div>
+                </div>
+                <div className="bg-slate-800 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-cyan-400">{thirtyDayData.dayWinRate}%</div>
+                  <div className="text-xs text-slate-500">Day Win Rate</div>
+                </div>
+              </div>
+
+              {backtestChartData.length > 0 && (
+                <div className="bg-slate-800 p-4 rounded-lg">
+                  <h4 className="text-sm font-bold text-slate-400 mb-4">Daily Returns</h4>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <BarChart data={backtestChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                      <XAxis dataKey="date" stroke="#64748b" fontSize={10} />
+                      <YAxis stroke="#64748b" fontSize={10} tickFormatter={(v) => `${v}%`} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                        labelStyle={{ color: '#94a3b8' }}
+                      />
+                      <Bar dataKey="return" radius={[4, 4, 0, 0]}>
+                        {backtestChartData.map((entry, index) => (
+                          <Cell key={index} fill={entry.return >= 0 ? '#10b981' : '#ef4444'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              <div className="bg-slate-800 rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-slate-700/50">
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Picks</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase">W/L</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase">Avg Return</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {thirtyDayData.days.map((day, idx) => (
+                      <tr key={day.date} className={idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}>
+                        <td className="px-4 py-3 text-sm text-white font-medium">{formatBacktestDate(day.date)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {day.picks.map((pick, i) => (
+                              <span 
+                                key={i}
+                                className={`text-xs px-2 py-0.5 rounded ${pick.win ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                              >
+                                {pick.ticker} {pick.returnPercent >= 0 ? '+' : ''}{pick.returnPercent.toFixed(1)}%
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className="text-green-400">{day.winCount}W</span>
+                          <span className="text-slate-500 mx-1">/</span>
+                          <span className="text-red-400">{day.lossCount}L</span>
+                        </td>
+                        <td className={`px-4 py-3 text-right font-mono font-bold ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500">Failed to load data</div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 6-Month Backtest Modal */}
+      <Dialog open={show6MonthModal} onOpenChange={setShow6MonthModal}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
+              <Award className="text-emerald-400 h-5 w-5" />
+              6-Month Historical Performance
+            </DialogTitle>
+          </DialogHeader>
+          
+          {loadingBacktestDetail ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+              <span className="ml-3 text-slate-400">Loading 6-month backtest...</span>
+            </div>
+          ) : sixMonthData ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-slate-800 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-emerald-400">{sixMonthData.winRate}%</div>
+                  <div className="text-xs text-slate-500">Win Rate</div>
+                </div>
+                <div className="bg-slate-800 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-green-400">+{sixMonthData.avgReturn}%</div>
+                  <div className="text-xs text-slate-500">Avg Return</div>
+                </div>
+                <div className="bg-slate-800 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-white">{sixMonthData.totalPicks}</div>
+                  <div className="text-xs text-slate-500">Total Picks</div>
+                </div>
+                <div className="bg-slate-800 p-4 rounded-lg text-center">
+                  <div className="text-2xl font-bold text-yellow-400">+{sixMonthData.cumulativeReturn}%</div>
+                  <div className="text-xs text-slate-500">Cumulative</div>
+                </div>
+              </div>
+
+              {sixMonthChartData.length > 0 && (
+                <div className="bg-slate-800 p-4 rounded-lg">
+                  <h4 className="text-sm font-bold text-slate-400 mb-4">Cumulative Return Over Time</h4>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <LineChart data={sixMonthChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                      <XAxis dataKey="date" stroke="#64748b" fontSize={10} />
+                      <YAxis stroke="#64748b" fontSize={10} tickFormatter={(v) => `${v}%`} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                        labelStyle={{ color: '#94a3b8' }}
+                        formatter={(value: number) => [`${value.toFixed(2)}%`, 'Cumulative Return']}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="cumulative" 
+                        stroke="#10b981" 
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+
+              <div className="bg-slate-800 p-4 rounded-lg">
+                <h4 className="text-sm font-bold text-slate-400 mb-4">Performance Summary</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-slate-500 text-xs uppercase mb-2">Winning Days</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-2xl font-bold text-green-400">{sixMonthData.winningDays}</div>
+                      <span className="text-slate-500">/ {sixMonthData.totalDays} days</span>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-slate-500 text-xs uppercase mb-2">Day Win Rate</div>
+                    <div className="text-2xl font-bold text-emerald-400">{sixMonthData.dayWinRate}%</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-800 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                <table className="w-full">
+                  <thead className="sticky top-0 bg-slate-700">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Date</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Top Picks</th>
+                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase">W/L</th>
+                      <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase">Avg Return</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sixMonthData.days.map((day, idx) => (
+                      <tr key={day.date} className={idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}>
+                        <td className="px-4 py-2 text-sm text-white font-medium">{formatBacktestDate(day.date)}</td>
+                        <td className="px-4 py-2">
+                          <div className="flex flex-wrap gap-1">
+                            {day.picks.slice(0, 3).map((pick, i) => (
+                              <span 
+                                key={i}
+                                className={`text-xs px-2 py-0.5 rounded ${pick.win ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                              >
+                                {pick.ticker}
+                              </span>
+                            ))}
+                            {day.picks.length > 3 && (
+                              <span className="text-xs text-slate-500">+{day.picks.length - 3}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 text-center text-sm">
+                          <span className="text-green-400">{day.winCount}</span>
+                          <span className="text-slate-500">/</span>
+                          <span className="text-red-400">{day.lossCount}</span>
+                        </td>
+                        <td className={`px-4 py-2 text-right font-mono text-sm ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              <p className="text-xs text-slate-600 text-center italic">
+                Backtest sampled every 3rd trading day for efficiency.
+              </p>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-slate-500">Failed to load data</div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
