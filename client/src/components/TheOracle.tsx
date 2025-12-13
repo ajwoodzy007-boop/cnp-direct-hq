@@ -78,6 +78,8 @@ export default function TheOracle() {
   const [detailed6Month, setDetailed6Month] = useState<any>(null);
   const [loading30Day, setLoading30Day] = useState(false);
   const [loading6Month, setLoading6Month] = useState(false);
+  const [expandedDay30, setExpandedDay30] = useState<number | null>(null);
+  const [expandedDay6m, setExpandedDay6m] = useState<number | null>(null);
 
   // Deep AI Analysis modal state
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
@@ -1514,7 +1516,7 @@ export default function TheOracle() {
                         {loading30Day ? 'Loading...' : 'View Day-by-Day Details'}
                       </button>
                     ) : detailed30Day.days && detailed30Day.days.length > 0 ? (
-                      <div className="bg-slate-800 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                      <div className="bg-slate-800 rounded-lg overflow-hidden max-h-80 overflow-y-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-slate-700 sticky top-0">
                             <tr>
@@ -1526,18 +1528,53 @@ export default function TheOracle() {
                           </thead>
                           <tbody className="divide-y divide-slate-700">
                             {detailed30Day.days.map((day: any, idx: number) => (
-                              <tr key={idx} className="hover:bg-slate-700/50">
-                                <td className="px-3 py-2 text-white">{day.date}</td>
-                                <td className="px-3 py-2 text-slate-400">{day.picks?.length || 0}</td>
-                                <td className="px-3 py-2">
-                                  <span className="text-green-400">{day.winCount}W</span>
-                                  <span className="text-slate-500"> / </span>
-                                  <span className="text-red-400">{day.lossCount}L</span>
-                                </td>
-                                <td className={`px-3 py-2 text-right font-mono ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                  {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
-                                </td>
-                              </tr>
+                              <React.Fragment key={idx}>
+                                <tr 
+                                  onClick={() => setExpandedDay30(expandedDay30 === idx ? null : idx)}
+                                  className="hover:bg-slate-700/50 cursor-pointer group"
+                                  data-testid={`backtest-day-row-${idx}`}
+                                >
+                                  <td className="px-3 py-2 text-white flex items-center gap-2">
+                                    <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${expandedDay30 === idx ? 'rotate-90' : ''}`} />
+                                    {day.date}
+                                  </td>
+                                  <td className="px-3 py-2 text-slate-400">{day.picks?.length || 0}</td>
+                                  <td className="px-3 py-2">
+                                    <span className="text-green-400">{day.winCount}W</span>
+                                    <span className="text-slate-500"> / </span>
+                                    <span className="text-red-400">{day.lossCount}L</span>
+                                  </td>
+                                  <td className={`px-3 py-2 text-right font-mono ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
+                                  </td>
+                                </tr>
+                                {expandedDay30 === idx && day.picks && (
+                                  <tr>
+                                    <td colSpan={4} className="bg-slate-900 px-4 py-3">
+                                      <div className="space-y-2">
+                                        {day.picks.map((pick: any, pIdx: number) => (
+                                          <div 
+                                            key={pIdx}
+                                            className={`flex items-center justify-between p-2 rounded-lg border ${pick.win ? 'bg-green-900/20 border-green-500/30' : 'bg-red-900/20 border-red-500/30'}`}
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <span className="font-bold text-white">{pick.ticker}</span>
+                                              <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">{pick.signal}</span>
+                                            </div>
+                                            <div className="flex items-center gap-4 text-xs">
+                                              <span className="text-slate-400">Open: <span className="text-white font-mono">${pick.openPrice?.toFixed(2)}</span></span>
+                                              <span className="text-slate-400">Close: <span className="text-white font-mono">${pick.closePrice?.toFixed(2)}</span></span>
+                                              <span className={`font-bold font-mono ${pick.win ? 'text-green-400' : 'text-red-400'}`}>
+                                                {pick.returnPercent >= 0 ? '+' : ''}{pick.returnPercent}%
+                                              </span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                              </React.Fragment>
                             ))}
                           </tbody>
                         </table>
@@ -1713,7 +1750,7 @@ export default function TheOracle() {
                     {loading6Month ? 'Loading...' : 'View Day-by-Day Details'}
                   </button>
                 ) : detailed6Month.days && detailed6Month.days.length > 0 ? (
-                  <div className="bg-slate-800 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                  <div className="bg-slate-800 rounded-lg overflow-hidden max-h-80 overflow-y-auto">
                     <table className="w-full text-sm">
                       <thead className="bg-slate-700 sticky top-0">
                         <tr>
@@ -1725,18 +1762,53 @@ export default function TheOracle() {
                       </thead>
                       <tbody className="divide-y divide-slate-700">
                         {detailed6Month.days.map((day: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-slate-700/50">
-                            <td className="px-3 py-2 text-white">{day.date}</td>
-                            <td className="px-3 py-2 text-slate-400">{day.picks?.length || 0}</td>
-                            <td className="px-3 py-2">
-                              <span className="text-green-400">{day.winCount}W</span>
-                              <span className="text-slate-500"> / </span>
-                              <span className="text-red-400">{day.lossCount}L</span>
-                            </td>
-                            <td className={`px-3 py-2 text-right font-mono ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
-                            </td>
-                          </tr>
+                          <React.Fragment key={idx}>
+                            <tr 
+                              onClick={() => setExpandedDay6m(expandedDay6m === idx ? null : idx)}
+                              className="hover:bg-slate-700/50 cursor-pointer group"
+                              data-testid={`backtest-6m-day-row-${idx}`}
+                            >
+                              <td className="px-3 py-2 text-white flex items-center gap-2">
+                                <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${expandedDay6m === idx ? 'rotate-90' : ''}`} />
+                                {day.date}
+                              </td>
+                              <td className="px-3 py-2 text-slate-400">{day.picks?.length || 0}</td>
+                              <td className="px-3 py-2">
+                                <span className="text-green-400">{day.winCount}W</span>
+                                <span className="text-slate-500"> / </span>
+                                <span className="text-red-400">{day.lossCount}L</span>
+                              </td>
+                              <td className={`px-3 py-2 text-right font-mono ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
+                              </td>
+                            </tr>
+                            {expandedDay6m === idx && day.picks && (
+                              <tr>
+                                <td colSpan={4} className="bg-slate-900 px-4 py-3">
+                                  <div className="space-y-2">
+                                    {day.picks.map((pick: any, pIdx: number) => (
+                                      <div 
+                                        key={pIdx}
+                                        className={`flex items-center justify-between p-2 rounded-lg border ${pick.win ? 'bg-green-900/20 border-green-500/30' : 'bg-red-900/20 border-red-500/30'}`}
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <span className="font-bold text-white">{pick.ticker}</span>
+                                          <span className="text-xs text-slate-400 bg-slate-800 px-2 py-0.5 rounded">{pick.signal}</span>
+                                        </div>
+                                        <div className="flex items-center gap-4 text-xs">
+                                          <span className="text-slate-400">Open: <span className="text-white font-mono">${pick.openPrice?.toFixed(2)}</span></span>
+                                          <span className="text-slate-400">Close: <span className="text-white font-mono">${pick.closePrice?.toFixed(2)}</span></span>
+                                          <span className={`font-bold font-mono ${pick.win ? 'text-green-400' : 'text-red-400'}`}>
+                                            {pick.returnPercent >= 0 ? '+' : ''}{pick.returnPercent}%
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         ))}
                       </tbody>
                     </table>
