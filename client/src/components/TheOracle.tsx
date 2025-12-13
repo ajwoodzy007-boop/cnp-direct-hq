@@ -1585,7 +1585,7 @@ export default function TheOracle() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700">
-                    {currentHistory.map((trade, idx) => (
+                    {currentHistory.filter(t => t.outcome !== 'PENDING' && t.outcome !== 'pending').map((trade, idx) => (
                       <tr 
                         key={idx} 
                         onClick={() => setSelectedHistoryItem(trade)}
@@ -1628,10 +1628,10 @@ export default function TheOracle() {
                         </td>
                       </tr>
                     ))}
-                    {currentHistory.length === 0 && (
+                    {currentHistory.filter(t => t.outcome !== 'PENDING' && t.outcome !== 'pending').length === 0 && (
                       <tr>
                         <td colSpan={6} className="px-4 py-12 text-center text-slate-500 italic">
-                          No closed trades found in the audit log yet.
+                          No finalized trades found in the audit log yet.
                         </td>
                       </tr>
                     )}
