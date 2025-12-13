@@ -328,6 +328,26 @@ function startPredictionScheduler() {
         log(`Error finalizing crypto predictions: ${error}`, "scheduler");
       }
     }
+
+    // 1:00 AM ET - Pre-compute backtest data for fast loading (runs daily)
+    if (hour === 1 && minute === 0) {
+      log("Starting daily backtest computation at 1:00 AM ET", "scheduler");
+      try {
+        const response = await fetch(`http://localhost:${port}/api/backtest/compute`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "all" }),
+        });
+        if (response.ok) {
+          const data = await response.json();
+          log(`Backtest computation completed: ${data.computed?.join(", ") || "none"}`, "scheduler");
+        } else {
+          log("Failed to compute backtests", "scheduler");
+        }
+      } catch (error) {
+        log(`Error computing backtests: ${error}`, "scheduler");
+      }
+    }
   };
   
   // Check every minute
