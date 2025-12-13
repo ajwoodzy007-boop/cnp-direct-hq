@@ -4,6 +4,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Progress } from '@/components/ui/progress';
 import PremiumLock from './PremiumLock';
 import Skeleton from './Skeleton';
+import TrackRecord from './TrackRecord';
 
 interface PickData {
   ticker: string;
@@ -296,6 +297,8 @@ export default function TheOracle() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 relative">
+      
+      <TrackRecord />
       
       <div className={`bg-gradient-to-br ${activeTab === 'crypto' ? 'from-slate-900 via-slate-900 to-orange-950' : 'from-slate-900 via-slate-900 to-cyan-950'} p-8 rounded-2xl border border-slate-800 relative overflow-hidden`}>
         <div className={`absolute top-0 right-0 w-64 h-64 ${activeTab === 'crypto' ? 'bg-orange-500/10' : 'bg-cyan-500/10'} rounded-full blur-3xl -translate-y-1/2 translate-x-1/2`}></div>
