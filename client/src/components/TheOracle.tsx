@@ -32,37 +32,6 @@ interface PickData {
 type SortOption = 'rank' | 'confidence' | 'return' | 'risk';
 type TabType = 'stocks' | 'crypto';
 
-interface BacktestPick {
-  ticker: string;
-  signal: string;
-  openPrice: number;
-  closePrice: number;
-  returnPercent: number;
-  win: boolean;
-}
-
-interface DayResult {
-  date: string;
-  picks: BacktestPick[];
-  winCount: number;
-  lossCount: number;
-  avgReturn: number;
-}
-
-interface BacktestSummary {
-  totalDays: number;
-  totalPicks: number;
-  wins: number;
-  losses: number;
-  winRate: number;
-  avgReturn: number;
-  cumulativeReturn: number;
-  winningDays: number;
-  losingDays: number;
-  dayWinRate: number;
-  days: DayResult[];
-}
-
 interface BacktestSummaryData {
   thirtyDay: {
     winRate: number;
@@ -102,9 +71,6 @@ export default function TheOracle() {
   const [backtestSummary, setBacktestSummary] = useState<BacktestSummaryData | null>(null);
   const [show30DayModal, setShow30DayModal] = useState(false);
   const [show6MonthModal, setShow6MonthModal] = useState(false);
-  const [thirtyDayData, setThirtyDayData] = useState<BacktestSummary | null>(null);
-  const [sixMonthData, setSixMonthData] = useState<BacktestSummary | null>(null);
-  const [loadingBacktestDetail, setLoadingBacktestDetail] = useState(false);
   const [modal30DayTab, setModal30DayTab] = useState<'performance' | 'audit'>('performance');
 
   // Deep AI Analysis modal state
@@ -182,49 +148,12 @@ export default function TheOracle() {
     }
   };
 
-  const fetch30DayData = async () => {
-    if (thirtyDayData) {
-      setShow30DayModal(true);
-      return;
-    }
-    setLoadingBacktestDetail(true);
+  const fetch30DayData = () => {
     setShow30DayModal(true);
-    try {
-      const res = await fetch('/api/backtest/30-day');
-      const data = await res.json();
-      if (data.success) {
-        setThirtyDayData(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch 30-day data:', error);
-    } finally {
-      setLoadingBacktestDetail(false);
-    }
   };
 
-  const fetch6MonthData = async () => {
-    if (sixMonthData) {
-      setShow6MonthModal(true);
-      return;
-    }
-    setLoadingBacktestDetail(true);
+  const fetch6MonthData = () => {
     setShow6MonthModal(true);
-    try {
-      const res = await fetch('/api/backtest/6-month');
-      const data = await res.json();
-      if (data.success) {
-        setSixMonthData(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch 6-month data:', error);
-    } finally {
-      setLoadingBacktestDetail(false);
-    }
-  };
-
-  const formatBacktestDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
   const fetchCryptoPicks = async () => {
@@ -409,26 +338,6 @@ export default function TheOracle() {
         return <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Med</span>;
     }
   };
-
-  const backtestChartData = thirtyDayData?.days?.slice().reverse().map(day => ({
-    date: formatBacktestDate(day.date),
-    return: day.avgReturn,
-    wins: day.winCount,
-    losses: day.lossCount
-  })) || [];
-
-  const sixMonthChartData = sixMonthData?.days?.slice().reverse().map((day, idx) => {
-    let cumulative = 0;
-    for (let i = 0; i <= idx; i++) {
-      const d = sixMonthData.days[sixMonthData.days.length - 1 - i];
-      cumulative += d.picks.reduce((sum, p) => sum + p.returnPercent, 0);
-    }
-    return {
-      date: formatBacktestDate(day.date),
-      cumulative: parseFloat(cumulative.toFixed(2)),
-      return: day.avgReturn
-    };
-  }) || [];
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 relative">
@@ -1474,96 +1383,85 @@ export default function TheOracle() {
           
           {modal30DayTab === 'performance' ? (
             <>
-              {loadingBacktestDetail ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
-                  <span className="ml-3 text-slate-400">Loading backtest data...</span>
-                </div>
-              ) : thirtyDayData ? (
+              {backtestSummary ? (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-emerald-400">{thirtyDayData.winRate}%</div>
+                      <div className="text-2xl font-bold text-emerald-400">{backtestSummary.thirtyDay.winRate}%</div>
                       <div className="text-xs text-slate-500">Win Rate</div>
                     </div>
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-green-400">+{thirtyDayData.avgReturn}%</div>
+                      <div className="text-2xl font-bold text-green-400">+{backtestSummary.thirtyDay.avgReturn}%</div>
                       <div className="text-xs text-slate-500">Avg Return</div>
                     </div>
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-white">{thirtyDayData.totalPicks}</div>
+                      <div className="text-2xl font-bold text-white">{backtestSummary.thirtyDay.totalPicks}</div>
                       <div className="text-xs text-slate-500">Total Picks</div>
                     </div>
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-cyan-400">{thirtyDayData.dayWinRate}%</div>
-                      <div className="text-xs text-slate-500">Day Win Rate</div>
+                      <div className="text-2xl font-bold text-cyan-400">{backtestSummary.thirtyDay.wins}W / {backtestSummary.thirtyDay.losses}L</div>
+                      <div className="text-xs text-slate-500">Win/Loss</div>
                     </div>
                   </div>
 
-                  {backtestChartData.length > 0 && (
-                    <div className="bg-slate-800 p-4 rounded-lg">
-                      <h4 className="text-sm font-bold text-slate-400 mb-4">Daily Returns</h4>
-                      <ResponsiveContainer width="100%" height={200}>
-                        <BarChart data={backtestChartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                          <XAxis dataKey="date" stroke="#64748b" fontSize={10} />
-                          <YAxis stroke="#64748b" fontSize={10} tickFormatter={(v) => `${v}%`} />
-                          <Tooltip 
-                            contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                            labelStyle={{ color: '#94a3b8' }}
-                          />
-                          <Bar dataKey="return" radius={[4, 4, 0, 0]}>
-                            {backtestChartData.map((entry, index) => (
-                              <Cell key={index} fill={entry.return >= 0 ? '#10b981' : '#ef4444'} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                  <div className="bg-gradient-to-r from-emerald-900/20 to-cyan-900/20 border border-emerald-500/30 p-6 rounded-lg">
+                    <h4 className="text-lg font-bold text-emerald-400 mb-3 flex items-center gap-2">
+                      <Trophy className="h-5 w-5" />
+                      30-Day Performance Summary
+                    </h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-slate-400">Total Trades Analyzed:</span>
+                        <span className="text-white font-bold ml-2">{backtestSummary.thirtyDay.totalPicks}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Winning Trades:</span>
+                        <span className="text-green-400 font-bold ml-2">{backtestSummary.thirtyDay.wins}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Losing Trades:</span>
+                        <span className="text-red-400 font-bold ml-2">{backtestSummary.thirtyDay.losses}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400">Avg Return Per Trade:</span>
+                        <span className="text-green-400 font-bold ml-2">+{backtestSummary.thirtyDay.avgReturn}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {backtestSummary.sixMonth && (
+                    <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/30 p-6 rounded-lg">
+                      <h4 className="text-lg font-bold text-yellow-400 mb-3 flex items-center gap-2">
+                        <Award className="h-5 w-5" />
+                        6-Month Performance Summary
+                      </h4>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <span className="text-slate-400">Total Trades:</span>
+                          <span className="text-white font-bold ml-2">{backtestSummary.sixMonth.totalPicks}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Win Rate:</span>
+                          <span className="text-emerald-400 font-bold ml-2">{backtestSummary.sixMonth.winRate}%</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Avg Return:</span>
+                          <span className="text-green-400 font-bold ml-2">+{backtestSummary.sixMonth.avgReturn}%</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-400">Cumulative Return:</span>
+                          <span className="text-yellow-400 font-bold ml-2">+{backtestSummary.sixMonth.cumulativeReturn}%</span>
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  <div className="bg-slate-800 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
-                    <table className="w-full">
-                      <thead className="sticky top-0 bg-slate-700">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Date</th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Picks</th>
-                          <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase">W/L</th>
-                          <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase">Avg Return</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {thirtyDayData.days.map((day, idx) => (
-                          <tr key={day.date} className={idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}>
-                            <td className="px-4 py-3 text-sm text-white font-medium">{formatBacktestDate(day.date)}</td>
-                            <td className="px-4 py-3">
-                              <div className="flex flex-wrap gap-1">
-                                {day.picks.map((pick, i) => (
-                                  <span 
-                                    key={i}
-                                    className={`text-xs px-2 py-0.5 rounded ${pick.win ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-                                  >
-                                    {pick.ticker} {pick.returnPercent >= 0 ? '+' : ''}{pick.returnPercent.toFixed(1)}%
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <span className="text-green-400">{day.winCount}W</span>
-                              <span className="text-slate-500 mx-1">/</span>
-                              <span className="text-red-400">{day.lossCount}L</span>
-                            </td>
-                            <td className={`px-4 py-3 text-right font-mono font-bold ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                              {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <p className="text-xs text-slate-600 text-center italic">
+                    Performance data based on historical backtest analysis. Past performance does not guarantee future results.
+                  </p>
                 </div>
               ) : (
-                <div className="text-center py-8 text-slate-500">Failed to load data</div>
+                <div className="text-center py-8 text-slate-500">Loading performance data...</div>
               )}
             </>
           ) : (
@@ -1650,131 +1548,66 @@ export default function TheOracle() {
 
       {/* 6-Month Backtest Modal */}
       <Dialog open={show6MonthModal} onOpenChange={setShow6MonthModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-              <Award className="text-emerald-400 h-5 w-5" />
+              <Award className="text-yellow-400 h-5 w-5" />
               6-Month Historical Performance
             </DialogTitle>
           </DialogHeader>
           
-          {loadingBacktestDetail ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
-              <span className="ml-3 text-slate-400">Loading 6-month backtest...</span>
-            </div>
-          ) : sixMonthData ? (
+          {backtestSummary?.sixMonth ? (
             <div className="space-y-6">
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-emerald-400">{sixMonthData.winRate}%</div>
+                  <div className="text-2xl font-bold text-emerald-400">{backtestSummary.sixMonth.winRate}%</div>
                   <div className="text-xs text-slate-500">Win Rate</div>
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-400">+{sixMonthData.avgReturn}%</div>
+                  <div className="text-2xl font-bold text-green-400">+{backtestSummary.sixMonth.avgReturn}%</div>
                   <div className="text-xs text-slate-500">Avg Return</div>
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-white">{sixMonthData.totalPicks}</div>
+                  <div className="text-2xl font-bold text-white">{backtestSummary.sixMonth.totalPicks}</div>
                   <div className="text-xs text-slate-500">Total Picks</div>
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-yellow-400">+{sixMonthData.cumulativeReturn}%</div>
+                  <div className="text-2xl font-bold text-yellow-400">+{backtestSummary.sixMonth.cumulativeReturn}%</div>
                   <div className="text-xs text-slate-500">Cumulative</div>
                 </div>
               </div>
 
-              {sixMonthChartData.length > 0 && (
-                <div className="bg-slate-800 p-4 rounded-lg">
-                  <h4 className="text-sm font-bold text-slate-400 mb-4">Cumulative Return Over Time</h4>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <LineChart data={sixMonthChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="date" stroke="#64748b" fontSize={10} />
-                      <YAxis stroke="#64748b" fontSize={10} tickFormatter={(v) => `${v}%`} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                        labelStyle={{ color: '#94a3b8' }}
-                        formatter={(value: number) => [`${value.toFixed(2)}%`, 'Cumulative Return']}
-                      />
-                      <Line 
-                        type="monotone" 
-                        dataKey="cumulative" 
-                        stroke="#10b981" 
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-
-              <div className="bg-slate-800 p-4 rounded-lg">
-                <h4 className="text-sm font-bold text-slate-400 mb-4">Performance Summary</h4>
-                <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/30 p-6 rounded-lg">
+                <h4 className="text-lg font-bold text-yellow-400 mb-3 flex items-center gap-2">
+                  <Trophy className="h-5 w-5" />
+                  6-Month Performance Highlights
+                </h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <div className="text-slate-500 text-xs uppercase mb-2">Winning Days</div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-2xl font-bold text-green-400">{sixMonthData.winningDays}</div>
-                      <span className="text-slate-500">/ {sixMonthData.totalDays} days</span>
-                    </div>
+                    <span className="text-slate-400">Total Trades Analyzed:</span>
+                    <span className="text-white font-bold ml-2">{backtestSummary.sixMonth.totalPicks}</span>
                   </div>
                   <div>
-                    <div className="text-slate-500 text-xs uppercase mb-2">Day Win Rate</div>
-                    <div className="text-2xl font-bold text-emerald-400">{sixMonthData.dayWinRate}%</div>
+                    <span className="text-slate-400">Win Rate:</span>
+                    <span className="text-emerald-400 font-bold ml-2">{backtestSummary.sixMonth.winRate}%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Avg Return Per Trade:</span>
+                    <span className="text-green-400 font-bold ml-2">+{backtestSummary.sixMonth.avgReturn}%</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Cumulative Return:</span>
+                    <span className="text-yellow-400 font-bold ml-2">+{backtestSummary.sixMonth.cumulativeReturn}%</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-slate-800 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
-                <table className="w-full">
-                  <thead className="sticky top-0 bg-slate-700">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Top Picks</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase">W/L</th>
-                      <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase">Avg Return</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sixMonthData.days.map((day, idx) => (
-                      <tr key={day.date} className={idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}>
-                        <td className="px-4 py-2 text-sm text-white font-medium">{formatBacktestDate(day.date)}</td>
-                        <td className="px-4 py-2">
-                          <div className="flex flex-wrap gap-1">
-                            {day.picks.slice(0, 3).map((pick, i) => (
-                              <span 
-                                key={i}
-                                className={`text-xs px-2 py-0.5 rounded ${pick.win ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-                              >
-                                {pick.ticker}
-                              </span>
-                            ))}
-                            {day.picks.length > 3 && (
-                              <span className="text-xs text-slate-500">+{day.picks.length - 3}</span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 text-center text-sm">
-                          <span className="text-green-400">{day.winCount}</span>
-                          <span className="text-slate-500">/</span>
-                          <span className="text-red-400">{day.lossCount}</span>
-                        </td>
-                        <td className={`px-4 py-2 text-right font-mono text-sm ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
               <p className="text-xs text-slate-600 text-center italic">
-                Backtest sampled every 3rd trading day for efficiency.
+                Performance data based on historical backtest analysis. Past performance does not guarantee future results.
               </p>
             </div>
           ) : (
-            <div className="text-center py-8 text-slate-500">Failed to load data</div>
+            <div className="text-center py-8 text-slate-500">6-month data not available</div>
           )}
         </DialogContent>
       </Dialog>
