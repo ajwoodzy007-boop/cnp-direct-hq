@@ -317,12 +317,12 @@ async function saveDbCache(cacheType: string, data: BacktestSummary): Promise<vo
   }
 }
 
-// GET /30-day - Rolling 30-day backtest (serves from DB cache instantly)
+// GET /30-day - Rolling 30-day backtest (computes on-demand if no cache)
 router.get('/30-day', async (req, res) => {
   try {
     // First check database cache (instant)
     const dbCached = await getDbCache('30day');
-    if (dbCached) {
+    if (dbCached && dbCached.days && dbCached.days.length > 0) {
       return res.json({ success: true, fromCache: true, data: dbCached });
     }
     
@@ -330,41 +330,31 @@ router.get('/30-day', async (req, res) => {
     const cacheKey = '30day';
     const cached = cachedResults[cacheKey];
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL && cached.data.days && cached.data.days.length > 0) {
       return res.json({ success: true, fromCache: true, data: cached.data });
     }
     
-    // No cache available - return pre-computed defaults
-    // Real backtest will be computed by scheduler
-    res.json({ 
-      success: true, 
-      fromCache: true, 
-      data: {
-        totalDays: 22,
-        totalPicks: 37,
-        wins: 36,
-        losses: 1,
-        winRate: 97.3,
-        avgReturn: 2.58,
-        cumulativeReturn: 95.46,
-        winningDays: 20,
-        losingDays: 2,
-        dayWinRate: 90.9,
-        days: []
-      }
-    });
+    // No valid cache - compute on demand
+    console.log('[Backtest] Computing 30-day backtest on demand...');
+    const results = await runBacktest(30, 1);
+    
+    // Save to cache
+    cachedResults[cacheKey] = { data: results, timestamp: Date.now() };
+    await saveDbCache('30day', results);
+    
+    res.json({ success: true, fromCache: false, data: results });
   } catch (error) {
     console.error('30-day backtest error:', error);
     res.status(500).json({ success: false, error: 'Backtest failed' });
   }
 });
 
-// GET /6-month - 6-month historical backtest (serves from DB cache instantly)
+// GET /6-month - 6-month historical backtest (computes on-demand if no cache)
 router.get('/6-month', async (req, res) => {
   try {
     // First check database cache (instant)
     const dbCached = await getDbCache('6month');
-    if (dbCached) {
+    if (dbCached && dbCached.days && dbCached.days.length > 0) {
       return res.json({ success: true, fromCache: true, data: dbCached });
     }
     
@@ -372,28 +362,19 @@ router.get('/6-month', async (req, res) => {
     const cacheKey = '6month';
     const cached = cachedResults[cacheKey];
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL && cached.data.days && cached.data.days.length > 0) {
       return res.json({ success: true, fromCache: true, data: cached.data });
     }
     
-    // No cache available - return pre-computed defaults
-    res.json({ 
-      success: true, 
-      fromCache: true, 
-      data: {
-        totalDays: 40,
-        totalPicks: 66,
-        wins: 65,
-        losses: 1,
-        winRate: 98.5,
-        avgReturn: 2.77,
-        cumulativeReturn: 182.85,
-        winningDays: 38,
-        losingDays: 2,
-        dayWinRate: 95.0,
-        days: []
-      }
-    });
+    // No valid cache - compute on demand (sampled for speed)
+    console.log('[Backtest] Computing 6-month backtest on demand...');
+    const results = await runBacktest(180, 3);
+    
+    // Save to cache
+    cachedResults[cacheKey] = { data: results, timestamp: Date.now() };
+    await saveDbCache('6month', results);
+    
+    res.json({ success: true, fromCache: false, data: results });
   } catch (error) {
     console.error('6-month backtest error:', error);
     res.status(500).json({ success: false, error: 'Backtest failed' });
