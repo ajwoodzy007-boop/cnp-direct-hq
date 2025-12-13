@@ -15,6 +15,33 @@ function getTodayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
 
+// Helper to check if today is a trading day (weekday, not a major US holiday)
+function isTradingDay(): { isOpen: boolean; reason?: string } {
+  const now = new Date();
+  const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const day = etTime.getDay();
+  const month = etTime.getMonth() + 1; // 1-12
+  const date = etTime.getDate();
+  
+  // Check weekend
+  if (day === 0) return { isOpen: false, reason: 'Sunday - market closed' };
+  if (day === 6) return { isOpen: false, reason: 'Saturday - market closed' };
+  
+  // Major US market holidays (approximate - doesn't account for observed days)
+  const holidays: { [key: string]: string } = {
+    '1-1': "New Year's Day",
+    '7-4': 'Independence Day',
+    '12-25': 'Christmas Day',
+  };
+  
+  const holidayKey = `${month}-${date}`;
+  if (holidays[holidayKey]) {
+    return { isOpen: false, reason: `${holidays[holidayKey]} - market closed` };
+  }
+  
+  return { isOpen: true };
+}
+
 // Helper to calculate dynamic predicted price based on signal characteristics
 function calculateDynamicTarget(
   entryPrice: number, 
@@ -430,6 +457,17 @@ router.post('/fix-all-historical-prices', async (req, res) => {
 // GET /daily: Run Scan & Auto-Save to History (stocks only)
 router.get('/daily', async (req, res) => {
   try {
+    // Check if market is open (weekday, not holiday)
+    const tradingStatus = isTradingDay();
+    if (!tradingStatus.isOpen) {
+      return res.json({
+        success: true,
+        marketClosed: true,
+        reason: tradingStatus.reason,
+        data: []
+      });
+    }
+    
     const today = getTodayDate();
 
     // 1. Check if we already generated stock picks for TODAY in DB
@@ -555,11 +593,24 @@ router.get('/daily', async (req, res) => {
 // POST /admin/regenerate: Force regenerate today's predictions (admin only, one-time use)
 router.post('/admin/regenerate', async (req, res) => {
   try {
-    const { adminKey } = req.body;
+    const { adminKey, forceWeekend } = req.body;
     
     // Simple admin key check (use the session secret as admin key)
     if (adminKey !== process.env.ADMIN_PASSWORD) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    // Check if market is open (unless forceWeekend is true)
+    if (!forceWeekend) {
+      const tradingStatus = isTradingDay();
+      if (!tradingStatus.isOpen) {
+        return res.json({
+          success: false,
+          marketClosed: true,
+          reason: tradingStatus.reason,
+          message: 'Cannot generate predictions on non-trading days. Use forceWeekend: true to override.'
+        });
+      }
     }
     
     const today = getTodayDate();
