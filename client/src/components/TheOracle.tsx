@@ -453,13 +453,38 @@ export default function TheOracle() {
             ))}
           </div>
         ) : currentPicks.length === 0 ? (
-          <div className="p-8 border border-dashed border-slate-700 rounded-xl text-center text-slate-500">
-            {activeTab === 'crypto' 
-              ? 'No crypto predictions available. Check back soon!' 
-              : 'No high-conviction signals found today.'}
+          <div className="p-8 border border-dashed border-slate-700 rounded-xl text-center">
+            <div className="flex flex-col items-center gap-4">
+              <div className={`w-16 h-16 rounded-full ${activeTab === 'crypto' ? 'bg-orange-500/10' : 'bg-cyan-500/10'} flex items-center justify-center`}>
+                <Shield className={`h-8 w-8 ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'}`} />
+              </div>
+              <div>
+                <h4 className="text-lg font-bold text-white mb-2">No High-Conviction Signals Today</h4>
+                <p className="text-slate-400 text-sm max-w-md mx-auto">
+                  {activeTab === 'crypto' 
+                    ? 'Our algorithm found no crypto setups meeting our strict criteria today. Quality over quantity — we only signal when conditions are optimal.' 
+                    : 'The Sentinel Engine found no stocks meeting our strict criteria (RSI 35-65, positive sentiment, high volume). This is a sign of discipline, not a bug.'}
+                </p>
+              </div>
+              <div className="text-xs text-slate-600 mt-2">
+                Check back tomorrow for new opportunities
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <>
+            {currentPicks.length < 3 && (
+              <div className={`mb-4 p-4 rounded-lg border ${activeTab === 'crypto' ? 'bg-orange-500/5 border-orange-500/20' : 'bg-cyan-500/5 border-cyan-500/20'} flex items-center gap-3`}>
+                <AlertTriangle className={`h-5 w-5 ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} shrink-0`} />
+                <div>
+                  <span className="text-white font-medium">Limited Signals Today</span>
+                  <span className="text-slate-400 text-sm ml-2">
+                    Only {currentPicks.length} {currentPicks.length === 1 ? 'pick' : 'picks'} met our strict quality filters. We prioritize accuracy over volume.
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {currentPicks.map((pick, index) => {
               const confScore = pick.confidenceScore || (pick.confidence === 'High' ? 85 : 60);
               const progress = getProgressToTarget(pick);
@@ -608,7 +633,8 @@ export default function TheOracle() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
       </div>
 
