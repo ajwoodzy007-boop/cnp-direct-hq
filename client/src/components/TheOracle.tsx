@@ -105,6 +105,7 @@ export default function TheOracle() {
   const [thirtyDayData, setThirtyDayData] = useState<BacktestSummary | null>(null);
   const [sixMonthData, setSixMonthData] = useState<BacktestSummary | null>(null);
   const [loadingBacktestDetail, setLoadingBacktestDetail] = useState(false);
+  const [modal30DayTab, setModal30DayTab] = useState<'performance' | 'audit'>('performance');
 
   // Deep AI Analysis modal state
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
@@ -479,7 +480,7 @@ export default function TheOracle() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
             <div 
-              onClick={() => setShowHistory(true)}
+              onClick={() => { setModal30DayTab('audit'); fetch30DayData(); }}
               className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-700/50 hover:border-cyan-500/50 transition-colors cursor-pointer"
               data-testid="button-view-history"
             >
@@ -491,7 +492,7 @@ export default function TheOracle() {
             </div>
 
             <div 
-              onClick={() => setShowHistory(true)}
+              onClick={() => { setModal30DayTab('audit'); fetch30DayData(); }}
               className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-700/50 hover:border-cyan-500/50 transition-colors cursor-pointer"
             >
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Avg Return</div>
@@ -504,7 +505,7 @@ export default function TheOracle() {
             {backtestSummary && (
               <>
                 <div 
-                  onClick={fetch30DayData}
+                  onClick={() => { setModal30DayTab('performance'); fetch30DayData(); }}
                   className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-colors cursor-pointer"
                   data-testid="button-view-30day"
                 >
@@ -516,7 +517,7 @@ export default function TheOracle() {
                 </div>
 
                 <div 
-                  onClick={fetch30DayData}
+                  onClick={() => { setModal30DayTab('performance'); fetch30DayData(); }}
                   className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-colors cursor-pointer"
                 >
                   <div className="text-xs text-emerald-500 uppercase font-bold tracking-wider">30-Day Avg</div>
@@ -563,7 +564,7 @@ export default function TheOracle() {
               </button>
             )}
             <button
-              onClick={() => setShowHistory(true)}
+              onClick={() => { setModal30DayTab('audit'); fetch30DayData(); }}
               className="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-xl font-medium text-slate-300 flex items-center gap-2 transition-all text-sm border border-slate-700"
             >
               <History className="h-4 w-4" /> View Proof Log
@@ -953,106 +954,7 @@ export default function TheOracle() {
         </div>
       )}
 
-      {/* History / Proof Log Modal */}
-      {showHistory && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-            
-            {/* Modal Header */}
-            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
-              <div>
-                <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <History className="text-cyan-400 h-5 w-5" />
-                  Sentinel Performance Audit
-                </h3>
-                <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">
-                  Verified Closed Trade Log
-                </p>
-              </div>
-              <button onClick={() => setShowHistory(false)} className="text-slate-400 hover:text-white" data-testid="button-close-history">
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            {/* Scrollable Table */}
-            <div className="overflow-y-auto flex-1 p-6">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-slate-500 uppercase bg-slate-950/50 sticky top-0">
-                  <tr>
-                    <th className="px-4 py-3 rounded-l-lg">Asset</th>
-                    <th className="px-4 py-3">Date</th>
-                    <th className="px-4 py-3">Type</th>
-                    <th className="px-4 py-3">Entry</th>
-                    <th className="px-4 py-3">Exit</th>
-                    <th className="px-4 py-3 text-right rounded-r-lg">Result</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800">
-                  {historyData.map((trade, idx) => (
-                    <tr 
-                      key={idx} 
-                      onClick={() => setSelectedHistoryItem(trade)}
-                      className="hover:bg-slate-800/50 transition-colors cursor-pointer group" 
-                      data-testid={`history-row-${idx}`}
-                    >
-                      <td className="px-4 py-4 font-bold text-white">{trade.ticker}</td>
-                      <td className="px-4 py-4 text-slate-400">{trade.date ? new Date(trade.date).toLocaleDateString() : '-'}</td>
-                      <td className="px-4 py-4 text-slate-400">{trade.type}</td>
-                      <td className="px-4 py-4 font-mono text-slate-300">${Number(trade.entry).toFixed(2)}</td>
-                      <td className="px-4 py-4 font-mono text-slate-300">${Number(trade.exit).toFixed(2)}</td>
-                      <td className="px-4 py-4 text-right flex items-center justify-end gap-2">
-                        <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
-                          trade.outcome === 'PENDING'
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : trade.outcome === 'NEUTRAL'
-                              ? 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
-                              : trade.outcome === 'WIN' || trade.profitPercent > 0 
-                                ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
-                                : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                        }`}>
-                          {trade.outcome === 'PENDING' ? (
-                            <>
-                              <Clock className="h-3 w-3" />
-                              Pending
-                            </>
-                          ) : trade.outcome === 'NEUTRAL' ? (
-                            <>
-                              <Activity className="h-3 w-3" />
-                              {Number(trade.profitPercent).toFixed(2)}%
-                            </>
-                          ) : (
-                            <>
-                              {trade.outcome === 'WIN' || trade.profitPercent > 0 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                              {trade.profitPercent > 0 ? '+' : ''}{Number(trade.profitPercent).toFixed(2)}%
-                            </>
-                          )}
-                        </div>
-                        <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
-                      </td>
-                    </tr>
-                  ))}
-                  {historyData.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-slate-500 italic">
-                        No closed trades found in the audit log yet.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Footer */}
-            <div className="p-4 bg-slate-950 border-t border-slate-800 text-center">
-              <p className="text-[10px] text-slate-600">
-                AUDIT ID: {Math.floor(Math.random() * 99999999).toString().padStart(8, '0')} • DATA INTEGRITY VERIFIED
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Trade Recap Modal (Sub-Modal for History) */}
+      {/* Trade Recap Modal (Sub-Modal for History/Audit) */}
       {selectedHistoryItem && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in zoom-in-95 duration-200">
           <div className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
@@ -1532,106 +1434,216 @@ export default function TheOracle() {
         </div>
       )}
 
-      {/* 30-Day Backtest Modal */}
+      {/* 30-Day Backtest Modal with Sentinel Audit */}
       <Dialog open={show30DayModal} onOpenChange={setShow30DayModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
               <Calendar className="text-emerald-400 h-5 w-5" />
-              30-Day Rolling Performance
+              Sentinel Performance Audit
             </DialogTitle>
           </DialogHeader>
           
-          {loadingBacktestDetail ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
-              <span className="ml-3 text-slate-400">Loading backtest data...</span>
-            </div>
-          ) : thirtyDayData ? (
-            <div className="space-y-6">
-              <div className="grid grid-cols-4 gap-4">
-                <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-emerald-400">{thirtyDayData.winRate}%</div>
-                  <div className="text-xs text-slate-500">Win Rate</div>
+          {/* Tab Buttons */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setModal30DayTab('performance')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                modal30DayTab === 'performance'
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
+                  : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+              }`}
+              data-testid="tab-30day-performance"
+            >
+              <BarChart3 className="h-4 w-4 inline mr-2" />
+              30-Day Performance
+            </button>
+            <button
+              onClick={() => setModal30DayTab('audit')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                modal30DayTab === 'audit'
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                  : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+              }`}
+              data-testid="tab-30day-audit"
+            >
+              <History className="h-4 w-4 inline mr-2" />
+              Trade Log
+            </button>
+          </div>
+          
+          {modal30DayTab === 'performance' ? (
+            <>
+              {loadingBacktestDetail ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                  <span className="ml-3 text-slate-400">Loading backtest data...</span>
                 </div>
-                <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-400">+{thirtyDayData.avgReturn}%</div>
-                  <div className="text-xs text-slate-500">Avg Return</div>
-                </div>
-                <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-white">{thirtyDayData.totalPicks}</div>
-                  <div className="text-xs text-slate-500">Total Picks</div>
-                </div>
-                <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-cyan-400">{thirtyDayData.dayWinRate}%</div>
-                  <div className="text-xs text-slate-500">Day Win Rate</div>
-                </div>
-              </div>
+              ) : thirtyDayData ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="bg-slate-800 p-4 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-emerald-400">{thirtyDayData.winRate}%</div>
+                      <div className="text-xs text-slate-500">Win Rate</div>
+                    </div>
+                    <div className="bg-slate-800 p-4 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-green-400">+{thirtyDayData.avgReturn}%</div>
+                      <div className="text-xs text-slate-500">Avg Return</div>
+                    </div>
+                    <div className="bg-slate-800 p-4 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-white">{thirtyDayData.totalPicks}</div>
+                      <div className="text-xs text-slate-500">Total Picks</div>
+                    </div>
+                    <div className="bg-slate-800 p-4 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-cyan-400">{thirtyDayData.dayWinRate}%</div>
+                      <div className="text-xs text-slate-500">Day Win Rate</div>
+                    </div>
+                  </div>
 
-              {backtestChartData.length > 0 && (
-                <div className="bg-slate-800 p-4 rounded-lg">
-                  <h4 className="text-sm font-bold text-slate-400 mb-4">Daily Returns</h4>
-                  <ResponsiveContainer width="100%" height={200}>
-                    <BarChart data={backtestChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="date" stroke="#64748b" fontSize={10} />
-                      <YAxis stroke="#64748b" fontSize={10} tickFormatter={(v) => `${v}%`} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                        labelStyle={{ color: '#94a3b8' }}
-                      />
-                      <Bar dataKey="return" radius={[4, 4, 0, 0]}>
-                        {backtestChartData.map((entry, index) => (
-                          <Cell key={index} fill={entry.return >= 0 ? '#10b981' : '#ef4444'} />
+                  {backtestChartData.length > 0 && (
+                    <div className="bg-slate-800 p-4 rounded-lg">
+                      <h4 className="text-sm font-bold text-slate-400 mb-4">Daily Returns</h4>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={backtestChartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                          <XAxis dataKey="date" stroke="#64748b" fontSize={10} />
+                          <YAxis stroke="#64748b" fontSize={10} tickFormatter={(v) => `${v}%`} />
+                          <Tooltip 
+                            contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                            labelStyle={{ color: '#94a3b8' }}
+                          />
+                          <Bar dataKey="return" radius={[4, 4, 0, 0]}>
+                            {backtestChartData.map((entry, index) => (
+                              <Cell key={index} fill={entry.return >= 0 ? '#10b981' : '#ef4444'} />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  <div className="bg-slate-800 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-slate-700">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Date</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Picks</th>
+                          <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase">W/L</th>
+                          <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase">Avg Return</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {thirtyDayData.days.map((day, idx) => (
+                          <tr key={day.date} className={idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}>
+                            <td className="px-4 py-3 text-sm text-white font-medium">{formatBacktestDate(day.date)}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap gap-1">
+                                {day.picks.map((pick, i) => (
+                                  <span 
+                                    key={i}
+                                    className={`text-xs px-2 py-0.5 rounded ${pick.win ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
+                                  >
+                                    {pick.ticker} {pick.returnPercent >= 0 ? '+' : ''}{pick.returnPercent.toFixed(1)}%
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              <span className="text-green-400">{day.winCount}W</span>
+                              <span className="text-slate-500 mx-1">/</span>
+                              <span className="text-red-400">{day.lossCount}L</span>
+                            </td>
+                            <td className={`px-4 py-3 text-right font-mono font-bold ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
+                            </td>
+                          </tr>
                         ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+              ) : (
+                <div className="text-center py-8 text-slate-500">Failed to load data</div>
               )}
-
-              <div className="bg-slate-800 rounded-lg overflow-hidden">
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-slate-700/50">
-                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-slate-400 uppercase">Picks</th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-slate-400 uppercase">W/L</th>
-                      <th className="px-4 py-3 text-right text-xs font-bold text-slate-400 uppercase">Avg Return</th>
+            </>
+          ) : (
+            /* Audit Tab - Trade Log */
+            <div className="space-y-4">
+              <p className="text-xs text-slate-400 uppercase tracking-wider">
+                Verified Closed Trade Log
+              </p>
+              <div className="bg-slate-800 rounded-lg overflow-hidden max-h-96 overflow-y-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs text-slate-500 uppercase bg-slate-700 sticky top-0">
+                    <tr>
+                      <th className="px-4 py-3">Asset</th>
+                      <th className="px-4 py-3">Date</th>
+                      <th className="px-4 py-3">Type</th>
+                      <th className="px-4 py-3">Entry</th>
+                      <th className="px-4 py-3">Exit</th>
+                      <th className="px-4 py-3 text-right">Result</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {thirtyDayData.days.map((day, idx) => (
-                      <tr key={day.date} className={idx % 2 === 0 ? 'bg-slate-800' : 'bg-slate-800/50'}>
-                        <td className="px-4 py-3 text-sm text-white font-medium">{formatBacktestDate(day.date)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-1">
-                            {day.picks.map((pick, i) => (
-                              <span 
-                                key={i}
-                                className={`text-xs px-2 py-0.5 rounded ${pick.win ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-                              >
-                                {pick.ticker} {pick.returnPercent >= 0 ? '+' : ''}{pick.returnPercent.toFixed(1)}%
-                              </span>
-                            ))}
+                  <tbody className="divide-y divide-slate-700">
+                    {currentHistory.map((trade, idx) => (
+                      <tr 
+                        key={idx} 
+                        onClick={() => setSelectedHistoryItem(trade)}
+                        className="hover:bg-slate-700/50 transition-colors cursor-pointer group" 
+                        data-testid={`audit-row-${idx}`}
+                      >
+                        <td className="px-4 py-3 font-bold text-white">{trade.ticker}</td>
+                        <td className="px-4 py-3 text-slate-400">{trade.date ? new Date(trade.date).toLocaleDateString() : '-'}</td>
+                        <td className="px-4 py-3 text-slate-400">{trade.type}</td>
+                        <td className="px-4 py-3 font-mono text-slate-300">${Number(trade.entry).toFixed(2)}</td>
+                        <td className="px-4 py-3 font-mono text-slate-300">${Number(trade.exit).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
+                          <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
+                            trade.outcome === 'PENDING'
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : trade.outcome === 'NEUTRAL'
+                                ? 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                                : trade.outcome === 'WIN' || trade.profitPercent > 0 
+                                  ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                                  : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          }`}>
+                            {trade.outcome === 'PENDING' ? (
+                              <>
+                                <Clock className="h-3 w-3" />
+                                Pending
+                              </>
+                            ) : trade.outcome === 'NEUTRAL' ? (
+                              <>
+                                <Activity className="h-3 w-3" />
+                                {Number(trade.profitPercent).toFixed(2)}%
+                              </>
+                            ) : (
+                              <>
+                                {trade.outcome === 'WIN' || trade.profitPercent > 0 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                {trade.profitPercent > 0 ? '+' : ''}{Number(trade.profitPercent).toFixed(2)}%
+                              </>
+                            )}
                           </div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="text-green-400">{day.winCount}W</span>
-                          <span className="text-slate-500 mx-1">/</span>
-                          <span className="text-red-400">{day.lossCount}L</span>
-                        </td>
-                        <td className={`px-4 py-3 text-right font-mono font-bold ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
+                          <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
                         </td>
                       </tr>
                     ))}
+                    {currentHistory.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-12 text-center text-slate-500 italic">
+                          No closed trades found in the audit log yet.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
+              <div className="text-center">
+                <p className="text-[10px] text-slate-600">
+                  AUDIT ID: {Math.floor(Math.random() * 99999999).toString().padStart(8, '0')} • DATA INTEGRITY VERIFIED
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-8 text-slate-500">Failed to load data</div>
           )}
         </DialogContent>
       </Dialog>
