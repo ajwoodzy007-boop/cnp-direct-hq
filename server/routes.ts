@@ -17,6 +17,7 @@ import chartRouter from "./routes/chart";
 import stripeRouter from "./routes/stripe";
 import aiRouter from "./routes/ai";
 import academyRouter from "./routes/academy";
+import backtestRouter from "./routes/backtest";
 
 // Cache for daily predictions - regenerated at 7:30 AM ET each weekday
 interface DailyPredictionsCache {
@@ -117,6 +118,9 @@ export async function registerRoutes(
   
   // Academy routes
   app.use("/api/academy", academyRouter);
+  
+  // Backtest routes
+  app.use("/api/backtest", backtestRouter);
 
   // GET /api/market/scan - Scan market for gainers/losers
   app.get("/api/market/scan", async (req, res) => {
