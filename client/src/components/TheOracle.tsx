@@ -72,6 +72,12 @@ export default function TheOracle() {
   const [show30DayModal, setShow30DayModal] = useState(false);
   const [show6MonthModal, setShow6MonthModal] = useState(false);
   const [modal30DayTab, setModal30DayTab] = useState<'performance' | 'audit'>('performance');
+  
+  // Detailed backtest data
+  const [detailed30Day, setDetailed30Day] = useState<any>(null);
+  const [detailed6Month, setDetailed6Month] = useState<any>(null);
+  const [loading30Day, setLoading30Day] = useState(false);
+  const [loading6Month, setLoading6Month] = useState(false);
 
   // Deep AI Analysis modal state
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
@@ -154,6 +160,38 @@ export default function TheOracle() {
 
   const fetch6MonthData = () => {
     setShow6MonthModal(true);
+  };
+
+  const loadDetailed30Day = async () => {
+    if (detailed30Day) return; // Already loaded
+    setLoading30Day(true);
+    try {
+      const res = await fetch('/api/backtest/30-day');
+      const data = await res.json();
+      if (data.success) {
+        setDetailed30Day(data.data);
+      }
+    } catch (e) {
+      console.error('Failed to load 30-day details:', e);
+    } finally {
+      setLoading30Day(false);
+    }
+  };
+
+  const loadDetailed6Month = async () => {
+    if (detailed6Month) return; // Already loaded
+    setLoading6Month(true);
+    try {
+      const res = await fetch('/api/backtest/6-month');
+      const data = await res.json();
+      if (data.success) {
+        setDetailed6Month(data.data);
+      }
+    } catch (e) {
+      console.error('Failed to load 6-month details:', e);
+    } finally {
+      setLoading6Month(false);
+    }
   };
 
   const fetchCryptoPicks = async () => {
@@ -1455,6 +1493,52 @@ export default function TheOracle() {
                       </div>
                     </div>
                   )}
+
+                  {/* Day-by-Day Details */}
+                  <div className="mt-4">
+                    {!detailed30Day ? (
+                      <button
+                        onClick={loadDetailed30Day}
+                        disabled={loading30Day}
+                        className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
+                        data-testid="button-load-30day-details"
+                      >
+                        {loading30Day ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
+                        {loading30Day ? 'Loading...' : 'View Day-by-Day Details'}
+                      </button>
+                    ) : detailed30Day.days && detailed30Day.days.length > 0 ? (
+                      <div className="bg-slate-800 rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-700 sticky top-0">
+                            <tr>
+                              <th className="px-3 py-2 text-left text-xs text-slate-400">Date</th>
+                              <th className="px-3 py-2 text-left text-xs text-slate-400">Picks</th>
+                              <th className="px-3 py-2 text-left text-xs text-slate-400">W/L</th>
+                              <th className="px-3 py-2 text-right text-xs text-slate-400">Avg Ret</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-700">
+                            {detailed30Day.days.map((day: any, idx: number) => (
+                              <tr key={idx} className="hover:bg-slate-700/50">
+                                <td className="px-3 py-2 text-white">{day.date}</td>
+                                <td className="px-3 py-2 text-slate-400">{day.picks?.length || 0}</td>
+                                <td className="px-3 py-2">
+                                  <span className="text-green-400">{day.winCount}W</span>
+                                  <span className="text-slate-500"> / </span>
+                                  <span className="text-red-400">{day.lossCount}L</span>
+                                </td>
+                                <td className={`px-3 py-2 text-right font-mono ${day.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                  {day.avgReturn >= 0 ? '+' : ''}{day.avgReturn}%
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-4 text-slate-500 text-sm">No detailed data available</div>
+                    )}
+                  </div>
 
                   <p className="text-xs text-slate-600 text-center italic">
                     Performance data based on historical backtest analysis. Past performance does not guarantee future results.
