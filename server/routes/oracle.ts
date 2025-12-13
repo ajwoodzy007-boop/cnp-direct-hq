@@ -656,6 +656,36 @@ router.post('/admin/regenerate', async (req, res) => {
   }
 });
 
+// POST /admin/cleanup-date: Delete all stock predictions for a specific date
+router.post('/admin/cleanup-date', async (req, res) => {
+  try {
+    const { adminKey, date } = req.body;
+    
+    if (adminKey !== process.env.ADMIN_PASSWORD) {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
+    
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ success: false, error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+    
+    // Delete all stock predictions for the specified date
+    const result = await db.delete(predictions)
+      .where(sql`DATE(${predictions.predictionDate}) = ${date} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+    
+    console.log(`[ADMIN] Cleaned up stock predictions for ${date}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Deleted stock predictions for ${date}`
+    });
+    
+  } catch (error) {
+    console.error("[ADMIN] Cleanup Error:", error);
+    res.status(500).json({ success: false, error: "Failed to cleanup predictions" });
+  }
+});
+
 // POST /finalize: Record closing prices and outcomes for today's stock predictions
 router.post('/finalize', async (req, res) => {
   try {
