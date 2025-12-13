@@ -1384,11 +1384,18 @@ export default function TheOracle() {
       {/* 30-Day Backtest Modal with Sentinel Audit */}
       <Dialog open={show30DayModal} onOpenChange={setShow30DayModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
               <Calendar className="text-emerald-400 h-5 w-5" />
               Sentinel Performance Audit
             </DialogTitle>
+            <button 
+              onClick={() => setShow30DayModal(false)} 
+              className="text-slate-400 hover:text-white transition-colors"
+              data-testid="button-close-30day-modal"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </DialogHeader>
           
           {/* Tab Buttons */}
@@ -1633,11 +1640,18 @@ export default function TheOracle() {
       {/* 6-Month Backtest Modal */}
       <Dialog open={show6MonthModal} onOpenChange={setShow6MonthModal}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
-          <DialogHeader>
+          <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
               <Award className="text-yellow-400 h-5 w-5" />
               6-Month Historical Performance
             </DialogTitle>
+            <button 
+              onClick={() => setShow6MonthModal(false)} 
+              className="text-slate-400 hover:text-white transition-colors"
+              data-testid="button-close-6month-modal"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </DialogHeader>
           
           {backtestSummary?.sixMonth ? (
