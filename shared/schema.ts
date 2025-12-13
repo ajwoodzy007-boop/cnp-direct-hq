@@ -345,3 +345,23 @@ export const insertBetaPassSchema = createInsertSchema(betaPasses).omit({
 
 export type InsertBetaPass = z.infer<typeof insertBetaPassSchema>;
 export type BetaPass = typeof betaPasses.$inferSelect;
+
+// ============================================
+// BACKTEST CACHE TABLE
+// ============================================
+
+// Cached backtest results for fast loading
+export const backtestCache = pgTable("backtest_cache", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  cacheType: text("cache_type").notNull(), // '30day' or '6month'
+  data: jsonb("data").notNull(), // Full backtest result with days array
+  computedAt: timestamp("computed_at").notNull().defaultNow(),
+});
+
+export const insertBacktestCacheSchema = createInsertSchema(backtestCache).omit({
+  id: true,
+  computedAt: true,
+});
+
+export type InsertBacktestCache = z.infer<typeof insertBacktestCacheSchema>;
+export type BacktestCache = typeof backtestCache.$inferSelect;
