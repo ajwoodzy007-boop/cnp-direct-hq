@@ -182,7 +182,7 @@ export default function TheStrategist() {
             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'PLAYBOOK' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
             data-testid="tab-playbook"
           >
-            <ViewfinderCircleIcon className="h-4 w-4" /> Stock Playbook
+            <BoltIcon className="h-4 w-4" /> Strike Zone
           </button>
           <button 
             onClick={() => setMode('CRYPTO')}
