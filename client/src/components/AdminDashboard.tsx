@@ -501,9 +501,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             <button
               onClick={() => {
                 if (businessMetrics) {
+                  const { signupTrend, ...flatMetrics } = businessMetrics;
                   const report = {
                     generatedAt: new Date().toISOString(),
-                    ...businessMetrics
+                    ...flatMetrics,
+                    signups_last_30_days: signupTrend?.reduce((sum, d) => sum + Number(d.signups), 0) || 0
                   };
                   exportToCsv(`business_report_${new Date().toISOString().split('T')[0]}.csv`, [report]);
                 }
