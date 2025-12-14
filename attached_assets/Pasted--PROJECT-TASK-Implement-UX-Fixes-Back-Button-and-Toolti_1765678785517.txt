@@ -1,0 +1,32 @@
+# PROJECT TASK: Implement UX Fixes (Back Button and Tooltips)
+
+**A. Create useBackToClose Hook:**
+
+1.  **File:** Create a new TypeScript file at `client/hooks/useBackToClose.ts`.
+2.  **Logic:** This hook must accept two arguments: `isOpen: boolean` and `onClose: () => void`.
+3.  **Function:** When `isOpen` is true, the hook must execute the following logic using a `useEffect`:
+    * Push a new state into the browser's history using `window.history.pushState`.
+    * Add an event listener for the `popstate` event.
+    * The `popstate` handler must call the `onClose` function to close the modal and must prevent default browser navigation to stop the user from leaving the site.
+    * The `useEffect` must return a cleanup function to remove the `popstate` listener when the hook unmounts or when `isOpen` changes to false.
+
+**B. Create HelpTip Component:**
+
+1.  **File:** Create a new React/TypeScript component file at `client/components/HelpTip.tsx`.
+2.  **Dependencies:** Use the `useState` hook and the `Info` icon from `lucide-react`.
+3.  **Props:** The component must accept one prop: `content: string`.
+4.  **UI:** Render a small clickable button containing the `<Info />` icon. When clicked, it should toggle a small, fixed-position popup (`isOpen`). The popup should display the `content` string.
+5.  **Styling:** Use Tailwind CSS for a dark mode aesthetic (e.g., `bg-slate-800`, `text-xs`, `z-50`). Include an invisible full-screen backdrop that calls `setIsOpen(false)` on click to close the tooltip when the user clicks outside.
+
+**C. Implement in TheOracle Component:**
+
+1.  **File:** Modify the existing file `client/components/TheOracle.tsx`.
+2.  **Import Hooks:** Import `useBackToClose` and the new `HelpTip` component.
+3.  **Apply Back Button Fix:** Find where the state for the main modal is defined (e.g., `const [selectedPick, setSelectedPick] = useState<PickData | null>(null);`). Immediately after this definition, call `useBackToClose(!!selectedPick, () => setSelectedPick(null));`.
+4.  **Apply Tooltips:** Find three relevant data points in the component's JSX (e.g., near "RSI," "Confidence," or "Signal") and add the `<HelpTip />` component next to them with placeholder definitions.
+
+*Example Placeholder:*
+```tsx
+<span className="text-slate-500 flex items-center">
+  RSI Score <HelpTip content="RSI measures momentum. Below 30 is cheap, above 70 is expensive." />
+</span>

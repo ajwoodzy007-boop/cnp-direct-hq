@@ -6,6 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import PremiumLock from './PremiumLock';
 import Skeleton from './Skeleton';
+import { useBackToClose } from '../../hooks/useBackToClose';
+import HelpTip from '../../components/HelpTip';
 
 interface PickData {
   ticker: string;
@@ -55,6 +57,7 @@ export default function TheOracle() {
   const [loading, setLoading] = useState(true);
   const [cryptoLoading, setCryptoLoading] = useState(false);
   const [selectedPick, setSelectedPick] = useState<PickData | null>(null);
+  useBackToClose(!!selectedPick, () => setSelectedPick(null));
   const [sortBy, setSortBy] = useState<SortOption>('rank');
   const [showSignals, setShowSignals] = useState(false);
   const [signalsLocked, setSignalsLocked] = useState(false);
@@ -662,7 +665,7 @@ export default function TheOracle() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-xs text-slate-500 mb-1">Confidence</div>
+                      <div className="text-xs text-slate-500 mb-1 flex items-center">Confidence <HelpTip content="How confident the AI is in this pick based on RSI, volume, and sentiment analysis." /></div>
                       <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden">
                         <div 
                           className={`h-full ${getConfidenceColor(confScore)} transition-all`}
@@ -841,7 +844,7 @@ export default function TheOracle() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                   <div className="flex items-center gap-2 text-slate-500 text-xs uppercase mb-2">
-                    <Activity className="h-3 w-3" /> RSI Level
+                    <Activity className="h-3 w-3" /> RSI Level <HelpTip content="RSI measures momentum. Below 30 is oversold (cheap), above 70 is overbought (expensive). 40-60 is neutral." />
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
                     {selectedPick.rsi || (selectedPick.signal.includes('VALUE') ? 32 : 68)}
@@ -853,7 +856,7 @@ export default function TheOracle() {
 
                 <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                   <div className="flex items-center gap-2 text-slate-500 text-xs uppercase mb-2">
-                    <BarChart2 className="h-3 w-3" /> Relative Vol
+                    <BarChart2 className="h-3 w-3" /> Relative Vol <HelpTip content="Volume compared to the 30-day average. Values above 1.5x indicate unusual interest." />
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
                     {selectedPick.rvol ? `${selectedPick.rvol}x` : (selectedPick.signal.includes('MOMENTUM') ? '3.5x' : '1.2x')}
