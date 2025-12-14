@@ -64,7 +64,7 @@ function MainDashboard() {
 
   const renderContent = () => {
     switch (currentTab) {
-      case 'summary': return <TheSummary onNavigate={setTab} />;
+      case 'summary': return <TheSummary onNavigate={setTab} user={user} />;
       case 'radar': return <MarketRadar />;
       case 'academy': return <TheAcademy />;
       case 'oracle': 
@@ -78,7 +78,7 @@ function MainDashboard() {
       case 'vault': 
         if (!user) return <AuthLock featureName="The Vault" description="is your secure trading journal. You must be logged in to save your trade history, track your P&L, and analyze your win rate." onLoginClick={() => setShowAuthModal(true)} />;
         return <TheVault />;
-      default: return <TheSummary onNavigate={setTab} />;
+      default: return <TheSummary onNavigate={setTab} user={user} />;
     }
   };
 

@@ -28,7 +28,12 @@ interface PortfolioSummary {
   topHolding?: { ticker: string; value: number };
 }
 
-export default function TheSummary({ onNavigate }: { onNavigate: (tab: string) => void }) {
+interface Props {
+  onNavigate: (tab: string) => void;
+  user: { email: string; tier: string } | null;
+}
+
+export default function TheSummary({ onNavigate, user }: Props) {
   const { data: sentinelData, isLoading: sentinelLoading } = useQuery<{ data?: MarketMover[] }>({
     queryKey: ['/api/market/sentinel'],
     refetchInterval: 60000,
@@ -42,11 +47,12 @@ export default function TheSummary({ onNavigate }: { onNavigate: (tab: string) =
   const { data: portfolioData } = useQuery<{ summary?: PortfolioSummary }>({
     queryKey: ['/api/portfolio/summary'],
     retry: false,
+    enabled: !!user,
   });
 
   const marketMovers: MarketMover[] = sentinelData?.data?.slice(0, 5) || [];
   const topPredictions: Prediction[] = predictionsData?.data?.slice(0, 3) || [];
-  const portfolio: PortfolioSummary | null = portfolioData?.summary || null;
+  const portfolio: PortfolioSummary | null = user ? (portfolioData?.summary || null) : null;
 
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
