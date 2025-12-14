@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Info } from "lucide-react";
+import { InformationCircleIcon } from "@heroicons/react/24/outline";
 import {
   LineChart,
   Line,
@@ -117,7 +117,7 @@ export function StSelect({ label, options, value, onChange, help }: { label: str
         </Label>
         {help && (
           <div className="text-muted-foreground hover:text-foreground cursor-help" title={help}>
-            <Info className="h-3.5 w-3.5" />
+            <InformationCircleIcon className="h-3.5 w-3.5" />
           </div>
         )}
       </div>

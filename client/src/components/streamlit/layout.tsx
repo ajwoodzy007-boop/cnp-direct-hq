@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Settings, Moon, Sun, Bell, BellOff, Volume2, VolumeX, RefreshCw, LayoutGrid, Minimize2 } from "lucide-react";
+import { Cog6ToothIcon, MoonIcon, SunIcon, BellIcon, BellSlashIcon, SpeakerWaveIcon, SpeakerXMarkIcon, ArrowPathIcon, Squares2X2Icon, ArrowsPointingInIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -53,7 +53,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
               title={settings.notificationsEnabled ? "Notifications On" : "Notifications Off"}
               data-testid="button-header-notifications"
             >
-              {settings.notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+              {settings.notificationsEnabled ? <BellIcon className="h-4 w-4" /> : <BellSlashIcon className="h-4 w-4" />}
             </Button>
             <Button
               variant="ghost"
@@ -63,7 +63,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
               title={settings.soundEnabled ? "Sound On" : "Sound Off"}
               data-testid="button-header-sound"
             >
-              {settings.soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              {settings.soundEnabled ? <SpeakerWaveIcon className="h-4 w-4" /> : <SpeakerXMarkIcon className="h-4 w-4" />}
             </Button>
             <Button 
               variant="ghost" 
@@ -72,7 +72,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
               onClick={() => setSettingsOpen(true)}
               data-testid="button-settings"
             >
-              <Settings className="h-4 w-4 mr-2" />
+              <Cog6ToothIcon className="h-4 w-4 mr-2" />
               Settings
             </Button>
           </div>
@@ -120,7 +120,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
+              <Cog6ToothIcon className="h-5 w-5" />
               Settings
             </DialogTitle>
           </DialogHeader>
@@ -132,7 +132,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {settings.notificationsEnabled ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4 text-muted-foreground" />}
+                  {settings.notificationsEnabled ? <BellIcon className="h-4 w-4" /> : <BellSlashIcon className="h-4 w-4 text-muted-foreground" />}
                   <Label htmlFor="notifications" className="cursor-pointer">
                     <div>Browser Notifications</div>
                     <p className="text-xs text-muted-foreground font-normal">Get alerts for buy signals</p>
@@ -156,7 +156,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {settings.soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />}
+                  {settings.soundEnabled ? <SpeakerWaveIcon className="h-4 w-4" /> : <SpeakerXMarkIcon className="h-4 w-4 text-muted-foreground" />}
                   <Label htmlFor="sound" className="cursor-pointer">
                     <div>Sound Alerts</div>
                     <p className="text-xs text-muted-foreground font-normal">Play sound on detection</p>
@@ -179,7 +179,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  {settings.darkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+                  {settings.darkMode ? <MoonIcon className="h-4 w-4" /> : <SunIcon className="h-4 w-4" />}
                   <Label htmlFor="darkMode" className="cursor-pointer">
                     <div>Dark Mode</div>
                     <p className="text-xs text-muted-foreground font-normal">Toggle dark theme</p>
@@ -195,7 +195,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Minimize2 className="h-4 w-4" />
+                  <ArrowsPointingInIcon className="h-4 w-4" />
                   <Label htmlFor="compactMode" className="cursor-pointer">
                     <div>Compact Mode</div>
                     <p className="text-xs text-muted-foreground font-normal">Denser layout for power users</p>
@@ -218,7 +218,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <RefreshCw className="h-4 w-4" />
+                  <ArrowPathIcon className="h-4 w-4" />
                   <Label>
                     <div>Auto-Refresh Interval</div>
                     <p className="text-xs text-muted-foreground font-normal">How often to update data</p>
@@ -242,7 +242,7 @@ export function StreamlitLayout({ children }: StreamlitLayoutProps) {
               
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <LayoutGrid className="h-4 w-4" />
+                  <Squares2X2Icon className="h-4 w-4" />
                   <Label>
                     <div>Default View</div>
                     <p className="text-xs text-muted-foreground font-normal">Start with gainers or losers</p>

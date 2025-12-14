@@ -9,7 +9,35 @@ import {
   StMetric,
   StSelect,
 } from "@/components/streamlit/widgets";
-import { Loader2, RefreshCw, ExternalLink, Info, History, TrendingUp, TrendingDown, X, ChevronRight, Star, Plus, BarChart3, Sparkles, Lightbulb, Crown, Share2, Bell, BellOff, Volume2, VolumeX, GraduationCap, Brain, Target, Zap, ShieldAlert, PieChart, DollarSign, Lock, Flame, Trophy } from "lucide-react";
+import { 
+  ArrowPathIcon, 
+  ArrowTopRightOnSquareIcon, 
+  InformationCircleIcon, 
+  ClockIcon, 
+  ArrowTrendingUpIcon, 
+  ArrowTrendingDownIcon, 
+  XMarkIcon, 
+  ChevronRightIcon, 
+  StarIcon, 
+  PlusIcon, 
+  ChartBarIcon, 
+  SparklesIcon, 
+  LightBulbIcon, 
+  ShareIcon, 
+  BellIcon, 
+  BellSlashIcon, 
+  SpeakerWaveIcon, 
+  SpeakerXMarkIcon, 
+  AcademicCapIcon, 
+  ViewfinderCircleIcon, 
+  BoltIcon, 
+  ShieldExclamationIcon, 
+  ChartPieIcon, 
+  CurrencyDollarIcon, 
+  LockClosedIcon, 
+  FireIcon, 
+  TrophyIcon 
+} from "@heroicons/react/24/outline";
 import { useSettings } from "@/contexts/SettingsContext";
 import { Link } from "wouter";
 import { toast } from "sonner";
@@ -1016,11 +1044,11 @@ export default function Home() {
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Scanning...
+                    <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" /> Scanning...
                   </>
                 ) : (
                   <>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+                    <ArrowPathIcon className="mr-2 h-4 w-4" /> Refresh
                   </>
                 )}
               </Button>
@@ -1093,7 +1121,7 @@ export default function Home() {
           ) : (
             <div className="text-center py-8">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
-                <RefreshCw className="w-8 h-8 text-muted-foreground" />
+                <ArrowPathIcon className="w-8 h-8 text-muted-foreground" />
               </div>
               <p className="text-muted-foreground font-medium">No active signals detected</p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -1138,7 +1166,7 @@ export default function Home() {
             <span className="text-lg">🚀</span>
             <span className="font-medium">MOMENTUM BUY</span>
             <Popover>
-              <PopoverTrigger className="cursor-pointer"><Info className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
+              <PopoverTrigger className="cursor-pointer"><InformationCircleIcon className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
               <PopoverContent className="text-sm">Stocks with unusually high trading volume (3x+ normal) combined with bullish sentiment and RSI below 85. These indicate strong momentum and potential breakout opportunities.</PopoverContent>
             </Popover>
             <span className="text-xs text-muted-foreground">(RVol {">"}3x + Bullish + RSI {"<"}85)</span>
@@ -1147,7 +1175,7 @@ export default function Home() {
             <span className="text-lg">💎</span>
             <span className="font-medium">VALUE BUY</span>
             <Popover>
-              <PopoverTrigger className="cursor-pointer"><Info className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
+              <PopoverTrigger className="cursor-pointer"><InformationCircleIcon className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
               <PopoverContent className="text-sm">Oversold stocks (RSI below 35) with sentiment not bearish. These may represent undervalued buying opportunities.</PopoverContent>
             </Popover>
             <span className="text-xs text-muted-foreground">(RSI {"<"}35 + Not Bearish)</span>
@@ -1156,7 +1184,7 @@ export default function Home() {
             <span className="text-lg">⚠️</span>
             <span className="font-medium">SELL WARNING</span>
             <Popover>
-              <PopoverTrigger className="cursor-pointer"><Info className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
+              <PopoverTrigger className="cursor-pointer"><InformationCircleIcon className="h-3 w-3 text-muted-foreground hover:text-foreground" /></PopoverTrigger>
               <PopoverContent className="text-sm">Overbought stocks (RSI above 80) with bearish sentiment. These may indicate a potential pullback.</PopoverContent>
             </Popover>
             <span className="text-xs text-muted-foreground">(RSI {">"}80 + Bearish)</span>
@@ -1168,7 +1196,7 @@ export default function Home() {
           <div className="mb-6 p-4 rounded-xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/5 via-background to-blue-500/5">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Brain className="w-5 h-5 text-purple-500" />
+                <SparklesIcon className="w-5 h-5 text-purple-500" />
                 <h3 className="text-lg font-bold">AI Market Intelligence</h3>
                 {aiAccuracyData?.overall && (
                   <Badge variant="outline" className="text-xs">
@@ -1183,7 +1211,7 @@ export default function Home() {
                 disabled={aiInsightsLoading}
                 data-testid="button-refresh-ai"
               >
-                {aiInsightsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                {aiInsightsLoading ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <ArrowPathIcon className="h-4 w-4" />}
               </Button>
             </div>
             
@@ -1191,7 +1219,7 @@ export default function Home() {
               {/* Top 5 Buy Opportunities */}
               <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
                 <div className="flex items-center gap-2 mb-3">
-                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <ArrowTrendingUpIcon className="w-4 h-4 text-green-500" />
                   <span className="font-semibold text-green-600">Top 5 Buy Opportunities</span>
                 </div>
                 {aiInsightsData.topBuyOpportunities.slice(0, 5).map((opp, idx) => (
@@ -1215,7 +1243,7 @@ export default function Home() {
               {/* Top 5 Sell Warnings */}
               <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
                 <div className="flex items-center gap-2 mb-3">
-                  <TrendingDown className="w-4 h-4 text-red-500" />
+                  <ArrowTrendingDownIcon className="w-4 h-4 text-red-500" />
                   <span className="font-semibold text-red-600">Top 5 Sell Warnings</span>
                 </div>
                 {aiInsightsData.topSellWarnings.slice(0, 5).map((warn, idx) => (
@@ -1241,14 +1269,14 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               <div className="p-3 rounded-lg bg-muted/50">
                 <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-4 h-4 text-blue-500" />
+                  <SparklesIcon className="w-4 h-4 text-blue-500" />
                   <span className="font-medium text-sm">Gainers Analysis</span>
                 </div>
                 <p className="text-sm text-muted-foreground">{aiInsightsData.gainersAnalysis}</p>
               </div>
               <div className="p-3 rounded-lg bg-muted/50">
                 <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-4 h-4 text-orange-500" />
+                  <SparklesIcon className="w-4 h-4 text-orange-500" />
                   <span className="font-medium text-sm">Losers Analysis</span>
                 </div>
                 <p className="text-sm text-muted-foreground">{aiInsightsData.losersAnalysis}</p>
@@ -1285,22 +1313,22 @@ export default function Home() {
               <thead className="bg-muted/50 text-muted-foreground font-mono uppercase text-xs">
                 <tr>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Ticker <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Stock symbol used to identify the company</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Ticker <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Stock symbol used to identify the company</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Price <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Current trading price in USD</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Price <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Current trading price in USD</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Change % <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Percentage change from previous close</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Change % <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Percentage change from previous close</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">RVol <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Relative Volume: 1.0 is normal, 3.0+ indicates high interest</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">RVol <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Relative Volume: 1.0 is normal, 3.0+ indicates high interest</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">RSI <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Relative Strength Index: below 30 = oversold, above 70 = overbought</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">RSI <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Relative Strength Index: below 30 = oversold, above 70 = overbought</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">AI Verdict <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Sentiment analysis based on recent news headlines</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">AI Verdict <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Sentiment analysis based on recent news headlines</PopoverContent></Popover>
                   </th>
                 </tr>
               </thead>
@@ -1341,7 +1369,7 @@ export default function Home() {
                 {isLoading && (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                      <ArrowPathIcon className="h-6 w-6 animate-spin mx-auto text-primary" />
                     </td>
                   </tr>
                 )}
@@ -1386,22 +1414,22 @@ export default function Home() {
               <thead className="bg-muted/50 text-muted-foreground font-mono uppercase text-xs">
                 <tr>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Ticker <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Stock symbol used to identify the company</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Ticker <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Stock symbol used to identify the company</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Price <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Current trading price in USD</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Price <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Current trading price in USD</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Change % <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Percentage change from previous close</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">Change % <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Percentage change from previous close</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">RVol <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Relative Volume: 1.0 is normal, 3.0+ indicates high interest</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">RVol <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Relative Volume: 1.0 is normal, 3.0+ indicates high interest</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">RSI <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Relative Strength Index: below 30 = oversold, above 70 = overbought</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">RSI <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Relative Strength Index: below 30 = oversold, above 70 = overbought</PopoverContent></Popover>
                   </th>
                   <th className="px-4 py-3 font-medium">
-                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">AI Verdict <Info className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Sentiment analysis based on recent news headlines</PopoverContent></Popover>
+                    <Popover><PopoverTrigger className="flex items-center gap-1 cursor-pointer">AI Verdict <InformationCircleIcon className="h-3 w-3" /></PopoverTrigger><PopoverContent className="text-sm">Sentiment analysis based on recent news headlines</PopoverContent></Popover>
                   </th>
                 </tr>
               </thead>
@@ -1452,7 +1480,7 @@ export default function Home() {
           <Card className="border-green-500/20">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <ArrowTrendingUpIcon className="h-4 w-4 text-green-600" />
                 Top Buy Opportunities
                 <Badge variant="outline" className="text-green-600 border-green-600 ml-auto text-xs">
                   Oversold
@@ -1501,7 +1529,7 @@ export default function Home() {
           <Card className="border-red-500/20">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-red-600" />
+                <ArrowTrendingDownIcon className="h-4 w-4 text-red-600" />
                 Sell Warnings
                 <Badge variant="outline" className="text-red-600 border-red-600 ml-auto text-xs">
                   Overbought
@@ -1708,7 +1736,7 @@ export default function Home() {
                     <h5 className="font-medium text-sm leading-tight group-hover:underline decoration-primary/50 underline-offset-4">
                       {news.title}
                     </h5>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowTopRightOnSquareIcon className="h-4 w-4 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                   <div className="mt-2 flex items-center gap-2">
                     <Badge variant="outline" className="text-[10px] font-mono uppercase">
@@ -1728,7 +1756,7 @@ export default function Home() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Star className="h-5 w-5 text-yellow-500" />
+                <StarIcon className="h-5 w-5 text-yellow-500" />
                 My Watchlist
               </CardTitle>
             </CardHeader>
@@ -1755,7 +1783,7 @@ export default function Home() {
                   disabled={!watchlistInput.trim() || addWatchlistMutation.isPending}
                   data-testid="button-add-watchlist"
                 >
-                  <Plus className="h-4 w-4" />
+                  <PlusIcon className="h-4 w-4" />
                 </Button>
               </div>
 
@@ -1793,7 +1821,7 @@ export default function Home() {
                         }}
                         data-testid={`button-remove-watchlist-card-${item.ticker}`}
                       >
-                        <X className="h-3 w-3" />
+                        <XMarkIcon className="h-3 w-3" />
                       </Button>
                     </div>
                   ))
@@ -1825,7 +1853,7 @@ export default function Home() {
                   <p className="font-medium text-sm group-hover:text-primary">Investopedia Trading Guide</p>
                   <p className="text-xs text-muted-foreground">Complete beginner to advanced trading concepts</p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                <ArrowTopRightOnSquareIcon className="h-4 w-4 text-muted-foreground" />
               </a>
               <a 
                 href="https://www.investopedia.com/terms/r/rsi.asp" 
@@ -1838,7 +1866,7 @@ export default function Home() {
                   <p className="font-medium text-sm group-hover:text-primary">Understanding RSI Indicator</p>
                   <p className="text-xs text-muted-foreground">Learn to read overbought/oversold signals</p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                <ArrowTopRightOnSquareIcon className="h-4 w-4 text-muted-foreground" />
               </a>
               <a 
                 href="https://www.stockcharts.com/school/doku.php?id=chart_school" 
@@ -1851,7 +1879,7 @@ export default function Home() {
                   <p className="font-medium text-sm group-hover:text-primary">StockCharts Chart School</p>
                   <p className="text-xs text-muted-foreground">Technical analysis & chart patterns</p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                <ArrowTopRightOnSquareIcon className="h-4 w-4 text-muted-foreground" />
               </a>
             </CardContent>
           </Card>
@@ -1860,7 +1888,7 @@ export default function Home() {
           <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
-                <Crown className="h-5 w-5 text-amber-500" />
+                <StarIcon className="h-5 w-5 text-amber-500" />
                 Premium Trading Courses
                 <Badge variant="outline" className="text-[10px] ml-auto">Recommended</Badge>
               </CardTitle>
@@ -1890,7 +1918,7 @@ export default function Home() {
                   <p className="font-medium text-sm group-hover:text-primary">TradingView Pro</p>
                   <p className="text-xs text-muted-foreground">Advanced charting & screening tools</p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                <ArrowTopRightOnSquareIcon className="h-4 w-4 text-muted-foreground" />
               </a>
               <a 
                 href="/api/affiliate/training/tradeideas" 
@@ -1903,7 +1931,7 @@ export default function Home() {
                   <p className="font-medium text-sm group-hover:text-primary">Trade Ideas</p>
                   <p className="text-xs text-muted-foreground">AI-powered stock scanner & alerts</p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                <ArrowTopRightOnSquareIcon className="h-4 w-4 text-muted-foreground" />
               </a>
               <a 
                 href="/api/affiliate/training/simpler" 
@@ -1916,7 +1944,7 @@ export default function Home() {
                   <p className="font-medium text-sm group-hover:text-primary">Simpler Trading</p>
                   <p className="text-xs text-muted-foreground">Options & futures trading education</p>
                 </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                <ArrowTopRightOnSquareIcon className="h-4 w-4 text-muted-foreground" />
               </a>
             </CardContent>
           </Card>
@@ -1945,12 +1973,12 @@ export default function Home() {
                 >
                   {sentinelLoading ? (
                     <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <ArrowPathIcon className="h-4 w-4 animate-spin" />
                       Scanning...
                     </>
                   ) : (
                     <>
-                      <RefreshCw className="h-4 w-4" />
+                      <ArrowPathIcon className="h-4 w-4" />
                       Run Scan
                     </>
                   )}
@@ -1979,7 +2007,7 @@ export default function Home() {
 
               {sentinelLoading ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <ArrowPathIcon className="h-8 w-8 animate-spin text-primary" />
                   <span className="ml-3 text-muted-foreground">Scanning top gainers...</span>
                 </div>
               ) : sentinelData?.data && sentinelData.data.length > 0 ? (
@@ -2083,7 +2111,7 @@ export default function Home() {
                 <h2 className="text-xl font-bold">🎯 Today's Top 10 Predictions</h2>
                 {top10TodayData?.generatedAt && (
                   <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full">
-                    <Lock className="h-3 w-3" />
+                    <LockClosedIcon className="h-3 w-3" />
                     <span>Generated: {new Date(top10TodayData.generatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" })} ET</span>
                   </div>
                 )}
@@ -2193,7 +2221,7 @@ export default function Home() {
                             <div className="flex items-center gap-1 mb-2">
                               <Popover>
                                 <PopoverTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
-                                  <Info className="h-3 w-3" />
+                                  <InformationCircleIcon className="h-3 w-3" />
                                   <span>Why this pick?</span>
                                 </PopoverTrigger>
                                 <PopoverContent className="text-sm w-64">
@@ -2262,7 +2290,7 @@ export default function Home() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
+                  <ClockIcon className="h-5 w-5" />
                   Prediction History
                 </CardTitle>
               </CardHeader>
@@ -2275,7 +2303,7 @@ export default function Home() {
                   onClick={() => setShowFullHistory(true)}
                   data-testid="button-view-history-tab"
                 >
-                  <History className="h-4 w-4 mr-2" /> View Full History
+                  <ClockIcon className="h-4 w-4 mr-2" /> View Full History
                 </Button>
               </CardContent>
             </Card>
@@ -2285,11 +2313,11 @@ export default function Home() {
               <Card className="bg-gradient-to-br from-primary/5 via-background to-green-500/5 border-primary/20">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-primary" />
+                    <ChartBarIcon className="h-5 w-5 text-primary" />
                     Historical Accuracy
                     {predictionStatsData.winStreak && predictionStatsData.winStreak >= 3 && (
                       <Badge className="bg-gradient-to-r from-orange-500 to-yellow-500 ml-2">
-                        <Flame className="h-3 w-3 mr-1" />
+                        <FireIcon className="h-3 w-3 mr-1" />
                         {predictionStatsData.winStreak} Day Streak!
                       </Badge>
                     )}
@@ -2322,7 +2350,7 @@ export default function Home() {
                     {/* Win Streak Counter */}
                     <div className={`rounded-lg p-4 ${(predictionStatsData.winStreak || 0) >= 3 ? "bg-gradient-to-br from-orange-500/20 to-yellow-500/20" : "bg-muted/50"}`}>
                       <div className="flex items-center justify-center gap-1">
-                        <Trophy className={`h-5 w-5 ${(predictionStatsData.winStreak || 0) >= 3 ? "text-orange-500" : "text-muted-foreground"}`} />
+                        <TrophyIcon className={`h-5 w-5 ${(predictionStatsData.winStreak || 0) >= 3 ? "text-orange-500" : "text-muted-foreground"}`} />
                         <span className={`text-2xl font-bold ${(predictionStatsData.winStreak || 0) >= 3 ? "text-orange-500" : ""}`}>
                           {predictionStatsData.winStreak || 0}
                         </span>
@@ -2350,7 +2378,7 @@ export default function Home() {
             <div className="rounded-xl border-2 border-purple-500/30 bg-gradient-to-br from-purple-500/10 via-background to-blue-500/10 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="p-3 rounded-full bg-purple-500/20">
-                  <Brain className="h-8 w-8 text-purple-500" />
+                  <SparklesIcon className="h-8 w-8 text-purple-500" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold">AI Playbook</h2>
@@ -2369,7 +2397,7 @@ export default function Home() {
               <Card className="border-purple-500/20 hover:border-purple-500/40 transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Target className="h-5 w-5 text-purple-500" />
+                    <ViewfinderCircleIcon className="h-5 w-5 text-purple-500" />
                     Trading Strategies
                   </CardTitle>
                 </CardHeader>
@@ -2401,7 +2429,7 @@ export default function Home() {
                     }}
                     data-testid="button-generate-strategies"
                   >
-                    {aiResult.loading && aiResult.type === "strategy" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {aiResult.loading && aiResult.type === "strategy" ? <ArrowPathIcon className="h-4 w-4 animate-spin mr-2" /> : null}
                     Generate Strategy
                   </Button>
                 </CardContent>
@@ -2411,7 +2439,7 @@ export default function Home() {
               <Card className="border-blue-500/20 hover:border-blue-500/40 transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <TrendingUp className="h-5 w-5 text-blue-500" />
+                    <ArrowTrendingUpIcon className="h-5 w-5 text-blue-500" />
                     Market Briefings
                   </CardTitle>
                 </CardHeader>
@@ -2443,7 +2471,7 @@ export default function Home() {
                     }}
                     data-testid="button-generate-briefing"
                   >
-                    {aiResult.loading && aiResult.type === "briefing" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {aiResult.loading && aiResult.type === "briefing" ? <ArrowPathIcon className="h-4 w-4 animate-spin mr-2" /> : null}
                     Get Today's Briefing
                   </Button>
                 </CardContent>
@@ -2453,7 +2481,7 @@ export default function Home() {
               <Card className="border-green-500/20 hover:border-green-500/40 transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <Zap className="h-5 w-5 text-green-500" />
+                    <BoltIcon className="h-5 w-5 text-green-500" />
                     Smart Entry/Exit Signals
                   </CardTitle>
                 </CardHeader>
@@ -2485,7 +2513,7 @@ export default function Home() {
                     }}
                     data-testid="button-generate-signals"
                   >
-                    {aiResult.loading && aiResult.type === "signals" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {aiResult.loading && aiResult.type === "signals" ? <ArrowPathIcon className="h-4 w-4 animate-spin mr-2" /> : null}
                     Generate Signals
                   </Button>
                 </CardContent>
@@ -2495,7 +2523,7 @@ export default function Home() {
               <Card className="border-red-500/20 hover:border-red-500/40 transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <ShieldAlert className="h-5 w-5 text-red-500" />
+                    <ShieldExclamationIcon className="h-5 w-5 text-red-500" />
                     Risk Assessment
                   </CardTitle>
                 </CardHeader>
@@ -2536,7 +2564,7 @@ export default function Home() {
                       }}
                       data-testid="button-generate-risk"
                     >
-                      {aiResult.loading && aiResult.type === "risk" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assess"}
+                      {aiResult.loading && aiResult.type === "risk" ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : "Assess"}
                     </Button>
                   </div>
                 </CardContent>
@@ -2546,7 +2574,7 @@ export default function Home() {
               <Card className="border-amber-500/20 hover:border-amber-500/40 transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <PieChart className="h-5 w-5 text-amber-500" />
+                    <ChartPieIcon className="h-5 w-5 text-amber-500" />
                     Portfolio Optimizer
                   </CardTitle>
                 </CardHeader>
@@ -2584,7 +2612,7 @@ export default function Home() {
                     }}
                     data-testid="button-generate-portfolio"
                   >
-                    {aiResult.loading && aiResult.type === "portfolio" ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {aiResult.loading && aiResult.type === "portfolio" ? <ArrowPathIcon className="h-4 w-4 animate-spin mr-2" /> : null}
                     Optimize Portfolio
                   </Button>
                 </CardContent>
@@ -2594,7 +2622,7 @@ export default function Home() {
               <Card className="border-cyan-500/20 hover:border-cyan-500/40 transition-colors">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <BarChart3 className="h-5 w-5 text-cyan-500" />
+                    <ChartBarIcon className="h-5 w-5 text-cyan-500" />
                     Pattern Recognition
                   </CardTitle>
                 </CardHeader>
@@ -2635,7 +2663,7 @@ export default function Home() {
                       }}
                       data-testid="button-generate-patterns"
                     >
-                      {aiResult.loading && aiResult.type === "patterns" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Analyze"}
+                      {aiResult.loading && aiResult.type === "patterns" ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : "Analyze"}
                     </Button>
                   </div>
                 </CardContent>
@@ -2645,7 +2673,7 @@ export default function Home() {
               <Card className="border-orange-500/20 hover:border-orange-500/40 transition-colors col-span-full lg:col-span-1">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <DollarSign className="h-5 w-5 text-orange-500" />
+                    <CurrencyDollarIcon className="h-5 w-5 text-orange-500" />
                     Earnings Play Analyzer
                   </CardTitle>
                 </CardHeader>
@@ -2686,7 +2714,7 @@ export default function Home() {
                       }}
                       data-testid="button-generate-earnings"
                     >
-                      {aiResult.loading && aiResult.type === "earnings" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Analyze"}
+                      {aiResult.loading && aiResult.type === "earnings" ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : "Analyze"}
                     </Button>
                   </div>
                 </CardContent>
@@ -2696,7 +2724,7 @@ export default function Home() {
               <Card className="border-cyan-500/20 hover:border-cyan-500/40 transition-colors col-span-full lg:col-span-1">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-lg">
-                    <BarChart3 className="h-5 w-5 text-cyan-500" />
+                    <ChartBarIcon className="h-5 w-5 text-cyan-500" />
                     Options Signals
                   </CardTitle>
                 </CardHeader>
@@ -2762,7 +2790,7 @@ export default function Home() {
                         }}
                         data-testid="button-generate-options"
                       >
-                        {aiResult.loading && aiResult.type === "options" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate"}
+                        {aiResult.loading && aiResult.type === "options" ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : "Generate"}
                       </Button>
                     </div>
                   </div>
@@ -2776,7 +2804,7 @@ export default function Home() {
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center justify-between">
                     <span className="flex items-center gap-2">
-                      <Brain className="h-5 w-5 text-purple-500" />
+                      <SparklesIcon className="h-5 w-5 text-purple-500" />
                       {aiResult.title}
                     </span>
                     <Button 
@@ -2784,14 +2812,14 @@ export default function Home() {
                       size="sm" 
                       onClick={() => setAiResult({ type: "", title: "", content: "", loading: false, error: null })}
                     >
-                      <X className="h-4 w-4" />
+                      <XMarkIcon className="h-4 w-4" />
                     </Button>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   {aiResult.loading && (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                      <ArrowPathIcon className="h-8 w-8 animate-spin text-purple-500" />
                       <span className="ml-3 text-muted-foreground">Generating AI insights...</span>
                     </div>
                   )}
@@ -2819,7 +2847,7 @@ export default function Home() {
             {/* Upgrade CTA for non-premium users */}
             <Card className="border-2 border-dashed border-purple-500/30 bg-purple-500/5">
               <CardContent className="py-8 text-center">
-                <Crown className="h-12 w-12 mx-auto mb-4 text-purple-500" />
+                <StarIcon className="h-12 w-12 mx-auto mb-4 text-purple-500" />
                 <h3 className="text-xl font-bold mb-2">Unlock Full AI Playbook Access</h3>
                 <p className="text-muted-foreground mb-4">
                   Get unlimited access to all 8 AI-powered trading tools with a premium subscription.
@@ -2871,7 +2899,7 @@ export default function Home() {
                             onClick={() => handleShareWin(selectedPrediction)}
                             data-testid="button-share-dialog"
                           >
-                            <Share2 className="h-3 w-3 mr-1" /> Share Win
+                            <ShareIcon className="h-3 w-3 mr-1" /> Share Win
                           </Button>
                         )}
                       </>
@@ -2918,7 +2946,7 @@ export default function Home() {
                       disabled={!outcomeInputs[selectedPrediction.id]?.price}
                       data-testid="dialog-button-win"
                     >
-                      <TrendingUp className="h-4 w-4 mr-1" /> Win
+                      <ArrowTrendingUpIcon className="h-4 w-4 mr-1" /> Win
                     </Button>
                     <Button
                       variant="outline"
@@ -2933,7 +2961,7 @@ export default function Home() {
                       disabled={!outcomeInputs[selectedPrediction.id]?.price}
                       data-testid="dialog-button-loss"
                     >
-                      <TrendingDown className="h-4 w-4 mr-1" /> Loss
+                      <ArrowTrendingDownIcon className="h-4 w-4 mr-1" /> Loss
                     </Button>
                   </div>
                 </div>
@@ -3122,7 +3150,7 @@ export default function Home() {
                           }}
                           data-testid={`button-view-chart-${pick.ticker}`}
                         >
-                          <BarChart3 className="h-4 w-4 mr-1" /> View Chart
+                          <ChartBarIcon className="h-4 w-4 mr-1" /> View Chart
                         </Button>
                         <Button
                           variant="outline"
@@ -3135,7 +3163,7 @@ export default function Home() {
                             rel="noopener noreferrer"
                             data-testid={`button-trade-${pick.ticker}`}
                           >
-                            <ExternalLink className="h-4 w-4 mr-1" /> Trade {pick.ticker}
+                            <ArrowTopRightOnSquareIcon className="h-4 w-4 mr-1" /> Trade {pick.ticker}
                           </a>
                         </Button>
                       </div>

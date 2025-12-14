@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, ChevronRight, AlertTriangle } from 'lucide-react';
+import { ShieldCheckIcon, LockClosedIcon, ChevronRightIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 
 interface LoginProps {
   onLogin: () => void;
@@ -47,7 +47,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
         
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl mb-4">
-            <ShieldCheck className="h-10 w-10 text-cyan-500" />
+            <ShieldCheckIcon className="h-10 w-10 text-cyan-500" />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-widest font-mono" data-testid="text-logo">CNP DIRECT</h1>
           <div className="text-xs text-cyan-500 mt-2 uppercase tracking-[0.3em]">Sentinel Access Control</div>
@@ -59,7 +59,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
             <div className="space-y-2">
               <label className="text-xs text-slate-500 font-bold uppercase ml-1">Access Key</label>
               <div className="relative group">
-                <Lock className="absolute left-3 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+                <LockClosedIcon className="absolute left-3 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
                 <input 
                   type="password"
                   className="w-full bg-slate-950 border border-slate-800 text-white pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder:text-slate-600"
@@ -74,7 +74,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
 
             {error && (
               <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 p-3 rounded-lg border border-red-400/20 animate-in fade-in slide-in-from-top-1" data-testid="text-error">
-                <AlertTriangle className="h-4 w-4" />
+                <ExclamationTriangleIcon className="h-4 w-4" />
                 {error}
               </div>
             )}
@@ -89,7 +89,7 @@ export default function LoginPage({ onLogin }: LoginProps) {
                 <span className="animate-pulse">Verifying Credentials...</span>
               ) : (
                 <>
-                  Authenticate System <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  Authenticate System <ChevronRightIcon className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldAlert, RefreshCw, ChevronDown, ChevronUp, Activity, BarChart2, Bitcoin, TrendingUp } from 'lucide-react';
+import { ShieldExclamationIcon, ArrowPathIcon, ChevronDownIcon, ChevronUpIcon, SignalIcon, ChartBarIcon, CurrencyDollarIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline';
 import StockChart from './StockChart';
 import Skeleton from './Skeleton';
 
@@ -112,7 +112,7 @@ export default function MarketRadar() {
         <div className="flex justify-between items-center">
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
-              <ShieldAlert className="text-cyan-400 h-6 w-6" /> Market Sentinel Radar
+              <ShieldExclamationIcon className="text-cyan-400 h-6 w-6" /> Market Sentinel Radar
             </h2>
             <p className="text-slate-400 text-sm mt-1">
               {activeTab === 'stocks' ? 'Stock Surveillance Active' : 'Crypto Surveillance Active (24/7)'} • Click rows for Charts
@@ -124,7 +124,7 @@ export default function MarketRadar() {
             className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 text-sm rounded-lg flex items-center gap-1.5 transition-all border border-slate-700 hover:border-cyan-500/30"
             data-testid="button-initiate-scan"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <ArrowPathIcon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             {loading ? 'Scanning...' : 'Refresh'}
           </button>
         </div>
@@ -139,7 +139,7 @@ export default function MarketRadar() {
             }`}
             data-testid="tab-stocks"
           >
-            <TrendingUp className="h-4 w-4" />
+            <ArrowTrendingUpIcon className="h-4 w-4" />
             Stocks
           </button>
           <button
@@ -151,7 +151,7 @@ export default function MarketRadar() {
             }`}
             data-testid="tab-crypto"
           >
-            <Bitcoin className="h-4 w-4" />
+            <CurrencyDollarIcon className="h-4 w-4" />
             Crypto
           </button>
         </div>
@@ -197,7 +197,7 @@ export default function MarketRadar() {
                     : 'bg-slate-800 border-slate-700'
                 }`}>
                   {activeTab === 'crypto' ? (
-                    <Bitcoin className="h-5 w-5 text-orange-400" />
+                    <CurrencyDollarIcon className="h-5 w-5 text-orange-400" />
                   ) : (
                     item.ticker.substring(0, 2)
                   )}
@@ -216,11 +216,11 @@ export default function MarketRadar() {
               <div className="flex items-center gap-4 md:gap-6 shrink-0">
                 <div className="hidden md:flex gap-6">
                   <div className="text-center">
-                    <div className="text-xs text-slate-500 uppercase flex items-center gap-1"><Activity className="h-3 w-3" /> RSI</div>
+                    <div className="text-xs text-slate-500 uppercase flex items-center gap-1"><SignalIcon className="h-3 w-3" /> RSI</div>
                     <div className={`font-mono font-bold ${item.rsi > 70 ? 'text-red-400' : item.rsi < 30 ? 'text-green-400' : 'text-slate-300'}`}>{item.rsi}</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xs text-slate-500 uppercase flex items-center gap-1"><BarChart2 className="h-3 w-3" /> RVOL</div>
+                    <div className="text-xs text-slate-500 uppercase flex items-center gap-1"><ChartBarIcon className="h-3 w-3" /> RVOL</div>
                     <div className={`font-mono font-bold ${item.rvol > 2 ? 'text-cyan-400' : 'text-slate-300'}`}>{item.rvol}x</div>
                   </div>
                   {activeTab === 'crypto' && item.marketCap && (
@@ -233,7 +233,7 @@ export default function MarketRadar() {
                 <div className="text-right">
                   {getSignalBadge(item.signal)}
                 </div>
-                {expandedTicker === item.ticker ? <ChevronUp className="text-cyan-500 h-5 w-5"/> : <ChevronDown className="text-slate-600 h-5 w-5"/>}
+                {expandedTicker === item.ticker ? <ChevronUpIcon className="text-cyan-500 h-5 w-5"/> : <ChevronDownIcon className="text-slate-600 h-5 w-5"/>}
               </div>
             </div>
 

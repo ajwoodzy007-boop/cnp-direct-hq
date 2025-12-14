@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Plus, Activity, PieChart, TrendingUp, Clock, AlertCircle, Pencil, Trash2, X, Bitcoin } from 'lucide-react';
+import { Squares2X2Icon, PlusIcon, SignalIcon, ChartPieIcon, ArrowTrendingUpIcon, ClockIcon, ExclamationCircleIcon, PencilIcon, TrashIcon, XMarkIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import Skeleton from './Skeleton';
 
 export default function TheVault() {
@@ -96,11 +96,10 @@ export default function TheVault() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       
-      {/* HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-end border-b border-slate-800 pb-6 gap-4">
         <div>
           <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-            <LayoutDashboard className="text-emerald-400 h-8 w-8" /> The Vault
+            <Squares2X2Icon className="text-emerald-400 h-8 w-8" /> The Vault
           </h2>
           <p className="text-slate-400 mt-2">Portfolio Tracking & AI Risk Management</p>
         </div>
@@ -111,7 +110,7 @@ export default function TheVault() {
              className="bg-slate-800 text-purple-400 border border-purple-500/30 px-4 py-2 rounded-lg flex items-center gap-2 font-bold transition-all disabled:opacity-50"
              data-testid="button-ai-audit"
            >
-             {auditing ? <Activity className="h-5 w-5 animate-spin" /> : <PieChart className="h-5 w-5" />}
+             {auditing ? <SignalIcon className="h-5 w-5 animate-spin" /> : <ChartPieIcon className="h-5 w-5" />}
              {auditing ? 'Analyzing...' : 'AI Risk Audit'}
            </button>
            <button 
@@ -119,12 +118,11 @@ export default function TheVault() {
              className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 font-medium"
              data-testid="button-log-trade"
            >
-             <Plus className="h-5 w-5" /> Log Trade
+             <PlusIcon className="h-5 w-5" /> Log Trade
            </button>
         </div>
       </div>
 
-      {/* TOTALS */}
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl flex items-center justify-between">
         <div>
            <div className="text-slate-500 text-xs font-bold uppercase mb-1">Total Net Liquidity</div>
@@ -136,12 +134,11 @@ export default function TheVault() {
         </div>
       </div>
 
-      {/* AI AUDIT RESULT */}
       {audit && (
         <div className="bg-slate-900 border border-purple-500/30 rounded-xl p-6 animate-in slide-in-from-top-4">
           <div className="flex justify-between items-start mb-4">
              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-               <Activity className="text-purple-400 h-6 w-6" /> Portfolio Intelligence
+               <SignalIcon className="text-purple-400 h-6 w-6" /> Portfolio Intelligence
              </h3>
              <div className="text-2xl font-bold text-white" data-testid="text-diversity-score">{audit.diversityScore}/100 Score</div>
           </div>
@@ -157,18 +154,17 @@ export default function TheVault() {
           <div className="space-y-2">
             {audit.suggestions?.map((sug: string, i: number) => (
                <div key={i} className="flex items-start gap-2 text-sm text-slate-400">
-                  <AlertCircle className="h-4 w-4 text-purple-500 shrink-0 mt-0.5" /> {sug}
+                  <ExclamationCircleIcon className="h-4 w-4 text-purple-500 shrink-0 mt-0.5" /> {sug}
                </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* OPTIONS TABLE */}
       {options.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <Clock className="text-amber-400 h-5 w-5" /> Active Options
+            <ClockIcon className="text-amber-400 h-5 w-5" /> Active Options
           </h3>
           <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
@@ -214,14 +210,14 @@ export default function TheVault() {
                             className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded hover:bg-slate-700"
                             data-testid={`button-edit-${p.id}`}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <PencilIcon className="h-4 w-4" />
                           </button>
                           <button 
                             onClick={() => handleDelete(p.id)} 
                             className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded hover:bg-slate-700"
                             data-testid={`button-delete-${p.id}`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <TrashIcon className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -234,11 +230,10 @@ export default function TheVault() {
         </div>
       )}
 
-      {/* CRYPTO TABLE */}
       {crypto.length > 0 && (
         <div className="space-y-4">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <Bitcoin className="text-orange-400 h-5 w-5" /> Crypto Holdings
+            <CurrencyDollarIcon className="text-orange-400 h-5 w-5" /> Crypto Holdings
           </h3>
           <div className="bg-slate-900 border border-orange-500/20 rounded-xl overflow-hidden">
             <div className="overflow-x-auto">
@@ -258,7 +253,7 @@ export default function TheVault() {
                     <tr key={p.id} className="border-b border-slate-800 hover:bg-orange-900/10" data-testid={`row-crypto-${p.id}`}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <Bitcoin className="h-4 w-4 text-orange-500" />
+                          <CurrencyDollarIcon className="h-4 w-4 text-orange-500" />
                           <span className="font-bold text-white">{p.ticker}</span>
                         </div>
                       </td>
@@ -275,14 +270,14 @@ export default function TheVault() {
                             className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded hover:bg-slate-700"
                             data-testid={`button-edit-${p.id}`}
                           >
-                            <Pencil className="h-4 w-4" />
+                            <PencilIcon className="h-4 w-4" />
                           </button>
                           <button 
                             onClick={() => handleDelete(p.id)} 
                             className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded hover:bg-slate-700"
                             data-testid={`button-delete-${p.id}`}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <TrashIcon className="h-4 w-4" />
                           </button>
                         </div>
                       </td>
@@ -295,10 +290,9 @@ export default function TheVault() {
         </div>
       )}
 
-      {/* EQUITIES TABLE */}
       <div className="space-y-4">
         <h3 className="text-xl font-bold text-white flex items-center gap-2">
-          <TrendingUp className="text-cyan-400 h-5 w-5" /> Equities & ETFs
+          <ArrowTrendingUpIcon className="text-cyan-400 h-5 w-5" /> Equities & ETFs
         </h3>
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
@@ -341,14 +335,14 @@ export default function TheVault() {
                           className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded hover:bg-slate-700"
                           data-testid={`button-edit-${p.id}`}
                         >
-                          <Pencil className="h-4 w-4" />
+                          <PencilIcon className="h-4 w-4" />
                         </button>
                         <button 
                           onClick={() => handleDelete(p.id)} 
                           className="p-2 text-slate-400 hover:text-red-400 bg-slate-800 rounded hover:bg-slate-700"
                           data-testid={`button-delete-${p.id}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <TrashIcon className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -363,7 +357,6 @@ export default function TheVault() {
         </div>
       </div>
 
-      {/* ADD/EDIT MODAL */}
       {showModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-xl p-6 w-full max-w-md relative">
@@ -372,12 +365,11 @@ export default function TheVault() {
               className="absolute top-4 right-4 text-slate-500 hover:text-white"
               data-testid="button-close-modal"
             >
-              <X className="h-5 w-5" />
+              <XMarkIcon className="h-5 w-5" />
             </button>
             <h3 className="text-xl font-bold text-white mb-4">{editId ? 'Edit Position' : 'Log New Position'}</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               
-              {/* Asset Type Toggle */}
               <div className="flex bg-slate-950 p-1 rounded-lg mb-4 border border-slate-800">
                 {['SHARE', 'CRYPTO', 'CALL', 'PUT'].map(t => (
                   <button 
@@ -402,7 +394,6 @@ export default function TheVault() {
                 />
               </div>
 
-              {/* Conditional Option Fields */}
               {(assetType === 'CALL' || assetType === 'PUT') && (
                 <div className="grid grid-cols-2 gap-4">
                   <div>

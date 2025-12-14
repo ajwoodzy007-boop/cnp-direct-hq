@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, TrendingUp, Target, Calendar, ChevronRight, X, Loader2, BarChart3, CheckCircle, XCircle, History, Award } from 'lucide-react';
+import { TrophyIcon, ArrowTrendingUpIcon, ViewfinderCircleIcon, CalendarIcon, ChevronRightIcon, XMarkIcon, ArrowPathIcon, ChartBarIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 
@@ -160,7 +160,7 @@ export default function TrackRecord() {
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
-              <Trophy className="text-emerald-400 h-6 w-6" />
+              <TrophyIcon className="text-emerald-400 h-6 w-6" />
               <h3 className="text-xl font-bold text-white">Algorithm Track Record</h3>
             </div>
             <span className="text-xs text-slate-500 uppercase tracking-wider">Verified Backtest</span>
@@ -202,9 +202,9 @@ export default function TrackRecord() {
               className="flex-1 py-3 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
               data-testid="button-view-30day"
             >
-              <Calendar className="h-4 w-4" />
+              <CalendarIcon className="h-4 w-4" />
               View 30-Day Details
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRightIcon className="h-4 w-4" />
             </button>
             
             <button
@@ -212,9 +212,9 @@ export default function TrackRecord() {
               className="flex-1 py-3 bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
               data-testid="button-view-6month"
             >
-              <BarChart3 className="h-4 w-4" />
+              <ChartBarIcon className="h-4 w-4" />
               View 6-Month History
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRightIcon className="h-4 w-4" />
             </button>
           </div>
           
@@ -228,14 +228,14 @@ export default function TrackRecord() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-              <Calendar className="text-emerald-400 h-5 w-5" />
+              <CalendarIcon className="text-emerald-400 h-5 w-5" />
               30-Day Rolling Performance
             </DialogTitle>
           </DialogHeader>
           
           {loadingDetail ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+              <ArrowPathIcon className="h-8 w-8 text-emerald-500 animate-spin" />
               <span className="ml-3 text-slate-400">Loading backtest data...</span>
             </div>
           ) : thirtyDayData ? (
@@ -331,14 +331,14 @@ export default function TrackRecord() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-              <Award className="text-emerald-400 h-5 w-5" />
+              <TrophyIcon className="text-emerald-400 h-5 w-5" />
               6-Month Historical Performance
             </DialogTitle>
           </DialogHeader>
           
           {loadingDetail ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+              <ArrowPathIcon className="h-8 w-8 text-emerald-500 animate-spin" />
               <span className="ml-3 text-slate-400">Loading 6-month backtest... This may take a moment.</span>
             </div>
           ) : sixMonthData ? (

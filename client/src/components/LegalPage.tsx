@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, FileText, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { ShieldCheckIcon, DocumentTextIcon, ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 interface Props {
   page: 'terms' | 'privacy' | 'risk';
@@ -62,7 +62,7 @@ export default function LegalPage({ page, onBack }: Props) {
           <div className="space-y-6">
             <div className="border-l-4 border-amber-500 pl-4 py-1">
               <h3 className="text-xl font-bold text-amber-500 flex items-center gap-2">
-                <AlertTriangle className="h-6 w-6" /> Risk Disclosure
+                <ExclamationTriangleIcon className="h-6 w-6" /> Risk Disclosure
               </h3>
             </div>
             
@@ -91,7 +91,7 @@ export default function LegalPage({ page, onBack }: Props) {
           className="flex items-center gap-2 text-slate-400 hover:text-cyan-400 mb-8 transition-colors font-medium"
           data-testid="button-back-legal"
         >
-          <ArrowLeft className="h-4 w-4" /> Return to Terminal
+          <ArrowLeftIcon className="h-4 w-4" /> Return to Terminal
         </button>
         
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 md:p-12 shadow-2xl">

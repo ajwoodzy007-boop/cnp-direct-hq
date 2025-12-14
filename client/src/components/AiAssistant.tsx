@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Bot } from 'lucide-react';
+import { ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon, ArrowPathIcon, CpuChipIcon } from '@heroicons/react/24/outline';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -77,7 +77,7 @@ export default function AiAssistant() {
           className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-cyan-600 hover:bg-cyan-500 text-white shadow-lg shadow-cyan-500/25 flex items-center justify-center transition-all hover:scale-105"
           data-testid="button-open-assistant"
         >
-          <MessageCircle className="h-6 w-6" />
+          <ChatBubbleLeftRightIcon className="h-6 w-6" />
         </button>
       )}
 
@@ -87,7 +87,7 @@ export default function AiAssistant() {
           <div className="p-4 border-b border-slate-800 bg-slate-800/50 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-full bg-cyan-600/20 border border-cyan-500/30 flex items-center justify-center">
-                <Bot className="h-5 w-5 text-cyan-400" />
+                <CpuChipIcon className="h-5 w-5 text-cyan-400" />
               </div>
               <div>
                 <div className="text-white font-semibold text-sm">Sentinel Assistant</div>
@@ -102,7 +102,7 @@ export default function AiAssistant() {
               className="text-slate-400 hover:text-white transition-colors"
               data-testid="button-close-assistant"
             >
-              <X className="h-5 w-5" />
+              <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
 
@@ -126,7 +126,7 @@ export default function AiAssistant() {
             {loading && (
               <div className="flex justify-start">
                 <div className="bg-slate-800 text-slate-400 px-4 py-3 rounded-2xl rounded-bl-md border border-slate-700 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
                   <span className="text-sm">Thinking...</span>
                 </div>
               </div>
@@ -153,7 +153,7 @@ export default function AiAssistant() {
                 className="h-11 w-11 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white flex items-center justify-center transition-colors"
                 data-testid="button-send-message"
               >
-                <Send className="h-5 w-5" />
+                <PaperAirplaneIcon className="h-5 w-5" />
               </button>
             </div>
             <div className="text-[10px] text-slate-600 text-center mt-2">

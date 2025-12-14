@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, UserPlus, LogIn } from 'lucide-react';
+import { ShieldCheckIcon, UserPlusIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/outline';
 
 interface Props {
   featureName: string;
@@ -16,7 +16,7 @@ export default function AuthLock({ featureName, description, onLoginClick }: Pro
 
         <div className="relative z-10">
           <div className="h-16 w-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-700">
-            <Shield className="h-8 w-8 text-cyan-400" />
+            <ShieldCheckIcon className="h-8 w-8 text-cyan-400" />
           </div>
 
           <h2 className="text-3xl font-bold text-white mb-3">
@@ -32,7 +32,7 @@ export default function AuthLock({ featureName, description, onLoginClick }: Pro
               className="bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-cyan-900/20"
               data-testid="button-create-account"
             >
-              <UserPlus className="h-5 w-5" />
+              <UserPlusIcon className="h-5 w-5" />
               Create Free Account
             </button>
             <button 
@@ -40,7 +40,7 @@ export default function AuthLock({ featureName, description, onLoginClick }: Pro
               className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 transition-all border border-slate-700"
               data-testid="button-login"
             >
-              <LogIn className="h-5 w-5" />
+              <ArrowLeftOnRectangleIcon className="h-5 w-5" />
               Login
             </button>
           </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, CreditCard, User, LogOut, Shield, Ticket } from 'lucide-react';
+import { XMarkIcon, CreditCardIcon, UserCircleIcon, ArrowRightOnRectangleIcon, ShieldCheckIcon, TicketIcon } from '@heroicons/react/24/outline';
 
 interface Props {
   user: { email: string; tier: string };
@@ -66,10 +66,10 @@ export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdmi
         
         <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <User className="text-cyan-400 h-5 w-5" /> Operative Profile
+            <UserCircleIcon className="text-cyan-400 h-5 w-5" /> Operative Profile
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white" data-testid="button-close-settings">
-            <X className="h-6 w-6" />
+            <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
 
@@ -99,7 +99,7 @@ export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdmi
               data-testid="button-manage-billing"
             >
               <div className="flex items-center gap-3">
-                <CreditCard className="h-5 w-5 text-slate-400 group-hover:text-cyan-400" />
+                <CreditCardIcon className="h-5 w-5 text-slate-400 group-hover:text-cyan-400" />
                 <div className="text-sm font-medium">{loading ? 'Loading...' : 'Manage Subscription'}</div>
               </div>
               <div className="text-xs text-slate-500 group-hover:text-white">Invoices & Cancel</div>
@@ -108,7 +108,7 @@ export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdmi
             {user.tier !== 'PREMIUM' && (
               <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Ticket className="h-4 w-4 text-purple-400" />
+                  <TicketIcon className="h-4 w-4 text-purple-400" />
                   <span className="text-sm font-medium text-purple-400">Have a Beta Pass?</span>
                 </div>
                 <div className="flex gap-2">
@@ -144,7 +144,7 @@ export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdmi
                 data-testid="button-admin-dashboard"
               >
                 <div className="flex items-center gap-3">
-                  <Shield className="h-5 w-5" />
+                  <ShieldCheckIcon className="h-5 w-5" />
                   <div className="text-sm font-medium">Admin Dashboard</div>
                 </div>
                 <div className="text-xs text-red-500/70">Command Center</div>
@@ -157,7 +157,7 @@ export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdmi
               data-testid="button-logout"
             >
               <div className="flex items-center gap-3">
-                <LogOut className="h-5 w-5" />
+                <ArrowRightOnRectangleIcon className="h-5 w-5" />
                 <div className="text-sm font-medium">Terminate Session</div>
               </div>
             </button>

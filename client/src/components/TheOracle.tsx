@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, ArrowRight, X, Activity, BarChart2, FileText, AlertTriangle, Lock, Shield, Flame, TrendingUp, TrendingDown, Info, Zap, Loader2, History, CheckCircle, XCircle, Bitcoin, Scan, BrainCircuit, ChevronRight, Clock, Trophy, Calendar, Award, BarChart3 } from 'lucide-react';
+import { ViewfinderCircleIcon, ArrowRightIcon, XMarkIcon, SignalIcon, ChartBarIcon, DocumentTextIcon, ExclamationTriangleIcon, LockClosedIcon, ShieldCheckIcon, FireIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, InformationCircleIcon, BoltIcon, ArrowPathIcon, ClockIcon, CheckCircleIcon, XCircleIcon, CurrencyDollarIcon, CpuChipIcon, ChevronRightIcon, TrophyIcon, CalendarIcon } from '@heroicons/react/24/outline';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -374,11 +374,11 @@ export default function TheOracle() {
   const getRiskBadge = (risk: string) => {
     switch (risk) {
       case 'Low':
-        return <span className="px-2 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 flex items-center gap-1"><Shield className="h-3 w-3" /> Low</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/30 flex items-center gap-1"><ShieldCheckIcon className="h-3 w-3" /> Low</span>;
       case 'High':
-        return <span className="px-2 py-0.5 rounded text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1"><Flame className="h-3 w-3" /> High</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1"><FireIcon className="h-3 w-3" /> High</span>;
       default:
-        return <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Med</span>;
+        return <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center gap-1"><ArrowTrendingUpIcon className="h-3 w-3" /> Med</span>;
     }
   };
 
@@ -392,9 +392,9 @@ export default function TheOracle() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div>
               <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-                <Target className={`${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} h-8 w-8`} />
+                <ViewfinderCircleIcon className={`${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} h-8 w-8`} />
                 The Oracle
-                <Trophy className="text-emerald-400 h-6 w-6" />
+                <TrophyIcon className="text-emerald-400 h-6 w-6" />
               </h2>
               <p className="text-slate-400 mt-2 max-w-2xl">
                 {activeTab === 'crypto' 
@@ -412,7 +412,7 @@ export default function TheOracle() {
                 }`}
                 data-testid="oracle-tab-stocks"
               >
-                <TrendingUp className="h-4 w-4" />
+                <ArrowTrendingUpIcon className="h-4 w-4" />
                 Stocks
               </button>
               <button
@@ -424,7 +424,7 @@ export default function TheOracle() {
                 }`}
                 data-testid="oracle-tab-crypto"
               >
-                <Bitcoin className="h-4 w-4" />
+                <CurrencyDollarIcon className="h-4 w-4" />
                 Crypto
               </button>
             </div>
@@ -437,7 +437,7 @@ export default function TheOracle() {
               data-testid="button-view-history"
             >
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
-                Win Rate <History className="h-3 w-3" />
+                Win Rate <ClockIcon className="h-3 w-3" />
               </div>
               <div className="text-2xl font-bold text-green-400">{currentStats.winRate}%</div>
               <div className="text-xs text-slate-600">{currentStats.wins}W / {currentStats.losses}L</div>
@@ -462,7 +462,7 @@ export default function TheOracle() {
                   data-testid="button-view-30day"
                 >
                   <div className="text-xs text-emerald-500 uppercase font-bold tracking-wider flex items-center gap-1">
-                    30-Day <Calendar className="h-3 w-3" />
+                    30-Day <CalendarIcon className="h-3 w-3" />
                   </div>
                   <div className="text-2xl font-bold text-emerald-400">{backtestSummary.thirtyDay.winRate}%</div>
                   <div className="text-xs text-slate-600">{backtestSummary.thirtyDay.wins}W / {backtestSummary.thirtyDay.losses}L</div>
@@ -485,7 +485,7 @@ export default function TheOracle() {
                       data-testid="button-view-6month"
                     >
                       <div className="text-xs text-yellow-500 uppercase font-bold tracking-wider flex items-center gap-1">
-                        6-Month <Award className="h-3 w-3" />
+                        6-Month <TrophyIcon className="h-3 w-3" />
                       </div>
                       <div className="text-2xl font-bold text-emerald-400">{backtestSummary.sixMonth.winRate}%</div>
                       <div className="text-xs text-slate-600">{backtestSummary.sixMonth.totalPicks} Picks</div>
@@ -512,14 +512,14 @@ export default function TheOracle() {
                 className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 px-5 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 transition-all text-sm"
                 data-testid="button-live-signals"
               >
-                <Zap className="h-4 w-4" /> Live Signals
+                <BoltIcon className="h-4 w-4" /> Live Signals
               </button>
             )}
             <button
               onClick={() => { setModal30DayTab('audit'); fetch30DayData(); }}
               className="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-xl font-medium text-slate-300 flex items-center gap-2 transition-all text-sm border border-slate-700"
             >
-              <History className="h-4 w-4" /> View Proof Log
+              <ClockIcon className="h-4 w-4" /> View Proof Log
             </button>
             <p className="text-xs text-slate-600 italic ml-auto">
               Past performance does not guarantee future results
@@ -591,7 +591,7 @@ export default function TheOracle() {
           <div className="p-8 border border-dashed border-slate-700 rounded-xl text-center">
             <div className="flex flex-col items-center gap-4">
               <div className={`w-16 h-16 rounded-full ${activeTab === 'crypto' ? 'bg-orange-500/10' : 'bg-cyan-500/10'} flex items-center justify-center`}>
-                <Shield className={`h-8 w-8 ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'}`} />
+                <ShieldCheckIcon className={`h-8 w-8 ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'}`} />
               </div>
               <div>
                 <h4 className="text-lg font-bold text-white mb-2">No High-Conviction Signals Today</h4>
@@ -610,7 +610,7 @@ export default function TheOracle() {
           <>
             {currentPicks.length < 3 && (
               <div className={`mb-4 p-4 rounded-lg border ${activeTab === 'crypto' ? 'bg-orange-500/5 border-orange-500/20' : 'bg-cyan-500/5 border-cyan-500/20'} flex items-center gap-3`}>
-                <AlertTriangle className={`h-5 w-5 ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} shrink-0`} />
+                <ExclamationTriangleIcon className={`h-5 w-5 ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} shrink-0`} />
                 <div>
                   <span className="text-white font-medium">Limited Signals Today</span>
                   <span className="text-slate-400 text-sm ml-2">
@@ -636,7 +636,7 @@ export default function TheOracle() {
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        {isCrypto && <Bitcoin className="h-5 w-5 text-orange-400" />}
+                        {isCrypto && <CurrencyDollarIcon className="h-5 w-5 text-orange-400" />}
                         <h4 className={`text-2xl font-bold text-white group-hover:text-${accentColor}-400 transition-colors`}>
                           {pick.ticker}
                         </h4>
@@ -644,7 +644,7 @@ export default function TheOracle() {
                         <Popover>
                           <PopoverTrigger asChild>
                             <button className={`text-slate-500 hover:text-${accentColor}-400`} data-testid={`button-why-${pick.ticker}`}>
-                              <Info className="h-4 w-4" />
+                              <InformationCircleIcon className="h-4 w-4" />
                             </button>
                           </PopoverTrigger>
                           <PopoverContent className="w-72 bg-slate-900 border-slate-700 text-slate-300 text-sm">
@@ -681,7 +681,7 @@ export default function TheOracle() {
                       <Popover>
                         <PopoverTrigger asChild>
                           <span className="text-slate-500 cursor-help flex items-center gap-1">
-                            Entry Price <Info className="h-3 w-3 text-slate-600" />
+                            Entry Price <InformationCircleIcon className="h-3 w-3 text-slate-600" />
                           </span>
                         </PopoverTrigger>
                         <PopoverContent className="w-56 bg-slate-900 border-slate-700 text-xs text-slate-300">
@@ -698,7 +698,7 @@ export default function TheOracle() {
                       <Popover>
                         <PopoverTrigger asChild>
                           <span className="text-slate-500 cursor-help flex items-center gap-1">
-                            Open Price <Info className="h-3 w-3 text-slate-600" />
+                            Open Price <InformationCircleIcon className="h-3 w-3 text-slate-600" />
                           </span>
                         </PopoverTrigger>
                         <PopoverContent className="w-56 bg-slate-900 border-slate-700 text-xs text-slate-300">
@@ -753,7 +753,7 @@ export default function TheOracle() {
 
                   <div className="flex items-center justify-between text-xs text-slate-600 mb-4">
                     <div className="flex items-center gap-1">
-                      <Lock className="h-3 w-3" />
+                      <LockClosedIcon className="h-3 w-3" />
                       <span>{isCrypto ? 'Markets: 24/7' : `Locked ${pick.lockedAt || '9:00 AM ET'}`}</span>
                     </div>
                   </div>
@@ -763,7 +763,7 @@ export default function TheOracle() {
                     className={`w-full py-2 bg-slate-800 hover:bg-${accentColor}-600 hover:text-white text-slate-300 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2`}
                     data-testid={`button-view-analysis-${pick.ticker}`}
                   >
-                    View Analysis <ArrowRight className="h-4 w-4" />
+                    View Analysis <ArrowRightIcon className="h-4 w-4" />
                   </button>
                 </div>
               );
@@ -780,7 +780,7 @@ export default function TheOracle() {
             <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
               <div>
                 <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                  <FileText className="text-cyan-400 h-5 w-5" />
+                  <DocumentTextIcon className="text-cyan-400 h-5 w-5" />
                   Tactical Report: {selectedPick.ticker}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">
@@ -788,7 +788,7 @@ export default function TheOracle() {
                 </p>
               </div>
               <button onClick={() => setSelectedPick(null)} className="text-slate-400 hover:text-white" data-testid="button-close-modal">
-                <X className="h-6 w-6" />
+                <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
 
@@ -796,7 +796,7 @@ export default function TheOracle() {
               
               {analyzing ? (
                 <div className="flex flex-col items-center justify-center h-32 space-y-4">
-                  <Loader2 className="h-10 w-10 text-cyan-500 animate-spin" />
+                  <ArrowPathIcon className="h-10 w-10 text-cyan-500 animate-spin" />
                   <div className="text-sm text-cyan-400 animate-pulse">Establishing Uplink to Sentinel Core...</div>
                 </div>
               ) : aiReport ? (
@@ -807,7 +807,7 @@ export default function TheOracle() {
                     ? 'bg-red-500/10 border-red-500/20'
                     : 'bg-cyan-950/30 border-cyan-500/20'
                 }`}>
-                  <AlertTriangle className={`h-6 w-6 shrink-0 mt-1 ${
+                  <ExclamationTriangleIcon className={`h-6 w-6 shrink-0 mt-1 ${
                     aiReport.verdict?.includes('BUY') ? 'text-green-400' : 
                     aiReport.verdict?.includes('SELL') ? 'text-red-400' : 'text-cyan-400'
                   }`} />
@@ -831,7 +831,7 @@ export default function TheOracle() {
                 </div>
               ) : (
                 <div className="bg-cyan-950/30 border border-cyan-500/20 p-4 rounded-lg flex items-start gap-4">
-                  <AlertTriangle className="text-cyan-400 h-6 w-6 shrink-0 mt-1" />
+                  <ExclamationTriangleIcon className="text-cyan-400 h-6 w-6 shrink-0 mt-1" />
                   <div>
                     <div className="font-bold text-cyan-100">AI Recommendation: {selectedPick.signal}</div>
                     <p className="text-sm text-cyan-200/70 mt-1 leading-relaxed">
@@ -844,7 +844,7 @@ export default function TheOracle() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                   <div className="flex items-center gap-2 text-slate-500 text-xs uppercase mb-2">
-                    <Activity className="h-3 w-3" /> RSI Level <HelpTip content="RSI measures momentum. Below 30 is oversold (cheap), above 70 is overbought (expensive). 40-60 is neutral." />
+                    <SignalIcon className="h-3 w-3" /> RSI Level <HelpTip content="RSI measures momentum. Below 30 is oversold (cheap), above 70 is overbought (expensive). 40-60 is neutral." />
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
                     {selectedPick.rsi || (selectedPick.signal.includes('VALUE') ? 32 : 68)}
@@ -856,7 +856,7 @@ export default function TheOracle() {
 
                 <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                   <div className="flex items-center gap-2 text-slate-500 text-xs uppercase mb-2">
-                    <BarChart2 className="h-3 w-3" /> Relative Vol <HelpTip content="Volume compared to the 30-day average. Values above 1.5x indicate unusual interest." />
+                    <ChartBarIcon className="h-3 w-3" /> Relative Vol <HelpTip content="Volume compared to the 30-day average. Values above 1.5x indicate unusual interest." />
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
                     {selectedPick.rvol ? `${selectedPick.rvol}x` : (selectedPick.signal.includes('MOMENTUM') ? '3.5x' : '1.2x')}
@@ -899,7 +899,7 @@ export default function TheOracle() {
                 className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-2" 
                 data-testid="button-deep-analysis"
               >
-                <Scan className="h-4 w-4" /> Deep AI Analysis
+                <ViewfinderCircleIcon className="h-4 w-4" /> Deep AI Analysis
               </button>
             </div>
           </div>
@@ -916,7 +916,7 @@ export default function TheOracle() {
               className="absolute top-4 right-4 text-slate-400 hover:text-white"
               data-testid="button-close-recap"
             >
-              <X className="h-6 w-6" />
+              <XMarkIcon className="h-6 w-6" />
             </button>
 
             <div className="text-center mb-6">
@@ -958,14 +958,14 @@ export default function TheOracle() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                  <TrendingUp className="h-3 w-3" /> Entry Price
+                  <ArrowTrendingUpIcon className="h-3 w-3" /> Entry Price
                 </div>
                 <div className="font-mono text-lg text-white">${Number(selectedHistoryItem.entry).toFixed(2)}</div>
               </div>
 
               <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                  <Target className="h-3 w-3" /> Exit Price
+                  <ViewfinderCircleIcon className="h-3 w-3" /> Exit Price
                 </div>
                 <div className="font-mono text-lg text-white">${Number(selectedHistoryItem.exit).toFixed(2)}</div>
               </div>
@@ -1011,7 +1011,7 @@ export default function TheOracle() {
                 <div className="p-6 border-b border-slate-800 flex justify-between items-center">
                   <div>
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Zap className="text-cyan-400 h-5 w-5" />
+                      <BoltIcon className="text-cyan-400 h-5 w-5" />
                       Live Trading Signals
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">Real-time entry points from the Sentinel Engine</p>
@@ -1021,7 +1021,7 @@ export default function TheOracle() {
                     className="text-slate-400 hover:text-white"
                     data-testid="button-close-signals"
                   >
-                    <X className="h-6 w-6" />
+                    <XMarkIcon className="h-6 w-6" />
                   </button>
                 </div>
                 <div className="p-6 overflow-auto max-h-[60vh]">
@@ -1060,7 +1060,7 @@ export default function TheOracle() {
                               <div className="text-white font-mono">${sig.price?.toFixed(2)}</div>
                               <div className="text-xs text-slate-500">RSI: {sig.rsi?.toFixed(0)}</div>
                             </div>
-                            <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
+                            <ArrowRightIcon className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
                           </div>
                         </div>
                       ))}
@@ -1107,7 +1107,7 @@ export default function TheOracle() {
                   className="text-slate-400 hover:text-white"
                   data-testid="button-close-signal-analysis"
                 >
-                  <X className="h-6 w-6" />
+                  <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
             </div>
@@ -1155,7 +1155,7 @@ export default function TheOracle() {
               {/* AI Analysis */}
               {analyzingSignal ? (
                 <div className="flex flex-col items-center justify-center py-8 gap-3">
-                  <Loader2 className="animate-spin text-cyan-500 h-8 w-8" />
+                  <ArrowPathIcon className="animate-spin text-cyan-500 h-8 w-8" />
                   <div className="text-cyan-400 animate-pulse text-sm">Analyzing {selectedSignal.ticker}...</div>
                 </div>
               ) : signalAnalysis ? (
@@ -1206,7 +1206,7 @@ export default function TheOracle() {
             <div className="p-5 border-b border-slate-800 bg-gradient-to-r from-cyan-900/30 to-slate-900 flex justify-between items-center">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-lg bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
-                  <BrainCircuit className="h-5 w-5 text-cyan-400" />
+                  <CpuChipIcon className="h-5 w-5 text-cyan-400" />
                 </div>
                 <div>
                   <h3 className="text-lg font-bold text-white">Deep AI Analysis</h3>
@@ -1218,7 +1218,7 @@ export default function TheOracle() {
                 className="text-slate-400 hover:text-white p-2 hover:bg-slate-800 rounded-lg transition-colors" 
                 data-testid="button-close-deep-analysis"
               >
-                <X className="h-5 w-5" />
+                <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
 
@@ -1233,7 +1233,7 @@ export default function TheOracle() {
               
               {deepAnalysisError && (
                 <div className="flex items-center gap-3 text-red-400 bg-red-400/10 p-4 rounded-lg border border-red-400/20">
-                  <AlertTriangle className="h-5 w-5 shrink-0" />
+                  <ExclamationTriangleIcon className="h-5 w-5 shrink-0" />
                   <span>{deepAnalysisError}</span>
                 </div>
               )}
@@ -1266,8 +1266,8 @@ export default function TheOracle() {
                       deepAnalysis.trend === 'BEARISH' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
                       'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                     }`}>
-                      {deepAnalysis.trend === 'BULLISH' && <TrendingUp className="h-4 w-4 inline mr-2" />}
-                      {deepAnalysis.trend === 'BEARISH' && <TrendingDown className="h-4 w-4 inline mr-2" />}
+                      {deepAnalysis.trend === 'BULLISH' && <ArrowTrendingUpIcon className="h-4 w-4 inline mr-2" />}
+                      {deepAnalysis.trend === 'BEARISH' && <ArrowTrendingDownIcon className="h-4 w-4 inline mr-2" />}
                       {deepAnalysis.trend}
                     </div>
                     <span className="text-slate-500 text-sm">Strength: <span className="text-white">{deepAnalysis.trendStrength}</span></span>
@@ -1289,7 +1289,7 @@ export default function TheOracle() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-lg">
                       <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
-                        <BarChart2 className="h-4 w-4 text-cyan-400" /> Technical Levels
+                        <ChartBarIcon className="h-4 w-4 text-cyan-400" /> Technical Levels
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
@@ -1309,7 +1309,7 @@ export default function TheOracle() {
                     
                     <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-lg">
                       <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-amber-400" /> Sentiment
+                        <BoltIcon className="h-4 w-4 text-amber-400" /> Sentiment
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
@@ -1320,7 +1320,7 @@ export default function TheOracle() {
                         </div>
                         {deepAnalysis.sentiment?.catalysts?.slice(0, 2).map((c: string, i: number) => (
                           <div key={i} className="flex items-start gap-1 text-xs text-slate-400">
-                            <ChevronRight className="h-3 w-3 text-green-400 mt-0.5 shrink-0" /> {c}
+                            <ChevronRightIcon className="h-3 w-3 text-green-400 mt-0.5 shrink-0" /> {c}
                           </div>
                         ))}
                       </div>
@@ -1331,7 +1331,7 @@ export default function TheOracle() {
                   {deepAnalysis.tradeIdeas?.length > 0 && (
                     <div>
                       <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
-                        <Target className="h-4 w-4 text-cyan-400" /> Trade Ideas
+                        <ViewfinderCircleIcon className="h-4 w-4 text-cyan-400" /> Trade Ideas
                       </h4>
                       {deepAnalysis.tradeIdeas.slice(0, 1).map((idea: any, i: number) => (
                         <div key={i} className={`border rounded-lg p-4 ${idea.direction === 'LONG' ? 'bg-green-900/10 border-green-500/20' : 'bg-red-900/10 border-red-500/20'}`}>
@@ -1391,7 +1391,7 @@ export default function TheOracle() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-              <Calendar className="text-emerald-400 h-5 w-5" />
+              <CalendarIcon className="text-emerald-400 h-5 w-5" />
               Sentinel Performance Audit
             </DialogTitle>
             <button 
@@ -1399,7 +1399,7 @@ export default function TheOracle() {
               className="text-slate-400 hover:text-white transition-colors"
               data-testid="button-close-30day-modal"
             >
-              <X className="h-5 w-5" />
+              <XMarkIcon className="h-5 w-5" />
             </button>
           </DialogHeader>
           
@@ -1414,7 +1414,7 @@ export default function TheOracle() {
               }`}
               data-testid="tab-30day-performance"
             >
-              <BarChart3 className="h-4 w-4 inline mr-2" />
+              <ChartBarIcon className="h-4 w-4 inline mr-2" />
               30-Day Performance
             </button>
             <button
@@ -1426,7 +1426,7 @@ export default function TheOracle() {
               }`}
               data-testid="tab-30day-audit"
             >
-              <History className="h-4 w-4 inline mr-2" />
+              <ClockIcon className="h-4 w-4 inline mr-2" />
               Trade Log
             </button>
           </div>
@@ -1456,7 +1456,7 @@ export default function TheOracle() {
 
                   <div className="bg-gradient-to-r from-emerald-900/20 to-cyan-900/20 border border-emerald-500/30 p-6 rounded-lg">
                     <h4 className="text-lg font-bold text-emerald-400 mb-3 flex items-center gap-2">
-                      <Trophy className="h-5 w-5" />
+                      <TrophyIcon className="h-5 w-5" />
                       30-Day Performance Summary
                     </h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1482,7 +1482,7 @@ export default function TheOracle() {
                   {backtestSummary.sixMonth && (
                     <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/30 p-6 rounded-lg">
                       <h4 className="text-lg font-bold text-yellow-400 mb-3 flex items-center gap-2">
-                        <Award className="h-5 w-5" />
+                        <TrophyIcon className="h-5 w-5" />
                         6-Month Performance Summary
                       </h4>
                       <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1515,7 +1515,7 @@ export default function TheOracle() {
                         className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
                         data-testid="button-load-30day-details"
                       >
-                        {loading30Day ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
+                        {loading30Day ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <ClockIcon className="h-4 w-4" />}
                         {loading30Day ? 'Loading...' : 'View Day-by-Day Details'}
                       </button>
                     ) : detailed30Day.days && detailed30Day.days.length > 0 ? (
@@ -1538,7 +1538,7 @@ export default function TheOracle() {
                                   data-testid={`backtest-day-row-${idx}`}
                                 >
                                   <td className="px-3 py-2 text-white flex items-center gap-2">
-                                    <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${expandedDay30 === idx ? 'rotate-90' : ''}`} />
+                                    <ChevronRightIcon className={`h-4 w-4 text-slate-500 transition-transform ${expandedDay30 === idx ? 'rotate-90' : ''}`} />
                                     {day.date}
                                   </td>
                                   <td className="px-3 py-2 text-slate-400">{day.picks?.length || 0}</td>
@@ -1638,22 +1638,22 @@ export default function TheOracle() {
                           }`}>
                             {trade.outcome === 'PENDING' ? (
                               <>
-                                <Clock className="h-3 w-3" />
+                                <ClockIcon className="h-3 w-3" />
                                 Pending
                               </>
                             ) : trade.outcome === 'NEUTRAL' ? (
                               <>
-                                <Activity className="h-3 w-3" />
+                                <SignalIcon className="h-3 w-3" />
                                 {Number(trade.profitPercent).toFixed(2)}%
                               </>
                             ) : (
                               <>
-                                {trade.outcome === 'WIN' || trade.profitPercent > 0 ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                                {trade.outcome === 'WIN' || trade.profitPercent > 0 ? <CheckCircleIcon className="h-3 w-3" /> : <XCircleIcon className="h-3 w-3" />}
                                 {trade.profitPercent > 0 ? '+' : ''}{Number(trade.profitPercent).toFixed(2)}%
                               </>
                             )}
                           </div>
-                          <ArrowRight className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
+                          <ArrowRightIcon className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
                         </td>
                       </tr>
                     ))}
@@ -1682,7 +1682,7 @@ export default function TheOracle() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-slate-900 border-slate-700">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
-              <Award className="text-yellow-400 h-5 w-5" />
+              <TrophyIcon className="text-yellow-400 h-5 w-5" />
               6-Month Historical Performance
             </DialogTitle>
             <button 
@@ -1690,7 +1690,7 @@ export default function TheOracle() {
               className="text-slate-400 hover:text-white transition-colors"
               data-testid="button-close-6month-modal"
             >
-              <X className="h-5 w-5" />
+              <XMarkIcon className="h-5 w-5" />
             </button>
           </DialogHeader>
           
@@ -1717,7 +1717,7 @@ export default function TheOracle() {
 
               <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/30 p-6 rounded-lg">
                 <h4 className="text-lg font-bold text-yellow-400 mb-3 flex items-center gap-2">
-                  <Trophy className="h-5 w-5" />
+                  <TrophyIcon className="h-5 w-5" />
                   6-Month Performance Highlights
                 </h4>
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -1749,7 +1749,7 @@ export default function TheOracle() {
                     className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-sm font-medium flex items-center justify-center gap-2"
                     data-testid="button-load-6month-details"
                   >
-                    {loading6Month ? <Loader2 className="h-4 w-4 animate-spin" /> : <History className="h-4 w-4" />}
+                    {loading6Month ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <ClockIcon className="h-4 w-4" />}
                     {loading6Month ? 'Loading...' : 'View Day-by-Day Details'}
                   </button>
                 ) : detailed6Month.days && detailed6Month.days.length > 0 ? (
@@ -1772,7 +1772,7 @@ export default function TheOracle() {
                               data-testid={`backtest-6m-day-row-${idx}`}
                             >
                               <td className="px-3 py-2 text-white flex items-center gap-2">
-                                <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${expandedDay6m === idx ? 'rotate-90' : ''}`} />
+                                <ChevronRightIcon className={`h-4 w-4 text-slate-500 transition-transform ${expandedDay6m === idx ? 'rotate-90' : ''}`} />
                                 {day.date}
                               </td>
                               <td className="px-3 py-2 text-slate-400">{day.picks?.length || 0}</td>

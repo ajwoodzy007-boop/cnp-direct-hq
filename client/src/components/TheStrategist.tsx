@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrainCircuit, Search, Zap, Shield, TrendingUp, AlertTriangle, Crosshair, DollarSign, Flame, Bitcoin, Scan, Target, ChevronRight, TrendingDown, BarChart3 } from 'lucide-react';
+import { CpuChipIcon, MagnifyingGlassIcon, BoltIcon, ShieldCheckIcon, ArrowTrendingUpIcon, ExclamationTriangleIcon, ViewfinderCircleIcon, CurrencyDollarIcon, FireIcon, ChevronRightIcon, ArrowTrendingDownIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 
 export default function TheStrategist() {
   const [mode, setMode] = useState<'ANALYZE' | 'PLAYBOOK' | 'CRYPTO' | 'EARNINGS'>('ANALYZE');
@@ -163,7 +163,7 @@ export default function TheStrategist() {
       <div className="border-b border-slate-800 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-            <BrainCircuit className="text-purple-500 h-8 w-8" />
+            <CpuChipIcon className="text-purple-500 h-8 w-8" />
             The Strategist <span className="text-xs bg-purple-500/20 text-purple-400 px-2 py-1 rounded border border-purple-500/50">PREMIUM AI</span>
           </h2>
           <p className="text-slate-400 mt-2">Institutional-grade derivatives analysis and strategy generation.</p>
@@ -175,28 +175,28 @@ export default function TheStrategist() {
             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'ANALYZE' ? 'bg-cyan-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
             data-testid="tab-analyze"
           >
-            <Scan className="h-4 w-4" /> Quick Analyze
+            <ViewfinderCircleIcon className="h-4 w-4" /> Quick Analyze
           </button>
           <button 
             onClick={() => setMode('PLAYBOOK')}
             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'PLAYBOOK' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
             data-testid="tab-playbook"
           >
-            <Crosshair className="h-4 w-4" /> Stock Playbook
+            <ViewfinderCircleIcon className="h-4 w-4" /> Stock Playbook
           </button>
           <button 
             onClick={() => setMode('CRYPTO')}
             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'CRYPTO' ? 'bg-orange-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
             data-testid="tab-crypto"
           >
-            <Bitcoin className="h-4 w-4" /> Crypto Playbook
+            <CurrencyDollarIcon className="h-4 w-4" /> Crypto Playbook
           </button>
           <button 
             onClick={() => setMode('EARNINGS')}
             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'EARNINGS' ? 'bg-amber-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
             data-testid="tab-earnings"
           >
-            <Flame className="h-4 w-4" /> Earnings Hunter
+            <FireIcon className="h-4 w-4" /> Earnings Hunter
           </button>
         </div>
       </div>
@@ -206,13 +206,13 @@ export default function TheStrategist() {
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-slate-900 border border-cyan-500/20 p-6 rounded-xl">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Scan className="h-4 w-4 text-cyan-400" /> Quick Analysis
+                <ViewfinderCircleIcon className="h-4 w-4 text-cyan-400" /> Quick Analysis
               </h3>
               <form onSubmit={handleQuickAnalyze} className="space-y-4">
                 <div>
                   <label className="text-xs text-slate-500 font-bold uppercase">Ticker Symbol</label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <MagnifyingGlassIcon className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                     <input 
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white uppercase font-bold focus:border-cyan-500 outline-none" 
                       placeholder="TSLA, BTC, AAPL..." 
@@ -246,7 +246,7 @@ export default function TheStrategist() {
                 </div>
                 {analyzeError && (
                   <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 p-3 rounded-lg border border-red-400/20">
-                    <AlertTriangle className="h-4 w-4" />
+                    <ExclamationTriangleIcon className="h-4 w-4" />
                     {analyzeError}
                   </div>
                 )}
@@ -256,7 +256,7 @@ export default function TheStrategist() {
                   className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white py-3 rounded-lg font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                   data-testid="button-analyze"
                 >
-                  {analyzing ? <span className="animate-pulse">Analyzing...</span> : <><BrainCircuit className="h-5 w-5" /> Analyze with AI</>}
+                  {analyzing ? <span className="animate-pulse">Analyzing...</span> : <><CpuChipIcon className="h-5 w-5" /> Analyze with AI</>}
                 </button>
               </form>
             </div>
@@ -310,8 +310,8 @@ export default function TheStrategist() {
                       analysis.trend === 'BEARISH' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
                       'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
                     }`}>
-                      {analysis.trend === 'BULLISH' && <TrendingUp className="h-5 w-5 inline mr-2" />}
-                      {analysis.trend === 'BEARISH' && <TrendingDown className="h-5 w-5 inline mr-2" />}
+                      {analysis.trend === 'BULLISH' && <ArrowTrendingUpIcon className="h-5 w-5 inline mr-2" />}
+                      {analysis.trend === 'BEARISH' && <ArrowTrendingDownIcon className="h-5 w-5 inline mr-2" />}
                       {analysis.trend}
                     </div>
                     <span className="text-slate-500">Trend Strength: <span className="text-white">{analysis.trendStrength}</span></span>
@@ -331,7 +331,7 @@ export default function TheStrategist() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-lg">
                       <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
-                        <BarChart3 className="h-4 w-4 text-cyan-400" /> Technical Levels
+                        <ChartBarIcon className="h-4 w-4 text-cyan-400" /> Technical Levels
                       </h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
@@ -357,7 +357,7 @@ export default function TheStrategist() {
                     
                     <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-lg">
                       <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
-                        <Zap className="h-4 w-4 text-amber-400" /> Sentiment
+                        <BoltIcon className="h-4 w-4 text-amber-400" /> Sentiment
                       </h4>
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between">
@@ -372,7 +372,7 @@ export default function TheStrategist() {
                             <ul className="text-xs text-slate-300 space-y-1">
                               {analysis.sentiment.catalysts.map((c: string, i: number) => (
                                 <li key={i} className="flex items-start gap-1">
-                                  <ChevronRight className="h-3 w-3 text-green-400 mt-0.5 shrink-0" /> {c}
+                                  <ChevronRightIcon className="h-3 w-3 text-green-400 mt-0.5 shrink-0" /> {c}
                                 </li>
                               ))}
                             </ul>
@@ -385,7 +385,7 @@ export default function TheStrategist() {
                   {analysis.sentiment?.risks?.length > 0 && (
                     <div className="bg-red-900/10 border border-red-500/20 p-4 rounded-lg">
                       <h4 className="text-sm font-bold text-red-400 uppercase mb-2 flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4" /> Key Risks
+                        <ExclamationTriangleIcon className="h-4 w-4" /> Key Risks
                       </h4>
                       <ul className="text-sm text-slate-300 space-y-1">
                         {analysis.sentiment.risks.map((r: string, i: number) => (
@@ -400,7 +400,7 @@ export default function TheStrategist() {
                   {analysis.tradeIdeas?.length > 0 && (
                     <div>
                       <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
-                        <Target className="h-4 w-4 text-cyan-400" /> Trade Ideas
+                        <ViewfinderCircleIcon className="h-4 w-4 text-cyan-400" /> Trade Ideas
                       </h4>
                       <div className="space-y-3">
                         {analysis.tradeIdeas.map((idea: any, i: number) => (
@@ -448,7 +448,7 @@ export default function TheStrategist() {
             {!analyzing && !analysis && (
               <div className="h-full border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-600 min-h-[400px]">
                 <div className="text-center">
-                  <Scan className="h-12 w-12 mx-auto mb-4 text-slate-700" />
+                  <ViewfinderCircleIcon className="h-12 w-12 mx-auto mb-4 text-slate-700" />
                   <p className="text-lg">Enter any ticker to get AI analysis</p>
                   <p className="text-sm mt-1">Stocks, ETFs, or Cryptocurrencies</p>
                 </div>
@@ -463,13 +463,13 @@ export default function TheStrategist() {
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Crosshair className="h-4 w-4 text-purple-400" /> Mission Parameters
+                <ViewfinderCircleIcon className="h-4 w-4 text-purple-400" /> Mission Parameters
               </h3>
               <form onSubmit={handleGenerate} className="space-y-4">
                 <div>
                   <label className="text-xs text-slate-500 font-bold uppercase">Target Asset</label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <MagnifyingGlassIcon className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                     <input 
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white uppercase font-bold focus:border-purple-500 outline-none" 
                       placeholder="e.g. TSLA" 
@@ -483,7 +483,7 @@ export default function TheStrategist() {
                 <div>
                   <label className="text-xs text-slate-500 font-bold uppercase">Allocated Capital</label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <CurrencyDollarIcon className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                     <input 
                       type="number" 
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white font-mono focus:border-purple-500 outline-none" 
@@ -514,7 +514,7 @@ export default function TheStrategist() {
                   className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all mt-4 disabled:opacity-50"
                   data-testid="button-generate-playbook"
                 >
-                  {loading ? <span className="animate-pulse">Analyzing Market...</span> : <><Zap className="h-4 w-4" /> Generate Playbook</>}
+                  {loading ? <span className="animate-pulse">Analyzing Market...</span> : <><BoltIcon className="h-4 w-4" /> Generate Playbook</>}
                 </button>
               </form>
             </div>
@@ -523,7 +523,7 @@ export default function TheStrategist() {
           <div className="lg:col-span-8">
             {!playbook ? (
               <div className="h-full min-h-[400px] border-2 border-dashed border-slate-800 rounded-xl flex flex-col items-center justify-center text-slate-600">
-                <BrainCircuit className="h-16 w-16 mb-4 opacity-20" />
+                <CpuChipIcon className="h-16 w-16 mb-4 opacity-20" />
                 <p>Awaiting Mission Parameters...</p>
               </div>
             ) : (
@@ -542,7 +542,7 @@ export default function TheStrategist() {
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Execution Setup</h3>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><ArrowTrendingUpIcon className="h-4 w-4" /> Execution Setup</h3>
                     <div className="space-y-2">
                       {playbook.legs?.map((leg: any, i: number) => (
                         <div key={i} className="bg-slate-950 p-3 rounded border border-slate-800 flex justify-between items-center" data-testid={`leg-${i}`}>
@@ -568,13 +568,13 @@ export default function TheStrategist() {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><Shield className="h-4 w-4" /> Risk Analysis</h3>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><ShieldCheckIcon className="h-4 w-4" /> Risk Analysis</h3>
                     <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-3">
                       <div><div className="text-xs text-slate-500 uppercase">Delta Exposure</div><p className="text-sm text-slate-300">{playbook.greeks?.delta}</p></div>
                       <div><div className="text-xs text-slate-500 uppercase">Theta Decay</div><p className="text-sm text-slate-300">{playbook.greeks?.theta}</p></div>
                     </div>
                     <div className="flex items-start gap-2 text-xs text-amber-500 bg-amber-900/10 p-3 rounded border border-amber-900/30">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
                       Warning: Options involve significant risk. Ensure this trade fits your allocated capital of ${capital}.
                     </div>
                   </div>
@@ -590,13 +590,13 @@ export default function TheStrategist() {
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-slate-900 border border-orange-500/20 p-6 rounded-xl">
               <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <Bitcoin className="h-4 w-4 text-orange-400" /> Crypto Parameters
+                <CurrencyDollarIcon className="h-4 w-4 text-orange-400" /> Crypto Parameters
               </h3>
               <form onSubmit={handleCryptoGenerate} className="space-y-4">
                 <div>
                   <label className="text-xs text-slate-500 font-bold uppercase">Target Crypto</label>
                   <div className="relative">
-                    <Bitcoin className="absolute left-3 top-3 h-4 w-4 text-orange-500" />
+                    <CurrencyDollarIcon className="absolute left-3 top-3 h-4 w-4 text-orange-500" />
                     <input 
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white uppercase font-bold focus:border-orange-500 outline-none" 
                       placeholder="BTC, ETH, SOL..." 
@@ -610,7 +610,7 @@ export default function TheStrategist() {
                 <div>
                   <label className="text-xs text-slate-500 font-bold uppercase">Allocated Capital</label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
+                    <CurrencyDollarIcon className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                     <input 
                       type="number" 
                       className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2 pl-9 text-white font-mono focus:border-orange-500 outline-none" 
@@ -657,7 +657,7 @@ export default function TheStrategist() {
                   className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded-lg flex items-center justify-center gap-2 transition-all mt-4 disabled:opacity-50"
                   data-testid="button-generate-crypto"
                 >
-                  {cryptoLoading ? <span className="animate-pulse">Analyzing Crypto...</span> : <><Zap className="h-4 w-4" /> Generate Crypto Playbook</>}
+                  {cryptoLoading ? <span className="animate-pulse">Analyzing Crypto...</span> : <><BoltIcon className="h-4 w-4" /> Generate Crypto Playbook</>}
                 </button>
               </form>
             </div>
@@ -666,13 +666,13 @@ export default function TheStrategist() {
           <div className="lg:col-span-8">
             {cryptoError ? (
               <div className="h-full min-h-[400px] border-2 border-dashed border-red-500/20 rounded-xl flex flex-col items-center justify-center text-red-500">
-                <AlertTriangle className="h-16 w-16 mb-4 opacity-50" />
+                <ExclamationTriangleIcon className="h-16 w-16 mb-4 opacity-50" />
                 <p className="font-bold">{cryptoError}</p>
                 <p className="text-slate-500 text-sm mt-2">Try a different symbol (e.g., BTC, ETH, SOL)</p>
               </div>
             ) : !cryptoPlaybook ? (
               <div className="h-full min-h-[400px] border-2 border-dashed border-orange-500/20 rounded-xl flex flex-col items-center justify-center text-slate-600">
-                <Bitcoin className="h-16 w-16 mb-4 opacity-20 text-orange-500" />
+                <CurrencyDollarIcon className="h-16 w-16 mb-4 opacity-20 text-orange-500" />
                 <p>Select a crypto asset to analyze...</p>
               </div>
             ) : (
@@ -681,7 +681,7 @@ export default function TheStrategist() {
                   <div className="flex justify-between items-start">
                     <div>
                       <div className="flex items-center gap-2 mb-2">
-                        <Bitcoin className="h-6 w-6 text-orange-400" />
+                        <CurrencyDollarIcon className="h-6 w-6 text-orange-400" />
                         <h2 className="text-2xl font-bold text-white" data-testid="text-crypto-strategy">{cryptoPlaybook.strategyName}</h2>
                       </div>
                       <p className="text-orange-300 text-sm mt-1">{cryptoPlaybook.thesis}</p>
@@ -694,7 +694,7 @@ export default function TheStrategist() {
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><TrendingUp className="h-4 w-4 text-orange-400" /> Entry Strategy</h3>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><ArrowTrendingUpIcon className="h-4 w-4 text-orange-400" /> Entry Strategy</h3>
                     <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-3">
                       <div><div className="text-xs text-orange-500 uppercase">Entry Zone</div><p className="text-lg text-white font-mono">{cryptoPlaybook.setup?.entryZone}</p></div>
                       <div><div className="text-xs text-orange-500 uppercase">Position Size</div><p className="text-sm text-slate-300">{cryptoPlaybook.setup?.positionSize}</p></div>
@@ -715,14 +715,14 @@ export default function TheStrategist() {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><Shield className="h-4 w-4 text-orange-400" /> Market Analysis</h3>
+                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2"><ShieldCheckIcon className="h-4 w-4 text-orange-400" /> Market Analysis</h3>
                     <div className="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-3">
                       <div><div className="text-xs text-slate-500 uppercase">Trend</div><p className="text-sm text-slate-300">{cryptoPlaybook.analysis?.trend}</p></div>
                       <div><div className="text-xs text-slate-500 uppercase">Support Levels</div><p className="text-sm text-slate-300">{cryptoPlaybook.analysis?.support}</p></div>
                       <div><div className="text-xs text-slate-500 uppercase">Resistance Levels</div><p className="text-sm text-slate-300">{cryptoPlaybook.analysis?.resistance}</p></div>
                     </div>
                     <div className="flex items-start gap-2 text-xs text-orange-500 bg-orange-900/10 p-3 rounded border border-orange-900/30">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
+                      <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
                       Warning: Crypto markets are highly volatile and trade 24/7. Never invest more than you can afford to lose.
                     </div>
                   </div>
@@ -757,7 +757,7 @@ export default function TheStrategist() {
               className="bg-amber-600 hover:bg-amber-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 disabled:opacity-50"
               data-testid="button-scan-earnings"
             >
-              {scanning ? <span className="animate-pulse">Scanning...</span> : <><Search className="h-5 w-5" /> Scan Watchlist</>}
+              {scanning ? <span className="animate-pulse">Scanning...</span> : <><MagnifyingGlassIcon className="h-5 w-5" /> Scan Watchlist</>}
             </button>
           </div>
 
@@ -791,7 +791,7 @@ export default function TheStrategist() {
             <div className="md:col-span-8">
               {generating ? (
                 <div className="h-full flex flex-col items-center justify-center text-amber-500 space-y-4 min-h-[300px]">
-                  <Flame className="h-12 w-12 animate-pulse" />
+                  <FireIcon className="h-12 w-12 animate-pulse" />
                   <div className="text-lg font-bold">Generating 3 Risk-Adjusted Plays...</div>
                 </div>
               ) : earningsPlay && Array.isArray(earningsPlay) && earningsPlay.length > 0 ? (

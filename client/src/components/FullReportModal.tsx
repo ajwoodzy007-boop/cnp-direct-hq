@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, FileText, Printer } from 'lucide-react';
+import { XMarkIcon, DocumentTextIcon, PrinterIcon } from '@heroicons/react/24/outline';
 
 interface Section {
   heading: string;
@@ -25,7 +25,7 @@ export default function FullReportModal({ data, onClose }: Props) {
         
         <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur border-b border-slate-800 p-4 flex justify-between items-center">
           <div className="flex items-center gap-2 text-slate-400 text-sm">
-            <FileText className="h-4 w-4" />
+            <DocumentTextIcon className="h-4 w-4" />
             <span>Sentinel Intelligence Report</span>
           </div>
           <div className="flex items-center gap-2">
@@ -35,14 +35,14 @@ export default function FullReportModal({ data, onClose }: Props) {
               onClick={() => window.print()}
               data-testid="button-print"
             >
-              <Printer className="h-4 w-4" />
+              <PrinterIcon className="h-4 w-4" />
             </button>
             <button 
               onClick={onClose} 
               className="p-2 hover:bg-red-900/20 rounded text-slate-400 hover:text-red-400 transition-colors"
               data-testid="button-close-report"
             >
-              <X className="h-5 w-5" />
+              <XMarkIcon className="h-5 w-5" />
             </button>
           </div>
         </div>

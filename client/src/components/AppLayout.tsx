@@ -1,17 +1,16 @@
 import React, { useState } from 'react';
 import { 
-  Radar, 
-  BrainCircuit, 
-  Target, 
-  BookOpen, 
-  LayoutDashboard, 
-  Menu,
-  ShieldCheck,
-  LogOut,
-  LogIn,
-  Home,
-  Info
-} from 'lucide-react';
+  SignalIcon, 
+  CpuChipIcon, 
+  ViewfinderCircleIcon, 
+  BookOpenIcon, 
+  Squares2X2Icon, 
+  Bars3Icon,
+  ShieldCheckIcon,
+  ArrowLeftOnRectangleIcon,
+  HomeIcon,
+  InformationCircleIcon
+} from '@heroicons/react/24/outline';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -30,12 +29,12 @@ export default function AppLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems = [
-    { id: 'summary', label: 'Command Center', icon: Home, desc: 'Overview' },
-    { id: 'radar', label: 'The Radar', icon: Radar, desc: 'Scanner & News' },
-    { id: 'oracle', label: 'The Oracle', icon: Target, desc: 'Daily Predictions' },
-    { id: 'strategist', label: 'The Strategist', icon: BrainCircuit, desc: 'AI Playbooks' },
-    { id: 'vault', label: 'The Vault', icon: LayoutDashboard, desc: 'Portfolio' },
-    { id: 'academy', label: 'The Academy', icon: BookOpen, desc: 'Education' },
+    { id: 'summary', label: 'Command Center', icon: HomeIcon, desc: 'Overview' },
+    { id: 'radar', label: 'The Radar', icon: SignalIcon, desc: 'Scanner & News' },
+    { id: 'oracle', label: 'The Oracle', icon: ViewfinderCircleIcon, desc: 'Daily Predictions' },
+    { id: 'strategist', label: 'The Strategist', icon: CpuChipIcon, desc: 'AI Playbooks' },
+    { id: 'vault', label: 'The Vault', icon: Squares2X2Icon, desc: 'Portfolio' },
+    { id: 'academy', label: 'The Academy', icon: BookOpenIcon, desc: 'Education' },
   ];
 
   const handleNavClick = (tabId: string) => {
@@ -55,7 +54,7 @@ export default function AppLayout({
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <ShieldCheck className="text-cyan-500 h-8 w-8" />
+            <ShieldCheckIcon className="text-cyan-500 h-8 w-8" />
             <div>
               <h1 className="font-bold text-white tracking-wide">CNP DIRECT</h1>
               <p className="text-[10px] text-cyan-500 font-mono tracking-widest">SENTINEL OS v2.0</p>
@@ -67,7 +66,7 @@ export default function AppLayout({
             title="About CNP Direct"
             data-testid="button-about"
           >
-            <Info className="h-4 w-4 text-slate-400 group-hover:text-cyan-400 transition-colors" />
+            <InformationCircleIcon className="h-4 w-4 text-slate-400 group-hover:text-cyan-400 transition-colors" />
           </button>
         </div>
 
@@ -123,7 +122,7 @@ export default function AppLayout({
               onClick={onLoginClick}
               className="w-full bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 hover:border-cyan-500/30 font-bold py-2 rounded-lg text-sm transition-all flex items-center justify-center gap-2"
             >
-              <LogIn className="h-4 w-4" />
+              <ArrowLeftOnRectangleIcon className="h-4 w-4" />
               Sign In / Join
             </button>
           )}
@@ -134,18 +133,18 @@ export default function AppLayout({
         
         <header className="md:hidden h-16 bg-slate-900 border-b border-slate-800 flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="text-cyan-500 h-6 w-6" />
+            <ShieldCheckIcon className="text-cyan-500 h-6 w-6" />
             <span className="font-bold text-white">CNP DIRECT</span>
             <button 
               onClick={onAboutClick}
               className="ml-1 h-6 w-6 rounded bg-slate-800 hover:bg-cyan-500/20 flex items-center justify-center"
               title="About"
             >
-              <Info className="h-3.5 w-3.5 text-slate-400" />
+              <InformationCircleIcon className="h-3.5 w-3.5 text-slate-400" />
             </button>
           </div>
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 p-2 hover:text-white">
-            <Menu className="h-6 w-6" />
+            <Bars3Icon className="h-6 w-6" />
           </button>
         </header>
 

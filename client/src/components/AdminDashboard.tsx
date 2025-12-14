@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Shield, Users, TrendingUp, Award, ArrowLeft, Crown, RefreshCw, Ticket, Copy, Trash2, Plus, Zap } from 'lucide-react';
+import { ShieldCheckIcon, UsersIcon, ArrowTrendingUpIcon, TrophyIcon, ArrowLeftIcon, SparklesIcon, ArrowPathIcon, TicketIcon, ClipboardIcon, TrashIcon, PlusIcon, BoltIcon } from '@heroicons/react/24/outline';
 
 interface AdminStats {
   users: {
@@ -218,11 +218,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
               data-testid="button-admin-back"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeftIcon className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-xl bg-red-600/20 border border-red-500/30 flex items-center justify-center">
-                <Shield className="h-6 w-6 text-red-400" />
+                <ShieldCheckIcon className="h-6 w-6 text-red-400" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
@@ -235,14 +235,14 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-cyan-400 transition-colors"
             data-testid="button-refresh-stats"
           >
-            <RefreshCw className="h-5 w-5" />
+            <ArrowPathIcon className="h-5 w-5" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-2">
-              <Users className="h-5 w-5 text-cyan-400" />
+              <UsersIcon className="h-5 w-5 text-cyan-400" />
               <span className="text-slate-400 text-sm">Total Users</span>
             </div>
             <div className="text-3xl font-bold text-white">{stats?.users.total || 0}</div>
@@ -250,7 +250,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-2">
-              <Crown className="h-5 w-5 text-amber-400" />
+              <SparklesIcon className="h-5 w-5 text-amber-400" />
               <span className="text-slate-400 text-sm">Premium Users</span>
             </div>
             <div className="text-3xl font-bold text-amber-400">{stats?.users.byTier?.PREMIUM || 0}</div>
@@ -258,7 +258,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-2">
-              <TrendingUp className="h-5 w-5 text-green-400" />
+              <ArrowTrendingUpIcon className="h-5 w-5 text-green-400" />
               <span className="text-slate-400 text-sm">Total Predictions</span>
             </div>
             <div className="text-3xl font-bold text-white">{stats?.predictions.total || 0}</div>
@@ -266,7 +266,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-2">
-              <Award className="h-5 w-5 text-green-400" />
+              <TrophyIcon className="h-5 w-5 text-green-400" />
               <span className="text-slate-400 text-sm">Win Rate</span>
             </div>
             <div className="text-3xl font-bold text-green-400">{stats?.predictions.winRate || 0}%</div>
@@ -325,7 +325,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Ticket className="h-5 w-5 text-purple-400" /> Beta Passes (7-Day Trial)
+              <TicketIcon className="h-5 w-5 text-purple-400" /> Beta Passes (7-Day Trial)
             </h3>
             <button 
               onClick={generateBetaPass}
@@ -333,7 +333,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-sm rounded-lg flex items-center gap-1.5 transition-all border border-purple-500/30 disabled:opacity-50"
               data-testid="button-generate-pass"
             >
-              <Plus className="h-4 w-4" />
+              <PlusIcon className="h-4 w-4" />
               {generatingPass ? 'Generating...' : 'Generate Pass'}
             </button>
           </div>
@@ -349,7 +349,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                     className="text-slate-500 hover:text-cyan-400 transition-colors"
                     title="Copy code"
                   >
-                    <Copy className="h-4 w-4" />
+                    <ClipboardIcon className="h-4 w-4" />
                   </button>
                   {copiedCode === pass.code && (
                     <span className="text-xs text-green-400">Copied!</span>
@@ -370,7 +370,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       className="text-slate-500 hover:text-red-400 transition-colors"
                       title="Delete pass"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <TrashIcon className="h-4 w-4" />
                     </button>
                   )}
                 </div>
@@ -384,11 +384,10 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           </div>
         </div>
 
-        {/* Force Finalize Section */}
         <div className="bg-slate-900 border border-red-800/50 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-              <Zap className="h-5 w-5 text-red-400" /> Force Finalize Predictions
+              <BoltIcon className="h-5 w-5 text-red-400" /> Force Finalize Predictions
             </h3>
           </div>
           <p className="text-sm text-slate-400 mb-4">
@@ -401,7 +400,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               className="px-4 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded-lg flex items-center gap-2 border border-cyan-500/30 disabled:opacity-50 transition-all"
               data-testid="button-force-finalize-stocks"
             >
-              <Zap className="h-4 w-4" />
+              <BoltIcon className="h-4 w-4" />
               {finalizingStocks ? 'Finalizing Stocks...' : 'Finalize Stocks'}
             </button>
             <button
@@ -410,7 +409,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               className="px-4 py-2 bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 rounded-lg flex items-center gap-2 border border-orange-500/30 disabled:opacity-50 transition-all"
               data-testid="button-force-finalize-crypto"
             >
-              <Zap className="h-4 w-4" />
+              <BoltIcon className="h-4 w-4" />
               {finalizingCrypto ? 'Finalizing Crypto...' : 'Finalize Crypto'}
             </button>
             <button
@@ -419,7 +418,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg flex items-center gap-2 border border-red-500/30 disabled:opacity-50 transition-all font-semibold"
               data-testid="button-force-finalize-all"
             >
-              <Zap className="h-4 w-4" />
+              <BoltIcon className="h-4 w-4" />
               {finalizingAll ? 'Finalizing All...' : 'FINALIZE ALL PENDING'}
             </button>
           </div>
@@ -487,7 +486,6 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           </div>
         )}
 
-        {/* Diagnostics Section */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-white">Database Diagnostics</h3>

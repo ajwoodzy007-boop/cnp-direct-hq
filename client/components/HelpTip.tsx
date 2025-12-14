@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Info } from 'lucide-react';
+import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
 interface HelpTipProps {
   content: string;
@@ -19,7 +19,7 @@ export default function HelpTip({ content }: HelpTipProps) {
         aria-label="Help"
         data-testid="button-helptip"
       >
-        <Info className="h-3.5 w-3.5" />
+        <InformationCircleIcon className="h-3.5 w-3.5" />
       </button>
 
       {isOpen && (

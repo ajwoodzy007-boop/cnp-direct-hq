@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Lock, Star, CheckCircle, ShieldCheck, Zap } from 'lucide-react';
+import { LockClosedIcon, StarIcon, CheckCircleIcon, ShieldCheckIcon, BoltIcon } from '@heroicons/react/24/outline';
 
 interface Props {
   featureName: string;
@@ -57,14 +57,14 @@ export default function PremiumLock({ featureName }: Props) {
                 "Priority 24/7 Support"
               ].map((feat, i) => (
                 <div key={i} className="flex items-center gap-3 text-slate-300">
-                  <CheckCircle className="h-5 w-5 text-cyan-400 shrink-0" />
+                  <CheckCircleIcon className="h-5 w-5 text-cyan-400 shrink-0" />
                   <span className="font-medium">{feat}</span>
                 </div>
               ))}
             </div>
             
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              <ShieldCheck className="h-4 w-4" /> 7-Day Free Trial • Cancel Anytime
+              <ShieldCheckIcon className="h-4 w-4" /> 7-Day Free Trial • Cancel Anytime
             </div>
           </div>
 

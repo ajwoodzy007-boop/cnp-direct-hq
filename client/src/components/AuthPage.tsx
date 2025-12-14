@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { 
-  ShieldCheck, Mail, Lock, ChevronRight, UserPlus, LogIn, AlertTriangle,
-  Target, Radar, BrainCircuit, CheckCircle, Star, TrendingUp, Zap,
-  Clock, BarChart3, Crown, Gift, ArrowRight
-} from 'lucide-react';
+  ShieldCheckIcon, EnvelopeIcon, LockClosedIcon, ChevronRightIcon, UserPlusIcon, ArrowLeftOnRectangleIcon, ExclamationTriangleIcon,
+  ViewfinderCircleIcon, SignalIcon, CpuChipIcon, CheckCircleIcon, StarIcon, ArrowTrendingUpIcon, BoltIcon,
+  ClockIcon, ChartBarIcon, SparklesIcon, GiftIcon, ArrowRightIcon
+} from '@heroicons/react/24/outline';
 
 interface AuthProps {
   onLogin: (user: any) => void;
@@ -45,10 +45,10 @@ export default function AuthPage({ onLogin }: AuthProps) {
   };
 
   const features = [
-    { icon: Target, text: '10 AI Stock Picks Daily at 9:00 AM ET' },
-    { icon: Radar, text: 'Real-Time Market Scanner' },
-    { icon: BrainCircuit, text: '8 AI Trading Tools' },
-    { icon: BarChart3, text: 'Full Performance Transparency' },
+    { icon: ViewfinderCircleIcon, text: '10 AI Stock Picks Daily at 9:00 AM ET' },
+    { icon: SignalIcon, text: 'Real-Time Market Scanner' },
+    { icon: CpuChipIcon, text: '8 AI Trading Tools' },
+    { icon: ChartBarIcon, text: 'Full Performance Transparency' },
   ];
 
   const testimonials = [
@@ -76,7 +76,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
           
           <div className="flex items-center gap-3 mb-8">
             <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-              <ShieldCheck className="h-8 w-8 text-white" />
+              <ShieldCheckIcon className="h-8 w-8 text-white" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white tracking-wide">CNP DIRECT</h1>
@@ -126,7 +126,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
           <div className="bg-slate-800/30 border border-slate-700 rounded-xl p-5">
             <div className="flex items-center gap-0.5 mb-3">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-4 w-4 text-amber-400 fill-current" />
+                <StarIcon key={i} className="h-4 w-4 text-amber-400 fill-current" />
               ))}
             </div>
             <p className="text-slate-300 italic mb-3">
@@ -151,7 +151,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
           
           <div className="lg:hidden text-center mb-6">
             <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30 mb-3">
-              <ShieldCheck className="h-7 w-7 text-white" />
+              <ShieldCheckIcon className="h-7 w-7 text-white" />
             </div>
             <h1 className="text-xl font-bold text-white tracking-wide">CNP DIRECT</h1>
             <p className="text-xs text-cyan-400 tracking-widest mt-1">AI TRADING INTELLIGENCE</p>
@@ -163,7 +163,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
             <div className="bg-gradient-to-r from-cyan-900/20 to-slate-900/50 border border-cyan-500/30 rounded-xl p-4">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-lg bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0">
-                  <Target className="h-5 w-5 text-cyan-400" />
+                  <ViewfinderCircleIcon className="h-5 w-5 text-cyan-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-bold text-white">The Oracle</h3>
@@ -176,7 +176,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
             <div className="bg-gradient-to-r from-purple-900/20 to-slate-900/50 border border-purple-500/30 rounded-xl p-4">
               <div className="flex items-start gap-3">
                 <div className="h-10 w-10 rounded-lg bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
-                  <BrainCircuit className="h-5 w-5 text-purple-400" />
+                  <CpuChipIcon className="h-5 w-5 text-purple-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm font-bold text-white">The Strategist</h3>
@@ -203,7 +203,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
           </div>
 
           <div className="bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-500/30 rounded-xl p-3 mb-5 flex items-center gap-3">
-            <Gift className="h-5 w-5 text-amber-400 shrink-0" />
+            <GiftIcon className="h-5 w-5 text-amber-400 shrink-0" />
             <div className="text-sm">
               <span className="text-amber-300 font-semibold">Beta:</span>
               <span className="text-slate-300 ml-1">$29/mo locked forever</span>
@@ -218,14 +218,14 @@ export default function AuthPage({ onLogin }: AuthProps) {
                 className={`flex-1 py-2.5 text-sm font-bold rounded-md flex items-center justify-center gap-2 transition-all ${mode === 'LOGIN' ? 'bg-slate-800 text-cyan-400 shadow' : 'text-slate-500 hover:text-slate-300'}`}
                 data-testid="tab-login"
               >
-                <LogIn className="h-4 w-4" /> Login
+                <ArrowLeftOnRectangleIcon className="h-4 w-4" /> Login
               </button>
               <button 
                 onClick={() => setMode('SIGNUP')}
                 className={`flex-1 py-2.5 text-sm font-bold rounded-md flex items-center justify-center gap-2 transition-all ${mode === 'SIGNUP' ? 'bg-slate-800 text-amber-400 shadow' : 'text-slate-500 hover:text-slate-300'}`}
                 data-testid="tab-signup"
               >
-                <UserPlus className="h-4 w-4" /> Sign Up
+                <UserPlusIcon className="h-4 w-4" /> Sign Up
               </button>
             </div>
 
@@ -234,7 +234,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
               <div className="space-y-1">
                 <label className="text-xs text-slate-500 font-medium uppercase ml-1">Email</label>
                 <div className="relative group">
-                  <Mail className="absolute left-3 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-white transition-colors" />
+                  <EnvelopeIcon className="absolute left-3 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-white transition-colors" />
                   <input 
                     type="email"
                     required
@@ -250,7 +250,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
               <div className="space-y-1">
                 <label className="text-xs text-slate-500 font-medium uppercase ml-1">Password</label>
                 <div className="relative group">
-                  <Lock className="absolute left-3 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-white transition-colors" />
+                  <LockClosedIcon className="absolute left-3 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-white transition-colors" />
                   <input 
                     type="password"
                     required
@@ -265,7 +265,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
 
               {error && (
                 <div className="flex items-center gap-2 text-red-400 text-xs bg-red-400/10 p-3 rounded-lg border border-red-400/20 animate-in fade-in">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <ExclamationTriangleIcon className="h-4 w-4 shrink-0" />
                   {error}
                 </div>
               )}
@@ -283,7 +283,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
                 {loading ? 'Processing...' : (
                   <>
                     {mode === 'LOGIN' ? 'Sign In' : 'Create Free Account'} 
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRightIcon className="h-4 w-4" />
                   </>
                 )}
               </button>
@@ -294,15 +294,15 @@ export default function AuthPage({ onLogin }: AuthProps) {
                 <div className="text-xs text-slate-500 text-center mb-3">What you get for free:</div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <CheckCircle className="h-4 w-4 text-green-400 shrink-0" />
+                    <CheckCircleIcon className="h-4 w-4 text-green-400 shrink-0" />
                     Real-time market scanner (The Radar)
                   </div>
                   <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <CheckCircle className="h-4 w-4 text-green-400 shrink-0" />
+                    <CheckCircleIcon className="h-4 w-4 text-green-400 shrink-0" />
                     Market education & daily briefings
                   </div>
                   <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <CheckCircle className="h-4 w-4 text-green-400 shrink-0" />
+                    <CheckCircleIcon className="h-4 w-4 text-green-400 shrink-0" />
                     View historical prediction performance
                   </div>
                 </div>
@@ -328,7 +328,7 @@ export default function AuthPage({ onLogin }: AuthProps) {
           <div className="lg:hidden mt-8 bg-slate-800/30 border border-slate-700 rounded-xl p-4">
             <div className="flex items-center gap-0.5 mb-2">
               {[...Array(5)].map((_, i) => (
-                <Star key={i} className="h-3 w-3 text-amber-400 fill-current" />
+                <StarIcon key={i} className="h-3 w-3 text-amber-400 fill-current" />
               ))}
             </div>
             <p className="text-sm text-slate-400 italic">

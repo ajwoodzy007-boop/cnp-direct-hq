@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Check, Sparkles, TrendingUp, Zap, Crown, Loader2 } from "lucide-react";
+import { CheckIcon, SparklesIcon, ArrowTrendingUpIcon, BoltIcon, StarIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
 import { Link } from "wouter";
 
 interface Price {
@@ -93,7 +93,7 @@ export default function Pricing() {
             &larr; Back to Dashboard
           </Link>
           <h1 className="text-4xl font-bold mb-4 flex items-center justify-center gap-2">
-            <Crown className="h-10 w-10 text-yellow-500" />
+            <StarIcon className="h-10 w-10 text-yellow-500" />
             Upgrade to Pro
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -135,7 +135,7 @@ export default function Pricing() {
           <Card className="relative">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
+                <ArrowTrendingUpIcon className="h-5 w-5" />
                 Free
               </CardTitle>
               <CardDescription>Get started with basic trading tools</CardDescription>
@@ -148,7 +148,7 @@ export default function Pricing() {
               <ul className="space-y-3">
                 {freeFeatures.map((feature) => (
                   <li key={feature} className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500" />
+                    <CheckIcon className="h-4 w-4 text-green-500" />
                     <span className="text-sm">{feature}</span>
                   </li>
                 ))}
@@ -162,19 +162,19 @@ export default function Pricing() {
           <Card className="relative border-primary shadow-lg">
             <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
               <Badge className="bg-primary text-primary-foreground px-4 py-1">
-                <Sparkles className="h-3 w-3 mr-1" />
+                <SparklesIcon className="h-3 w-3 mr-1" />
                 Most Popular
               </Badge>
             </div>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-yellow-500" />
+                <BoltIcon className="h-5 w-5 text-yellow-500" />
                 Pro
               </CardTitle>
               <CardDescription>Unlock AI-powered trading insights</CardDescription>
               <div className="mt-4">
                 {isLoading ? (
-                  <Loader2 className="h-8 w-8 animate-spin" />
+                  <ArrowPathIcon className="h-8 w-8 animate-spin" />
                 ) : selectedPrice ? (
                   <>
                     <span className="text-4xl font-bold">
@@ -200,7 +200,7 @@ export default function Pricing() {
               <ul className="space-y-3">
                 {proFeatures.map((feature) => (
                   <li key={feature} className="flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-500" />
+                    <CheckIcon className="h-4 w-4 text-green-500" />
                     <span className="text-sm">{feature}</span>
                   </li>
                 ))}
@@ -213,12 +213,12 @@ export default function Pricing() {
               >
                 {checkoutMutation.isPending ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <ArrowPathIcon className="mr-2 h-4 w-4 animate-spin" />
                     Processing...
                   </>
                 ) : (
                   <>
-                    <Crown className="mr-2 h-4 w-4" />
+                    <StarIcon className="mr-2 h-4 w-4" />
                     Upgrade to Pro
                   </>
                 )}

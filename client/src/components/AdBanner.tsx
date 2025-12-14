@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 
 type AdSize = "banner" | "sidebar" | "inline";
 
@@ -39,7 +39,7 @@ export function AdBanner({ size = "banner", className = "" }: AdBannerProps) {
       <div className="flex flex-col items-center gap-2">
         <div className="text-sm font-medium">Your Ad Here</div>
         <div className="text-xs opacity-70 flex items-center gap-1">
-          <ExternalLink className="h-3 w-3" />
+          <ArrowTopRightOnSquareIcon className="h-3 w-3" />
           Advertise with us
         </div>
       </div>
