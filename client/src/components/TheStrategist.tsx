@@ -189,7 +189,7 @@ export default function TheStrategist() {
             className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${mode === 'CRYPTO' ? 'bg-orange-600 text-white shadow' : 'text-slate-500 hover:text-white'}`}
             data-testid="tab-crypto"
           >
-            <CurrencyDollarIcon className="h-4 w-4" /> Crypto Playbook
+            <CurrencyDollarIcon className="h-4 w-4" /> Altcoin Recon
           </button>
           <button 
             onClick={() => setMode('EARNINGS')}
@@ -589,13 +589,14 @@ export default function TheStrategist() {
       {mode === 'CRYPTO' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-slate-900 border border-orange-500/20 p-6 rounded-xl">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <CurrencyDollarIcon className="h-4 w-4 text-orange-400" /> Crypto Parameters
+            <div className="bg-slate-900 border border-orange-500/30 p-6 rounded-xl">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-1 flex items-center gap-2">
+                <CurrencyDollarIcon className="h-4 w-4 text-orange-400" /> Altcoin Recon Parameters
               </h3>
+              <p className="text-xs text-orange-400/70 mb-4">Cryptocurrency Intelligence • Rotation Plays</p>
               <form onSubmit={handleCryptoGenerate} className="space-y-4">
                 <div>
-                  <label className="text-xs text-slate-500 font-bold uppercase">Target Crypto</label>
+                  <label className="text-xs text-slate-500 font-bold uppercase">Target Cryptocurrency</label>
                   <div className="relative">
                     <CurrencyDollarIcon className="absolute left-3 top-3 h-4 w-4 text-orange-500" />
                     <input 
