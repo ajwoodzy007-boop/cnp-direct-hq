@@ -111,6 +111,23 @@ interface Diagnostics {
   tables: string[] | { error: string };
 }
 
+interface BusinessMetrics {
+  mrr: string;
+  arr: string;
+  monthlyPrice: number;
+  activeSubscribers: number;
+  totalUsers: number;
+  freeUsers: number;
+  conversionRate: string;
+  playbookRuns30d: number;
+  playbookUniqueUsers30d: number;
+  totalPredictions: number;
+  predictionWins: number;
+  predictionLosses: number;
+  predictionWinRate: string;
+  signupTrend: { date: string; signups: number }[];
+}
+
 export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -127,6 +144,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [finalizingCrypto, setFinalizingCrypto] = useState(false);
   const [finalizingAll, setFinalizingAll] = useState(false);
   const [finalizeResult, setFinalizeResult] = useState<string | null>(null);
+  const [businessMetrics, setBusinessMetrics] = useState<BusinessMetrics | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
   
   // Spreadsheet data
   const [winRateEntries, setWinRateEntries] = useState<WinRateEntry[]>([]);
@@ -171,6 +190,19 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       if (json.success) setBetaPasses(json.passes);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const fetchBusinessMetrics = async () => {
+    setLoadingMetrics(true);
+    try {
+      const res = await fetch('/api/admin/business-metrics');
+      const json = await res.json();
+      if (json.success) setBusinessMetrics(json.data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingMetrics(false);
     }
   };
 
@@ -327,6 +359,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     fetchStats();
     fetchBetaPasses();
+    fetchBusinessMetrics();
   }, []);
 
   useEffect(() => {
@@ -458,6 +491,60 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
         {activeTab === 'overview' && (
         <>
+        {/* Executive Summary - Business Metrics */}
+        <div className="bg-gradient-to-r from-slate-900 to-slate-800 border border-cyan-500/30 rounded-xl p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <ChartBarIcon className="h-5 w-5 text-cyan-400" />
+              Executive Summary
+            </h3>
+            <button
+              onClick={() => {
+                if (businessMetrics) {
+                  const report = {
+                    generatedAt: new Date().toISOString(),
+                    ...businessMetrics
+                  };
+                  exportToCsv(`business_report_${new Date().toISOString().split('T')[0]}.csv`, [report]);
+                }
+              }}
+              className="px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded text-sm flex items-center gap-2 border border-cyan-500/30"
+              data-testid="btn-download-report"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              Export Report
+            </button>
+          </div>
+          {loadingMetrics ? (
+            <div className="text-cyan-400 animate-pulse">Loading metrics...</div>
+          ) : businessMetrics ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <div className="text-slate-400 text-xs mb-1">MRR</div>
+                <div className="text-2xl font-bold text-green-400">${businessMetrics.mrr}</div>
+                <div className="text-xs text-slate-500">Monthly Recurring</div>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <div className="text-slate-400 text-xs mb-1">ARR</div>
+                <div className="text-2xl font-bold text-green-400">${businessMetrics.arr}</div>
+                <div className="text-xs text-slate-500">Annual Recurring</div>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <div className="text-slate-400 text-xs mb-1">Active Subscribers</div>
+                <div className="text-2xl font-bold text-amber-400">{businessMetrics.activeSubscribers}</div>
+                <div className="text-xs text-slate-500">@ ${businessMetrics.monthlyPrice}/mo</div>
+              </div>
+              <div className="bg-slate-800/50 rounded-lg p-4">
+                <div className="text-slate-400 text-xs mb-1">Conversion Rate</div>
+                <div className="text-2xl font-bold text-cyan-400">{businessMetrics.conversionRate}%</div>
+                <div className="text-xs text-slate-500">Free → Premium</div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-slate-500">No metrics available</div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-2">
@@ -794,7 +881,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 <button
                   onClick={() => {
                     const data = winRateView === 'byDate' ? winRateByDate : winRateView === 'byTicker' ? winRateByTicker : winRateEntries;
-                    exportToCsv(`predictions_${winRateView}_${new Date().toISOString().split('T')[0]}.csv`, data);
+                    exportToCsv(`predictions_${winRateView}_${new Date().toISOString().split('T')[0]}.csv`, data as object[]);
                   }}
                   disabled={loadingWinRates}
                   className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded text-sm flex items-center gap-2 border border-green-500/30"

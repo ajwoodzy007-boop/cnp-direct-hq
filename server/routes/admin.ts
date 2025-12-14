@@ -497,4 +497,96 @@ router.get('/activity', requireAdmin, async (req, res) => {
   }
 });
 
+// Business Metrics endpoint for executive summary
+router.get('/business-metrics', requireAdmin, async (req, res) => {
+  try {
+    // Active Subscribers (users with active subscription or PREMIUM tier)
+    const activeSubsResult = await query(`
+      SELECT COUNT(*) as count FROM users 
+      WHERE tier = 'PREMIUM'
+    `);
+    const activeSubscribers = parseInt(activeSubsResult.rows[0]?.count || '0');
+
+    // Total users
+    const totalUsersResult = await query('SELECT COUNT(*) as count FROM users');
+    const totalUsers = parseInt(totalUsersResult.rows[0]?.count || '0');
+
+    // MRR calculation (assuming $19.99/month per subscriber)
+    const MONTHLY_PRICE = 19.99;
+    const mrr = activeSubscribers * MONTHLY_PRICE;
+    const arr = mrr * 12;
+
+    // Free tier users
+    const freeUsers = totalUsers - activeSubscribers;
+
+    // Conversion rate
+    const conversionRate = totalUsers > 0 ? ((activeSubscribers / totalUsers) * 100).toFixed(1) : '0.0';
+
+    // Get subscription trends (last 30 days of user signups)
+    const signupTrendResult = await query(`
+      SELECT 
+        DATE(created_at) as date,
+        COUNT(*) as signups
+      FROM users
+      WHERE created_at >= NOW() - INTERVAL '30 days'
+      GROUP BY DATE(created_at)
+      ORDER BY date DESC
+    `);
+
+    // AI Playbook usage (as engagement metric)
+    const playbookUsageResult = await query(`
+      SELECT COUNT(*) as total_runs,
+             COUNT(DISTINCT user_id) as unique_users
+      FROM ai_playbook_runs
+      WHERE generated_at >= NOW() - INTERVAL '30 days'
+    `);
+
+    // Predictions stats
+    const predStatsResult = await query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN LOWER(outcome) = 'win' THEN 1 END) as wins,
+        COUNT(CASE WHEN LOWER(outcome) = 'loss' THEN 1 END) as losses
+      FROM predictions
+      WHERE outcome IS NOT NULL AND LOWER(outcome) != 'pending'
+    `);
+    const predStats = predStatsResult.rows[0];
+    const winRate = predStats.wins + predStats.losses > 0 
+      ? ((predStats.wins / (predStats.wins + predStats.losses)) * 100).toFixed(1) 
+      : '0.0';
+
+    res.json({
+      success: true,
+      data: {
+        // Revenue metrics
+        mrr: mrr.toFixed(2),
+        arr: arr.toFixed(2),
+        monthlyPrice: MONTHLY_PRICE,
+        
+        // User metrics
+        activeSubscribers,
+        totalUsers,
+        freeUsers,
+        conversionRate,
+        
+        // Engagement metrics
+        playbookRuns30d: parseInt(playbookUsageResult.rows[0]?.total_runs || '0'),
+        playbookUniqueUsers30d: parseInt(playbookUsageResult.rows[0]?.unique_users || '0'),
+        
+        // Prediction metrics
+        totalPredictions: parseInt(predStats?.total || '0'),
+        predictionWins: parseInt(predStats?.wins || '0'),
+        predictionLosses: parseInt(predStats?.losses || '0'),
+        predictionWinRate: winRate,
+        
+        // Trend data
+        signupTrend: signupTrendResult.rows
+      }
+    });
+  } catch (e: any) {
+    console.error('Business metrics error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 export default router;
