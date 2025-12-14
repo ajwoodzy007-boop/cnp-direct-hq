@@ -23,9 +23,23 @@ function formatYahooStrike(strike: number) {
   return str.padStart(8, '0');
 }
 
+function getUserIdFromSession(req: express.Request): string | null {
+  const user = (req.session as any)?.user;
+  return user?.id || null;
+}
+
 router.get('/', async (req, res) => {
   try {
-    const result = await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
+    const userId = getUserIdFromSession(req);
+    
+    if (!userId) {
+      return res.json({ success: true, data: [] });
+    }
+    
+    const result = await query(
+      'SELECT * FROM portfolio WHERE status = $1 AND user_id = $2', 
+      ['OPEN', userId]
+    );
     const portfolio = result.rows;
     
     const symbolsToFetch: string[] = [];
@@ -34,8 +48,6 @@ router.get('/', async (req, res) => {
       if (p.type === 'SHARE') {
         symbolsToFetch.push(p.ticker);
       } else if (p.type === 'CRYPTO') {
-        // Crypto symbols use TICKER-USD format for Yahoo Finance
-        // Handle if user already entered -USD suffix or other formats
         let cryptoSymbol = p.ticker.toUpperCase().replace(/[-_]?USD$/i, '');
         cryptoSymbol = `${cryptoSymbol}-USD`;
         p.realSymbol = cryptoSymbol;
@@ -53,7 +65,7 @@ router.get('/', async (req, res) => {
     const uniqueSymbols = Array.from(new Set(symbolsToFetch));
     const quotes: Record<string, number> = {};
     
-    console.log(`[Vault] Fetching prices for: ${uniqueSymbols.join(', ')}`);
+    console.log(`[Vault] User ${userId} - Fetching prices for: ${uniqueSymbols.join(', ')}`);
 
     for (const sym of uniqueSymbols) {
       try {
@@ -69,10 +81,8 @@ router.get('/', async (req, res) => {
       const lookupSymbol = p.type === 'SHARE' ? p.ticker : p.realSymbol;
       const currentPrice = quotes[lookupSymbol] || 0;
       
-      // Crypto and shares use 1x multiplier, options use 100x
       const multiplier = (p.type === 'SHARE' || p.type === 'CRYPTO') ? 1 : 100;
       
-      // Ensure numeric parsing for shares and entryPrice
       const shares = parseFloat(p.shares) || 0;
       const entryPrice = parseFloat(p.entryPrice) || 0;
       
@@ -102,15 +112,21 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/add', async (req, res) => {
+  const userId = getUserIdFromSession(req);
+  
+  if (!userId) {
+    return res.status(401).json({ success: false, error: "Authentication required" });
+  }
+  
   const { ticker, price, type, shares, strike, expiry } = req.body;
   const id = Math.random().toString(36).substr(2, 9);
   const dateOpened = new Date().toISOString().split('T')[0];
 
   try {
     await query(
-      `INSERT INTO portfolio (id, ticker, type, "entryPrice", shares, "dateOpened", status, "strikePrice", "expirationDate")
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-      [id, ticker.toUpperCase(), type, price, shares, dateOpened, 'OPEN', strike || null, expiry || null]
+      `INSERT INTO portfolio (id, ticker, type, "entryPrice", shares, "dateOpened", status, "strikePrice", "expirationDate", user_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [id, ticker.toUpperCase(), type, price, shares, dateOpened, 'OPEN', strike || null, expiry || null, userId]
     );
     res.json({ success: true, msg: "Asset Secured" });
   } catch (e) {
@@ -120,13 +136,19 @@ router.post('/add', async (req, res) => {
 });
 
 router.put('/edit', async (req, res) => {
+  const userId = getUserIdFromSession(req);
+  
+  if (!userId) {
+    return res.status(401).json({ success: false, error: "Authentication required" });
+  }
+  
   const { id, ticker, price, type, shares, strike, expiry } = req.body;
   try {
     await query(
       `UPDATE portfolio 
        SET ticker = $1, type = $2, "entryPrice" = $3, shares = $4, "strikePrice" = $5, "expirationDate" = $6
-       WHERE id = $7`,
-      [ticker.toUpperCase(), type, price, shares, strike || null, expiry || null, id]
+       WHERE id = $7 AND user_id = $8`,
+      [ticker.toUpperCase(), type, price, shares, strike || null, expiry || null, id, userId]
     );
     res.json({ success: true, msg: "Position Updated" });
   } catch (e) {
@@ -136,9 +158,15 @@ router.put('/edit', async (req, res) => {
 });
 
 router.post('/close', async (req, res) => {
+  const userId = getUserIdFromSession(req);
+  
+  if (!userId) {
+    return res.status(401).json({ success: false, error: "Authentication required" });
+  }
+  
   const { id } = req.body;
   try {
-    await query('DELETE FROM portfolio WHERE id = $1', [id]);
+    await query('DELETE FROM portfolio WHERE id = $1 AND user_id = $2', [id, userId]);
     res.json({ success: true, msg: "Position Closed" });
   } catch (e) {
     res.status(500).json({ success: false, error: "Could not close trade" });
@@ -146,8 +174,17 @@ router.post('/close', async (req, res) => {
 });
 
 router.post('/optimize', requirePremium, async (req, res) => {
+  const userId = getUserIdFromSession(req);
+  
+  if (!userId) {
+    return res.status(401).json({ success: false, error: "Authentication required" });
+  }
+  
   try {
-    const result = await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
+    const result = await query(
+      'SELECT * FROM portfolio WHERE status = $1 AND user_id = $2', 
+      ['OPEN', userId]
+    );
     const portfolio = result.rows;
 
     if (portfolio.length === 0) return res.json({ success: false, error: "Portfolio is empty." });
