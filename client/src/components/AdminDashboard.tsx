@@ -883,10 +883,14 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 <button
                   onClick={() => {
                     const data = winRateView === 'byDate' ? winRateByDate : winRateView === 'byTicker' ? winRateByTicker : winRateEntries;
+                    if (data.length === 0) {
+                      alert('No data to export. Please wait for data to load.');
+                      return;
+                    }
                     exportToCsv(`predictions_${winRateView}_${new Date().toISOString().split('T')[0]}.csv`, data as object[]);
                   }}
-                  disabled={loadingWinRates}
-                  className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded text-sm flex items-center gap-2 border border-green-500/30"
+                  disabled={loadingWinRates || (winRateView === 'byDate' ? winRateByDate.length === 0 : winRateView === 'byTicker' ? winRateByTicker.length === 0 : winRateEntries.length === 0)}
+                  className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded text-sm flex items-center gap-2 border border-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                   data-testid="btn-download-predictions"
                 >
                   <ArrowDownTrayIcon className="h-4 w-4" />
@@ -1028,9 +1032,15 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               </h3>
               <div className="flex gap-2">
                 <button
-                  onClick={() => exportToCsv(`user_portfolios_${new Date().toISOString().split('T')[0]}.csv`, portfolioSummary)}
-                  disabled={loadingPortfolios}
-                  className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 rounded text-sm flex items-center gap-2 border border-amber-500/30"
+                  onClick={() => {
+                    if (portfolioSummary.length === 0) {
+                      alert('No portfolio data to export. Please wait for data to load.');
+                      return;
+                    }
+                    exportToCsv(`user_portfolios_${new Date().toISOString().split('T')[0]}.csv`, portfolioSummary);
+                  }}
+                  disabled={loadingPortfolios || portfolioSummary.length === 0}
+                  className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 rounded text-sm flex items-center gap-2 border border-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                   data-testid="btn-download-portfolios"
                 >
                   <ArrowDownTrayIcon className="h-4 w-4" />
