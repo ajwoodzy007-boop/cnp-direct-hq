@@ -263,9 +263,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const exportToCsv = (filename: string, rows: Record<string, any>[]) => {
+  const exportToCsv = <T extends object>(filename: string, rows: T[]) => {
     if (rows.length === 0) return;
-    const headers = Object.keys(rows[0]);
+    const headers = Object.keys(rows[0]) as (keyof T)[];
     const csvContent = [
       headers.join(','),
       ...rows.map(row => headers.map(h => {
