@@ -27,8 +27,8 @@ export default function AboutModal({ onClose, onSignUp, isLoggedIn }: Props) {
     {
       icon: ViewfinderCircleIcon,
       title: 'The Oracle',
-      subtitle: 'Daily Top 10 Predictions',
-      description: 'Every morning at 9:00 AM ET, our AI generates 10 high-conviction picks with entry prices, targets, stop-losses, and confidence scores.',
+      subtitle: 'Daily AI Predictions',
+      description: 'Every morning at 9:00 AM ET, our AI generates high-conviction stock and crypto picks with entry prices, targets, stop-losses, and confidence scores.',
       color: 'amber',
       free: false
     },
@@ -62,7 +62,7 @@ export default function AboutModal({ onClose, onSignUp, isLoggedIn }: Props) {
     {
       step: 1,
       title: 'Wake Up to AI Picks',
-      description: 'Every morning at 9:00 AM ET, The Oracle delivers 10 AI-analyzed stock picks directly to your dashboard.',
+      description: 'Every morning at 9:00 AM ET, The Oracle delivers AI-analyzed stock and crypto picks directly to your dashboard.',
       icon: ClockIcon
     },
     {
@@ -127,8 +127,8 @@ export default function AboutModal({ onClose, onSignUp, isLoggedIn }: Props) {
     { feature: 'Real-Time Market Scanner (The Radar)', free: true, premium: true },
     { feature: 'Market Education (The Academy)', free: true, premium: true },
     { feature: 'View Historical Predictions', free: true, premium: true },
-    { feature: 'Daily Top 10 Stock Predictions', free: false, premium: true },
-    { feature: 'Daily Top 10 Crypto Predictions', free: false, premium: true },
+    { feature: 'Daily Stock Predictions (5 picks)', free: false, premium: true },
+    { feature: 'Daily Crypto Predictions (up to 10)', free: false, premium: true },
     { feature: 'Entry/Target/Stop-Loss Prices', free: false, premium: true },
     { feature: 'AI Confidence Scores', free: false, premium: true },
     { feature: 'Options Signals with Greeks', free: false, premium: true },
@@ -175,7 +175,7 @@ export default function AboutModal({ onClose, onSignUp, isLoggedIn }: Props) {
               AI-Powered Trading Signals.<br className="md:hidden" /> Delivered Daily.
             </h2>
             <p className="text-slate-400 max-w-2xl mx-auto text-lg">
-              Wake up to 10 high-conviction stock picks every morning. Entry prices, targets, stop-losses, 
+              Wake up to curated stock and crypto picks every morning. Entry prices, targets, stop-losses, 
               and AI confidence scores—all before the market opens.
             </p>
 
@@ -200,7 +200,7 @@ export default function AboutModal({ onClose, onSignUp, isLoggedIn }: Props) {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div className="bg-gradient-to-b from-cyan-500/10 to-transparent border border-cyan-500/20 rounded-xl p-4">
-              <div className="text-3xl font-bold text-cyan-400">10</div>
+              <div className="text-3xl font-bold text-cyan-400">5</div>
               <div className="text-xs text-slate-400 mt-1">Daily Stock Picks</div>
             </div>
             <div className="bg-gradient-to-b from-orange-500/10 to-transparent border border-orange-500/20 rounded-xl p-4">
@@ -439,7 +439,7 @@ export default function AboutModal({ onClose, onSignUp, isLoggedIn }: Props) {
 
         <div className="p-4 bg-slate-950 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="text-xs text-slate-600 text-center md:text-left">
-            CNP DIRECT © 2024 • For educational purposes only • Not financial advice
+            CNP DIRECT © 2025 • For educational purposes only • Not financial advice
           </div>
           <button
             onClick={onClose}
