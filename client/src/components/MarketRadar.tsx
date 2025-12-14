@@ -33,6 +33,7 @@ export default function MarketRadar() {
   const [fullReport, setFullReport] = useState<any>(null);
   const [loadingFull, setLoadingFull] = useState(false);
   const [showFullModal, setShowFullModal] = useState(false);
+  const [showBriefingModal, setShowBriefingModal] = useState(false);
 
   const fetchStockScan = async () => {
     setLoading(true);
@@ -145,52 +146,98 @@ export default function MarketRadar() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 bg-slate-900 p-6 rounded-xl border border-slate-800">
-        <div className="flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-bold flex items-center gap-2 text-white">
-              <ShieldExclamationIcon className="text-cyan-400 h-6 w-6" /> Market Sentinel Radar
-            </h2>
-            <p className="text-slate-400 text-sm mt-1">
-              {activeTab === 'stocks' ? 'Stock Surveillance Active' : 'Crypto Surveillance Active (24/7)'} • Click rows for Charts
-            </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="flex flex-col gap-4 bg-slate-900 p-6 rounded-xl border border-slate-800 h-full">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                <ShieldExclamationIcon className="text-cyan-400 h-5 w-5" /> Market Sentinel Radar
+              </h2>
+              <p className="text-slate-400 text-xs mt-1">
+                {activeTab === 'stocks' ? 'Stock Surveillance Active' : 'Crypto Surveillance Active (24/7)'}
+              </p>
+            </div>
+            <button 
+              onClick={fetchScan} 
+              disabled={loading} 
+              className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 text-xs rounded-lg flex items-center gap-1 transition-all border border-slate-700 hover:border-cyan-500/30"
+              data-testid="button-initiate-scan"
+            >
+              <ArrowPathIcon className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+              {loading ? 'Scanning...' : 'Refresh'}
+            </button>
           </div>
-          <button 
-            onClick={fetchScan} 
-            disabled={loading} 
-            className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 text-sm rounded-lg flex items-center gap-1.5 transition-all border border-slate-700 hover:border-cyan-500/30"
-            data-testid="button-initiate-scan"
-          >
-            <ArrowPathIcon className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Scanning...' : 'Refresh'}
-          </button>
+
+          <div className="flex gap-2 mt-auto">
+            <button
+              onClick={() => setActiveTab('stocks')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-all ${
+                activeTab === 'stocks'
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                  : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white hover:border-slate-600'
+              }`}
+              data-testid="tab-stocks"
+            >
+              <ArrowTrendingUpIcon className="h-3.5 w-3.5" />
+              Stocks
+            </button>
+            <button
+              onClick={() => setActiveTab('crypto')}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-medium transition-all ${
+                activeTab === 'crypto'
+                  ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
+                  : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white hover:border-slate-600'
+              }`}
+              data-testid="tab-crypto"
+            >
+              <CurrencyDollarIcon className="h-3.5 w-3.5" />
+              Crypto
+            </button>
+          </div>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab('stocks')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all ${
-              activeTab === 'stocks'
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
-                : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white hover:border-slate-600'
-            }`}
-            data-testid="tab-stocks"
-          >
-            <ArrowTrendingUpIcon className="h-4 w-4" />
-            Stocks
-          </button>
-          <button
-            onClick={() => setActiveTab('crypto')}
-            className={`px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all ${
-              activeTab === 'crypto'
-                ? 'bg-orange-500/20 text-orange-400 border border-orange-500/50'
-                : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white hover:border-slate-600'
-            }`}
-            data-testid="tab-crypto"
-          >
-            <CurrencyDollarIcon className="h-4 w-4" />
-            Crypto
-          </button>
+        <div 
+          onClick={() => !briefingLoading && briefing && setShowBriefingModal(true)}
+          className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden cursor-pointer hover:border-amber-500/50 transition-all h-full flex flex-col"
+          data-testid="card-daily-briefing"
+        >
+          <div className="bg-slate-950 px-4 py-3 border-b border-slate-800 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <SignalIcon className={`h-4 w-4 ${briefingLoading ? 'text-slate-500' : 'text-red-500 animate-pulse'}`} />
+              <h3 className="font-bold text-white text-sm">Sentinel Daily Briefing</h3>
+            </div>
+            <span className="text-xs text-amber-500 font-mono border border-amber-500/30 px-2 py-0.5 rounded bg-amber-500/10" data-testid="text-briefing-date">
+              {briefing?.date || 'CONNECTING...'}
+            </span>
+          </div>
+          <div className="p-4 flex-1 flex flex-col justify-center">
+            {briefingLoading ? (
+              <div className="flex items-center justify-center text-slate-500 gap-2">
+                <ArrowPathIcon className="h-5 w-5 animate-spin" />
+                <span className="text-sm">Loading Intel...</span>
+              </div>
+            ) : briefing ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 text-xs font-bold rounded-full border ${
+                    briefing.sentiment === 'BULLISH' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
+                    briefing.sentiment === 'BEARISH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                    'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                  }`} data-testid="text-sentiment">
+                    {briefing.sentiment}
+                  </span>
+                </div>
+                <h4 className="text-sm font-bold text-white line-clamp-2" data-testid="text-headline">{briefing.headline}</h4>
+                <p className="text-xs text-slate-400 line-clamp-2">{briefing.summary}</p>
+                <div className="text-xs text-cyan-400 flex items-center gap-1 mt-2">
+                  <DocumentTextIcon className="h-3 w-3" />
+                  Click to read full briefing
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-red-400 text-sm">Briefing Unavailable</div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -325,67 +372,72 @@ export default function MarketRadar() {
         </div>
       )}
 
-      <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden relative group">
-        <div className="bg-slate-950 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <SignalIcon className={`h-5 w-5 ${briefingLoading ? 'text-slate-500' : 'text-red-500 animate-pulse'}`} />
-            <h3 className="font-bold text-white">Sentinel Daily Briefing</h3>
-          </div>
-          <span className="text-xs text-amber-500 font-mono border border-amber-500/30 px-2 py-1 rounded bg-amber-500/10" data-testid="text-briefing-date">
-            {briefing?.date || 'CONNECTING...'}
-          </span>
-        </div>
-
-        <div className="p-8 min-h-[200px]">
-          {briefingLoading ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-2">
-               <ArrowPathIcon className="h-8 w-8 animate-spin" />
-               <p>Downloading Market Intel...</p>
+      {showBriefingModal && briefing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-3xl max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950 shrink-0">
+              <div className="flex items-center gap-3">
+                <SignalIcon className="h-5 w-5 text-red-500 animate-pulse" />
+                <h3 className="text-xl font-bold text-white">Sentinel Daily Briefing</h3>
+                <span className="text-xs text-amber-500 font-mono border border-amber-500/30 px-2 py-1 rounded bg-amber-500/10">
+                  {briefing.date}
+                </span>
+              </div>
+              <button 
+                onClick={() => setShowBriefingModal(false)} 
+                className="text-slate-400 hover:text-white p-1"
+                data-testid="button-close-briefing"
+              >
+                <span className="text-2xl">&times;</span>
+              </button>
             </div>
-          ) : briefing ? (
-            <div className="animate-in fade-in slide-in-from-bottom-2">
-              <div className="flex items-center gap-3 mb-4">
-                 <span className={`px-3 py-1 text-xs font-bold rounded-full border ${
-                    briefing.sentiment === 'BULLISH' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
-                    briefing.sentiment === 'BEARISH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                    'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                 }`} data-testid="text-sentiment">
-                    {briefing.sentiment} SENTIMENT
-                 </span>
-                 <h4 className="text-xl font-bold text-white" data-testid="text-headline">{briefing.headline}</h4>
+            <div className="p-6 overflow-y-auto space-y-6">
+              <div className="flex items-center gap-3">
+                <span className={`px-3 py-1 text-xs font-bold rounded-full border ${
+                  briefing.sentiment === 'BULLISH' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
+                  briefing.sentiment === 'BEARISH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                  'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                }`}>
+                  {briefing.sentiment} SENTIMENT
+                </span>
+              </div>
+              <h4 className="text-2xl font-bold text-white">{briefing.headline}</h4>
+              <p className="text-slate-300 leading-relaxed">{briefing.summary}</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                  <strong className="text-cyan-400 block mb-2 text-xs uppercase">Key Levels</strong>
+                  <span className="text-slate-300">{briefing.keyLevels}</span>
+                </div>
+                <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                  <strong className="text-amber-400 block mb-2 text-xs uppercase">Action Plan</strong>
+                  <span className="text-slate-300">{briefing.actionPlan}</span>
+                </div>
               </div>
               
-              <div className="space-y-4 text-slate-300 leading-relaxed max-w-4xl">
-                <p data-testid="text-summary">{briefing.summary}</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                   <div className="bg-slate-950 p-4 rounded border border-slate-800">
-                      <strong className="text-cyan-400 block mb-1 text-xs uppercase">Key Levels</strong>
-                      <span data-testid="text-key-levels">{briefing.keyLevels}</span>
-                   </div>
-                   <div className="bg-slate-950 p-4 rounded border border-slate-800">
-                      <strong className="text-amber-400 block mb-1 text-xs uppercase">Action Plan</strong>
-                      <span data-testid="text-action-plan">{briefing.actionPlan}</span>
-                   </div>
-                </div>
-                
-                <div className="mt-6 pt-6 border-t border-slate-800 flex justify-end">
-                  <button 
-                    onClick={handleOpenFullReport}
-                    disabled={loadingFull}
-                    className="flex items-center gap-2 text-sm font-bold text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/30 hover:bg-cyan-950/50 px-4 py-2 rounded-lg border border-cyan-500/30 disabled:opacity-50"
-                    data-testid="button-full-report"
-                  >
-                    {loadingFull ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <DocumentTextIcon className="h-4 w-4" />}
-                    {loadingFull ? 'Decrypting...' : 'Read Full Intelligence Report'}
-                  </button>
-                </div>
+              <div className="pt-4 border-t border-slate-800 flex justify-end">
+                <button 
+                  onClick={handleOpenFullReport}
+                  disabled={loadingFull}
+                  className="flex items-center gap-2 text-sm font-bold text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/30 hover:bg-cyan-950/50 px-4 py-2 rounded-lg border border-cyan-500/30 disabled:opacity-50"
+                  data-testid="button-full-report"
+                >
+                  {loadingFull ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <DocumentTextIcon className="h-4 w-4" />}
+                  {loadingFull ? 'Decrypting...' : 'Read Full Intelligence Report'}
+                </button>
               </div>
             </div>
-          ) : (
-             <div className="text-center text-red-400">Briefing Unavailable. Check Uplink.</div>
-          )}
+            <div className="p-4 border-t border-slate-800 bg-slate-950 shrink-0">
+              <button
+                onClick={() => setShowBriefingModal(false)}
+                className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Close Briefing
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {showFullModal && fullReport && (
         <FullReportModal data={fullReport} onClose={() => setShowFullModal(false)} />
