@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpenIcon, ArrowTopRightOnSquareIcon, ShieldCheckIcon, BoltIcon, ArrowTrendingUpIcon, ArrowPathIcon, SignalIcon, DocumentTextIcon, XMarkIcon, ChevronRightIcon, ViewfinderCircleIcon, ChartBarIcon, CalculatorIcon } from '@heroicons/react/24/outline';
-import FullReportModal from './FullReportModal';
+import React, { useState } from 'react';
+import { BookOpenIcon, ArrowTopRightOnSquareIcon, ShieldCheckIcon, BoltIcon, ArrowTrendingUpIcon, XMarkIcon, ChevronRightIcon, ViewfinderCircleIcon, ChartBarIcon, CalculatorIcon } from '@heroicons/react/24/outline';
 
 const fieldManuals = [
   {
@@ -58,11 +57,6 @@ const fieldManuals = [
 ];
 
 export default function TheAcademy() {
-  const [briefing, setBriefing] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [fullReport, setFullReport] = useState<any>(null);
-  const [loadingFull, setLoadingFull] = useState(false);
-  const [showFullModal, setShowFullModal] = useState(false);
   const [selectedManual, setSelectedManual] = useState<typeof fieldManuals[0] | null>(null);
 
   const resources = [
@@ -70,38 +64,6 @@ export default function TheAcademy() {
     { name: "Partner Integrations", desc: "Coming Soon", link: "#", icon: BoltIcon },
     { name: "News & Data Partners", desc: "Coming Soon", link: "#", icon: ShieldCheckIcon },
   ];
-
-  useEffect(() => {
-    async function fetchBriefing() {
-      try {
-        const res = await fetch('/api/academy/briefing');
-        const json = await res.json();
-        if (json.success) setBriefing(json.data);
-      } catch (e) { console.error(e); } finally { setLoading(false); }
-    }
-    fetchBriefing();
-  }, []);
-
-  const handleOpenFullReport = async () => {
-    setLoadingFull(true);
-    try {
-      const res = await fetch('/api/academy/full-report');
-      if (res.status === 403) {
-        alert("This report is classified. Upgrade to Premium to access the full intelligence briefing.");
-        setLoadingFull(false);
-        return;
-      }
-      const json = await res.json();
-      if (json.success) {
-        setFullReport(json.data);
-        setShowFullModal(true);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingFull(false);
-    }
-  };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -112,71 +74,8 @@ export default function TheAcademy() {
           The Academy
         </h2>
         <p className="text-slate-400 mt-2">
-          Market Intelligence Briefings & Educational Resources.
+          Educational Resources & Trading Knowledge Base.
         </p>
-      </div>
-
-      <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden relative group">
-        
-        <div className="bg-slate-950 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <SignalIcon className={`h-5 w-5 ${loading ? 'text-slate-500' : 'text-red-500 animate-pulse'}`} />
-            <h3 className="font-bold text-white">Sentinel Daily Briefing</h3>
-          </div>
-          <span className="text-xs text-amber-500 font-mono border border-amber-500/30 px-2 py-1 rounded bg-amber-500/10" data-testid="text-briefing-date">
-            {briefing?.date || 'CONNECTING...'}
-          </span>
-        </div>
-
-        <div className="p-8 min-h-[200px]">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-500 space-y-2">
-               <ArrowPathIcon className="h-8 w-8 animate-spin" />
-               <p>Downloading Market Intel...</p>
-            </div>
-          ) : briefing ? (
-            <div className="animate-in fade-in slide-in-from-bottom-2">
-              <div className="flex items-center gap-3 mb-4">
-                 <span className={`px-3 py-1 text-xs font-bold rounded-full border ${
-                    briefing.sentiment === 'BULLISH' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
-                    briefing.sentiment === 'BEARISH' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                    'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                 }`} data-testid="text-sentiment">
-                    {briefing.sentiment} SENTIMENT
-                 </span>
-                 <h4 className="text-xl font-bold text-white" data-testid="text-headline">{briefing.headline}</h4>
-              </div>
-              
-              <div className="space-y-4 text-slate-300 leading-relaxed max-w-4xl">
-                <p data-testid="text-summary">{briefing.summary}</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                   <div className="bg-slate-950 p-4 rounded border border-slate-800">
-                      <strong className="text-cyan-400 block mb-1 text-xs uppercase">Key Levels</strong>
-                      <span data-testid="text-key-levels">{briefing.keyLevels}</span>
-                   </div>
-                   <div className="bg-slate-950 p-4 rounded border border-slate-800">
-                      <strong className="text-amber-400 block mb-1 text-xs uppercase">Action Plan</strong>
-                      <span data-testid="text-action-plan">{briefing.actionPlan}</span>
-                   </div>
-                </div>
-                
-                <div className="mt-6 pt-6 border-t border-slate-800 flex justify-end">
-                  <button 
-                    onClick={handleOpenFullReport}
-                    disabled={loadingFull}
-                    className="flex items-center gap-2 text-sm font-bold text-cyan-400 hover:text-cyan-300 transition-colors bg-cyan-950/30 hover:bg-cyan-950/50 px-4 py-2 rounded-lg border border-cyan-500/30 disabled:opacity-50"
-                    data-testid="button-full-report"
-                  >
-                    {loadingFull ? <ArrowPathIcon className="h-4 w-4 animate-spin" /> : <DocumentTextIcon className="h-4 w-4" />}
-                    {loadingFull ? 'Decrypting...' : 'Read Full Intelligence Report'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-             <div className="text-center text-red-400">Briefing Unavailable. Check Uplink.</div>
-          )}
-        </div>
       </div>
 
       <div>
@@ -248,10 +147,6 @@ export default function TheAcademy() {
           })}
         </div>
       </div>
-
-      {showFullModal && fullReport && (
-        <FullReportModal data={fullReport} onClose={() => setShowFullModal(false)} />
-      )}
 
       {selectedManual && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-200">
