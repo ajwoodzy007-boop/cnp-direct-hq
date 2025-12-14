@@ -289,4 +289,212 @@ router.post('/force-finalize-all', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// WIN RATES SPREADSHEET API
+// ============================================
+
+router.get('/win-rates', requireAdmin, async (req, res) => {
+  try {
+    // Get all prediction entries with detailed info
+    const entriesResult = await query(`
+      SELECT 
+        dpe.id,
+        dpe.ticker,
+        dpe.confidence,
+        dpe.entry_price,
+        dpe.open_price,
+        dpe.predicted_price,
+        dpe.close_price,
+        dpe.close_pnl,
+        dpe.outcome,
+        dpr.run_date,
+        CASE 
+          WHEN dpe.ticker LIKE '%-%' OR dpe.ticker IN ('BTC', 'ETH', 'SOL', 'LINK', 'AVAX', 'LTC', 'DOGE', 'ADA', 'XRP', 'DOT', 'MATIC', 'UNI', 'ATOM', 'NEAR', 'BNB') 
+          THEN 'crypto' 
+          ELSE 'stock' 
+        END as asset_type
+      FROM daily_prediction_entries dpe
+      JOIN daily_prediction_runs dpr ON dpe.run_id = dpr.id
+      WHERE dpe.outcome IS NOT NULL AND dpe.outcome != 'pending'
+      ORDER BY dpr.run_date DESC, dpe.ticker ASC
+    `);
+
+    // Calculate stats by date
+    const byDateResult = await query(`
+      SELECT 
+        dpr.run_date,
+        COUNT(*) as total,
+        COUNT(CASE WHEN LOWER(dpe.outcome) = 'win' THEN 1 END) as wins,
+        COUNT(CASE WHEN LOWER(dpe.outcome) = 'loss' THEN 1 END) as losses,
+        AVG(dpe.close_pnl) as avg_pnl
+      FROM daily_prediction_entries dpe
+      JOIN daily_prediction_runs dpr ON dpe.run_id = dpr.id
+      WHERE dpe.outcome IS NOT NULL AND dpe.outcome != 'pending'
+      GROUP BY dpr.run_date
+      ORDER BY dpr.run_date DESC
+    `);
+
+    // Calculate stats by ticker
+    const byTickerResult = await query(`
+      SELECT 
+        dpe.ticker,
+        COUNT(*) as total,
+        COUNT(CASE WHEN LOWER(dpe.outcome) = 'win' THEN 1 END) as wins,
+        COUNT(CASE WHEN LOWER(dpe.outcome) = 'loss' THEN 1 END) as losses,
+        AVG(dpe.close_pnl) as avg_pnl,
+        AVG(dpe.confidence) as avg_confidence
+      FROM daily_prediction_entries dpe
+      WHERE dpe.outcome IS NOT NULL AND dpe.outcome != 'pending'
+      GROUP BY dpe.ticker
+      ORDER BY COUNT(*) DESC
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        entries: entriesResult.rows,
+        byDate: byDateResult.rows.map(r => ({
+          ...r,
+          winRate: r.total > 0 ? ((r.wins / r.total) * 100).toFixed(1) : '0'
+        })),
+        byTicker: byTickerResult.rows.map(r => ({
+          ...r,
+          winRate: r.total > 0 ? ((r.wins / r.total) * 100).toFixed(1) : '0'
+        }))
+      }
+    });
+  } catch (e: any) {
+    console.error('Win rates error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ============================================
+// USER PORTFOLIOS SPREADSHEET API
+// ============================================
+
+router.get('/portfolios', requireAdmin, async (req, res) => {
+  try {
+    const portfoliosResult = await query(`
+      SELECT 
+        up.id,
+        up.user_id,
+        u.email as user_email,
+        up.ticker,
+        up.shares,
+        up.average_cost,
+        up.current_price,
+        up.added_at,
+        up.updated_at,
+        (up.shares * up.average_cost) as total_cost,
+        (up.shares * COALESCE(up.current_price, up.average_cost)) as current_value
+      FROM user_portfolio up
+      LEFT JOIN users u ON up.user_id = u.id
+      ORDER BY u.email ASC, up.ticker ASC
+    `);
+
+    // Get summary by user
+    const summaryResult = await query(`
+      SELECT 
+        u.id as user_id,
+        u.email,
+        COUNT(up.id) as positions,
+        SUM(up.shares * up.average_cost) as total_invested,
+        SUM(up.shares * COALESCE(up.current_price, up.average_cost)) as current_value
+      FROM users u
+      LEFT JOIN user_portfolio up ON u.id = up.user_id
+      GROUP BY u.id, u.email
+      HAVING COUNT(up.id) > 0
+      ORDER BY SUM(up.shares * up.average_cost) DESC NULLS LAST
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        positions: portfoliosResult.rows,
+        userSummary: summaryResult.rows.map(r => ({
+          ...r,
+          pnl: r.current_value && r.total_invested 
+            ? (r.current_value - r.total_invested).toFixed(2) 
+            : '0',
+          pnlPercent: r.total_invested && r.total_invested > 0 
+            ? (((r.current_value - r.total_invested) / r.total_invested) * 100).toFixed(2) 
+            : '0'
+        }))
+      }
+    });
+  } catch (e: any) {
+    console.error('Portfolios error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ============================================
+// USER ACTIVITY SPREADSHEET API
+// ============================================
+
+router.get('/activity', requireAdmin, async (req, res) => {
+  try {
+    // Get user sign-up activity
+    const usersResult = await query(`
+      SELECT 
+        id,
+        email,
+        tier,
+        created_at
+      FROM users
+      ORDER BY created_at DESC
+    `);
+
+    // Get prediction activity by user (from daily_prediction_entries doesn't have user_id, 
+    // so we'll track AI playbook usage instead)
+    const playbookActivityResult = await query(`
+      SELECT 
+        apr.user_id,
+        u.email,
+        apr.playbook_type,
+        apr.status,
+        apr.generated_at
+      FROM ai_playbook_runs apr
+      LEFT JOIN users u ON apr.user_id = u.id
+      ORDER BY apr.generated_at DESC
+      LIMIT 100
+    `);
+
+    // Get affiliate click activity
+    const affiliateResult = await query(`
+      SELECT 
+        ticker,
+        destination,
+        clicked_at
+      FROM affiliate_clicks
+      ORDER BY clicked_at DESC
+      LIMIT 100
+    `);
+
+    // Get watchlist activity
+    const watchlistResult = await query(`
+      SELECT 
+        ticker,
+        added_at
+      FROM watchlist
+      ORDER BY added_at DESC
+      LIMIT 50
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        users: usersResult.rows,
+        playbookActivity: playbookActivityResult.rows,
+        affiliateClicks: affiliateResult.rows,
+        watchlistActivity: watchlistResult.rows
+      }
+    });
+  } catch (e: any) {
+    console.error('Activity error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 export default router;
