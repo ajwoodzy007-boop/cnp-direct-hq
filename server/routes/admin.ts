@@ -522,16 +522,22 @@ router.get('/business-metrics', requireAdmin, async (req, res) => {
     // Conversion rate
     const conversionRate = totalUsers > 0 ? ((activeSubscribers / totalUsers) * 100).toFixed(1) : '0.0';
 
-    // Get subscription trends (last 30 days of user signups)
-    const signupTrendResult = await query(`
-      SELECT 
-        DATE(created_at) as date,
-        COUNT(*) as signups
-      FROM users
-      WHERE created_at >= NOW() - INTERVAL '30 days'
-      GROUP BY DATE(created_at)
-      ORDER BY date DESC
-    `);
+    // Get subscription trends - simplified since users table may not have created_at
+    let signupTrendResult = { rows: [] as { date: string; signups: number }[] };
+    try {
+      signupTrendResult = await query(`
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as signups
+        FROM users
+        WHERE created_at >= NOW() - INTERVAL '30 days'
+        GROUP BY DATE(created_at)
+        ORDER BY date DESC
+      `);
+    } catch (e) {
+      // created_at column may not exist, return empty trend
+      signupTrendResult = { rows: [] };
+    }
 
     // AI Playbook usage (as engagement metric)
     const playbookUsageResult = await query(`
