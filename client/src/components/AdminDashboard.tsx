@@ -1,5 +1,82 @@
 import { useState, useEffect } from 'react';
-import { ShieldCheckIcon, UsersIcon, ArrowTrendingUpIcon, TrophyIcon, ArrowLeftIcon, SparklesIcon, ArrowPathIcon, TicketIcon, ClipboardIcon, TrashIcon, PlusIcon, BoltIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, UsersIcon, ArrowTrendingUpIcon, TrophyIcon, ArrowLeftIcon, SparklesIcon, ArrowPathIcon, TicketIcon, ClipboardIcon, TrashIcon, PlusIcon, BoltIcon, TableCellsIcon, ChartBarIcon, CurrencyDollarIcon, ClockIcon } from '@heroicons/react/24/outline';
+
+type AdminTab = 'overview' | 'winrates' | 'portfolios' | 'activity';
+
+interface WinRateEntry {
+  id: string;
+  ticker: string;
+  confidence: number;
+  entry_price: number;
+  open_price: number;
+  predicted_price: number;
+  close_price: number;
+  close_pnl: number;
+  outcome: string;
+  run_date: string;
+  asset_type: string;
+}
+
+interface WinRateByDate {
+  run_date: string;
+  total: number;
+  wins: number;
+  losses: number;
+  avg_pnl: number;
+  winRate: string;
+}
+
+interface WinRateByTicker {
+  ticker: string;
+  total: number;
+  wins: number;
+  losses: number;
+  avg_pnl: number;
+  avg_confidence: number;
+  winRate: string;
+}
+
+interface PortfolioPosition {
+  id: string;
+  user_id: string;
+  user_email: string;
+  ticker: string;
+  shares: number;
+  average_cost: number;
+  current_price: number;
+  added_at: string;
+  total_cost: number;
+  current_value: number;
+}
+
+interface PortfolioSummary {
+  user_id: string;
+  email: string;
+  positions: number;
+  total_invested: number;
+  current_value: number;
+  pnl: string;
+  pnlPercent: string;
+}
+
+interface PlaybookActivity {
+  user_id: string;
+  email: string;
+  playbook_type: string;
+  status: string;
+  generated_at: string;
+}
+
+interface AffiliateClick {
+  ticker: string;
+  destination: string;
+  clicked_at: string;
+}
+
+interface WatchlistActivity {
+  ticker: string;
+  added_at: string;
+}
 
 interface AdminStats {
   users: {
@@ -40,6 +117,7 @@ interface Diagnostics {
 }
 
 export default function AdminDashboard({ onBack }: { onBack: () => void }) {
+  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +132,20 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [finalizingCrypto, setFinalizingCrypto] = useState(false);
   const [finalizingAll, setFinalizingAll] = useState(false);
   const [finalizeResult, setFinalizeResult] = useState<string | null>(null);
+  
+  // Spreadsheet data
+  const [winRateEntries, setWinRateEntries] = useState<WinRateEntry[]>([]);
+  const [winRateByDate, setWinRateByDate] = useState<WinRateByDate[]>([]);
+  const [winRateByTicker, setWinRateByTicker] = useState<WinRateByTicker[]>([]);
+  const [portfolioPositions, setPortfolioPositions] = useState<PortfolioPosition[]>([]);
+  const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary[]>([]);
+  const [playbookActivity, setPlaybookActivity] = useState<PlaybookActivity[]>([]);
+  const [affiliateClicks, setAffiliateClicks] = useState<AffiliateClick[]>([]);
+  const [watchlistActivity, setWatchlistActivity] = useState<WatchlistActivity[]>([]);
+  const [loadingWinRates, setLoadingWinRates] = useState(false);
+  const [loadingPortfolios, setLoadingPortfolios] = useState(false);
+  const [loadingActivity, setLoadingActivity] = useState(false);
+  const [winRateView, setWinRateView] = useState<'byDate' | 'byTicker' | 'entries'>('byDate');
 
   const fetchStats = async () => {
     setLoading(true);
@@ -95,6 +187,56 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       if (json.success) setDiagnostics(json.diagnostics);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const fetchWinRates = async () => {
+    setLoadingWinRates(true);
+    try {
+      const res = await fetch('/api/admin/win-rates');
+      const json = await res.json();
+      if (json.success) {
+        setWinRateEntries(json.data.entries || []);
+        setWinRateByDate(json.data.byDate || []);
+        setWinRateByTicker(json.data.byTicker || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingWinRates(false);
+    }
+  };
+
+  const fetchPortfolios = async () => {
+    setLoadingPortfolios(true);
+    try {
+      const res = await fetch('/api/admin/portfolios');
+      const json = await res.json();
+      if (json.success) {
+        setPortfolioPositions(json.data.positions || []);
+        setPortfolioSummary(json.data.userSummary || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingPortfolios(false);
+    }
+  };
+
+  const fetchActivity = async () => {
+    setLoadingActivity(true);
+    try {
+      const res = await fetch('/api/admin/activity');
+      const json = await res.json();
+      if (json.success) {
+        setPlaybookActivity(json.data.playbookActivity || []);
+        setAffiliateClicks(json.data.affiliateClicks || []);
+        setWatchlistActivity(json.data.watchlistActivity || []);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingActivity(false);
     }
   };
 
@@ -174,6 +316,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     fetchBetaPasses();
   }, []);
 
+  useEffect(() => {
+    if (activeTab === 'winrates' && winRateByDate.length === 0) {
+      fetchWinRates();
+    } else if (activeTab === 'portfolios' && portfolioSummary.length === 0) {
+      fetchPortfolios();
+    } else if (activeTab === 'activity' && playbookActivity.length === 0) {
+      fetchActivity();
+    }
+  }, [activeTab]);
+
   const handleToggleTier = async (userId: string, currentTier: string) => {
     const newTier = currentTier === 'PREMIUM' ? 'FREE' : 'PREMIUM';
     setUpdating(userId);
@@ -239,6 +391,60 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           </button>
         </div>
 
+        {/* Tab Navigation */}
+        <div className="flex gap-2 border-b border-slate-800 pb-2">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2 rounded-t-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+              activeTab === 'overview' 
+                ? 'bg-slate-800 text-cyan-400 border-b-2 border-cyan-400' 
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+            data-testid="tab-overview"
+          >
+            <ShieldCheckIcon className="h-4 w-4" />
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('winrates')}
+            className={`px-4 py-2 rounded-t-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+              activeTab === 'winrates' 
+                ? 'bg-slate-800 text-green-400 border-b-2 border-green-400' 
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+            data-testid="tab-winrates"
+          >
+            <ChartBarIcon className="h-4 w-4" />
+            Win Rates
+          </button>
+          <button
+            onClick={() => setActiveTab('portfolios')}
+            className={`px-4 py-2 rounded-t-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+              activeTab === 'portfolios' 
+                ? 'bg-slate-800 text-amber-400 border-b-2 border-amber-400' 
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+            data-testid="tab-portfolios"
+          >
+            <CurrencyDollarIcon className="h-4 w-4" />
+            User Portfolios
+          </button>
+          <button
+            onClick={() => setActiveTab('activity')}
+            className={`px-4 py-2 rounded-t-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+              activeTab === 'activity' 
+                ? 'bg-slate-800 text-purple-400 border-b-2 border-purple-400' 
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+            data-testid="tab-activity"
+          >
+            <ClockIcon className="h-4 w-4" />
+            User Activity
+          </button>
+        </div>
+
+        {activeTab === 'overview' && (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex items-center gap-3 mb-2">
@@ -531,6 +737,391 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             </div>
           )}
         </div>
+        </>
+        )}
+
+        {/* WIN RATES TAB */}
+        {activeTab === 'winrates' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setWinRateView('byDate')}
+                  className={`px-3 py-1.5 rounded text-sm ${winRateView === 'byDate' ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-slate-800 text-slate-400'}`}
+                  data-testid="btn-winrate-bydate"
+                >
+                  By Date
+                </button>
+                <button
+                  onClick={() => setWinRateView('byTicker')}
+                  className={`px-3 py-1.5 rounded text-sm ${winRateView === 'byTicker' ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-slate-800 text-slate-400'}`}
+                  data-testid="btn-winrate-byticker"
+                >
+                  By Ticker
+                </button>
+                <button
+                  onClick={() => setWinRateView('entries')}
+                  className={`px-3 py-1.5 rounded text-sm ${winRateView === 'entries' ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-slate-800 text-slate-400'}`}
+                  data-testid="btn-winrate-entries"
+                >
+                  All Entries
+                </button>
+              </div>
+              <button
+                onClick={fetchWinRates}
+                disabled={loadingWinRates}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-green-400 rounded text-sm flex items-center gap-2"
+                data-testid="btn-refresh-winrates"
+              >
+                <ArrowPathIcon className={`h-4 w-4 ${loadingWinRates ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            {loadingWinRates ? (
+              <div className="text-center py-12 text-green-400 animate-pulse">Loading win rate data...</div>
+            ) : (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                  <table className="w-full">
+                    <thead className="sticky top-0 bg-slate-900">
+                      {winRateView === 'byDate' && (
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Date</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Total</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Wins</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Losses</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Win Rate</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Avg P&L</th>
+                        </tr>
+                      )}
+                      {winRateView === 'byTicker' && (
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Ticker</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Total</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Wins</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Losses</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Win Rate</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Avg Conf</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Avg P&L</th>
+                        </tr>
+                      )}
+                      {winRateView === 'entries' && (
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Date</th>
+                          <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Ticker</th>
+                          <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Type</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Conf</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Entry</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Target</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Close</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">P&L</th>
+                          <th className="text-center py-3 px-4 text-slate-400 text-sm font-medium">Outcome</th>
+                        </tr>
+                      )}
+                    </thead>
+                    <tbody>
+                      {winRateView === 'byDate' && winRateByDate.map((row, idx) => (
+                        <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                          <td className="py-3 px-4 text-white text-sm font-mono">{row.run_date}</td>
+                          <td className="py-3 px-4 text-right text-white text-sm">{row.total}</td>
+                          <td className="py-3 px-4 text-right text-green-400 text-sm">{row.wins}</td>
+                          <td className="py-3 px-4 text-right text-red-400 text-sm">{row.losses}</td>
+                          <td className="py-3 px-4 text-right text-sm">
+                            <span className={`font-bold ${parseFloat(row.winRate) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                              {row.winRate}%
+                            </span>
+                          </td>
+                          <td className={`py-3 px-4 text-right text-sm ${row.avg_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {row.avg_pnl?.toFixed(2) || '0.00'}%
+                          </td>
+                        </tr>
+                      ))}
+                      {winRateView === 'byTicker' && winRateByTicker.map((row, idx) => (
+                        <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                          <td className="py-3 px-4 text-cyan-400 text-sm font-bold">{row.ticker}</td>
+                          <td className="py-3 px-4 text-right text-white text-sm">{row.total}</td>
+                          <td className="py-3 px-4 text-right text-green-400 text-sm">{row.wins}</td>
+                          <td className="py-3 px-4 text-right text-red-400 text-sm">{row.losses}</td>
+                          <td className="py-3 px-4 text-right text-sm">
+                            <span className={`font-bold ${parseFloat(row.winRate) >= 50 ? 'text-green-400' : 'text-red-400'}`}>
+                              {row.winRate}%
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-300 text-sm">{row.avg_confidence?.toFixed(0) || '-'}%</td>
+                          <td className={`py-3 px-4 text-right text-sm ${row.avg_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {row.avg_pnl?.toFixed(2) || '0.00'}%
+                          </td>
+                        </tr>
+                      ))}
+                      {winRateView === 'entries' && winRateEntries.map((row, idx) => (
+                        <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                          <td className="py-3 px-4 text-slate-400 text-sm font-mono">{row.run_date}</td>
+                          <td className="py-3 px-4 text-cyan-400 text-sm font-bold">{row.ticker}</td>
+                          <td className="py-3 px-4 text-sm">
+                            <span className={`px-2 py-0.5 rounded text-xs ${row.asset_type === 'crypto' ? 'bg-orange-500/20 text-orange-400' : 'bg-cyan-500/20 text-cyan-400'}`}>
+                              {row.asset_type}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right text-slate-300 text-sm">{row.confidence?.toFixed(0)}%</td>
+                          <td className="py-3 px-4 text-right text-white text-sm">${row.entry_price?.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-right text-slate-400 text-sm">${row.predicted_price?.toFixed(2) || '-'}</td>
+                          <td className="py-3 px-4 text-right text-white text-sm">${row.close_price?.toFixed(2) || '-'}</td>
+                          <td className={`py-3 px-4 text-right text-sm font-bold ${row.close_pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {row.close_pnl?.toFixed(2) || '0.00'}%
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${
+                              row.outcome?.toLowerCase() === 'win' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                            }`}>
+                              {row.outcome?.toUpperCase()}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {((winRateView === 'byDate' && winRateByDate.length === 0) ||
+                    (winRateView === 'byTicker' && winRateByTicker.length === 0) ||
+                    (winRateView === 'entries' && winRateEntries.length === 0)) && (
+                    <div className="text-center py-12 text-slate-500">No win rate data available</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* PORTFOLIOS TAB */}
+        {activeTab === 'portfolios' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <CurrencyDollarIcon className="h-5 w-5 text-amber-400" />
+                User Vault Portfolios
+              </h3>
+              <button
+                onClick={fetchPortfolios}
+                disabled={loadingPortfolios}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 rounded text-sm flex items-center gap-2"
+                data-testid="btn-refresh-portfolios"
+              >
+                <ArrowPathIcon className={`h-4 w-4 ${loadingPortfolios ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            {loadingPortfolios ? (
+              <div className="text-center py-12 text-amber-400 animate-pulse">Loading portfolio data...</div>
+            ) : (
+              <>
+                {/* User Summary */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <h4 className="text-md font-semibold text-white mb-4">Portfolio Summary by User</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">User</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Positions</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Total Invested</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Current Value</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">P&L</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">P&L %</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {portfolioSummary.map((row, idx) => (
+                          <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                            <td className="py-3 px-4 text-white text-sm">{row.email}</td>
+                            <td className="py-3 px-4 text-right text-slate-300 text-sm">{row.positions}</td>
+                            <td className="py-3 px-4 text-right text-white text-sm">${row.total_invested?.toLocaleString() || '0'}</td>
+                            <td className="py-3 px-4 text-right text-white text-sm">${row.current_value?.toLocaleString() || '0'}</td>
+                            <td className={`py-3 px-4 text-right text-sm font-bold ${parseFloat(row.pnl) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              ${row.pnl}
+                            </td>
+                            <td className={`py-3 px-4 text-right text-sm font-bold ${parseFloat(row.pnlPercent) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {row.pnlPercent}%
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {portfolioSummary.length === 0 && (
+                      <div className="text-center py-8 text-slate-500">No user portfolios found</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* All Positions */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <h4 className="text-md font-semibold text-white mb-4">All Portfolio Positions</h4>
+                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-slate-900">
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">User</th>
+                          <th className="text-left py-3 px-4 text-slate-400 text-sm font-medium">Ticker</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Shares</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Avg Cost</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Current</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Total Cost</th>
+                          <th className="text-right py-3 px-4 text-slate-400 text-sm font-medium">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {portfolioPositions.map((row, idx) => (
+                          <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                            <td className="py-3 px-4 text-white text-sm">{row.user_email || '-'}</td>
+                            <td className="py-3 px-4 text-cyan-400 text-sm font-bold">{row.ticker}</td>
+                            <td className="py-3 px-4 text-right text-slate-300 text-sm">{row.shares?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right text-white text-sm">${row.average_cost?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right text-white text-sm">${row.current_price?.toFixed(2) || '-'}</td>
+                            <td className="py-3 px-4 text-right text-slate-400 text-sm">${row.total_cost?.toFixed(2)}</td>
+                            <td className="py-3 px-4 text-right text-amber-400 text-sm font-bold">${row.current_value?.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {portfolioPositions.length === 0 && (
+                      <div className="text-center py-8 text-slate-500">No positions found</div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ACTIVITY TAB */}
+        {activeTab === 'activity' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <ClockIcon className="h-5 w-5 text-purple-400" />
+                User Activity Tracking
+              </h3>
+              <button
+                onClick={fetchActivity}
+                disabled={loadingActivity}
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-purple-400 rounded text-sm flex items-center gap-2"
+                data-testid="btn-refresh-activity"
+              >
+                <ArrowPathIcon className={`h-4 w-4 ${loadingActivity ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
+
+            {loadingActivity ? (
+              <div className="text-center py-12 text-purple-400 animate-pulse">Loading activity data...</div>
+            ) : (
+              <>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* AI Playbook Usage */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <h4 className="text-md font-semibold text-white mb-4 flex items-center gap-2">
+                    <SparklesIcon className="h-4 w-4 text-purple-400" />
+                    AI Playbook Usage (Recent 100)
+                  </h4>
+                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-slate-900">
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">User</th>
+                          <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Feature</th>
+                          <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Status</th>
+                          <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {playbookActivity.map((row, idx) => (
+                          <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                            <td className="py-2 px-3 text-white text-xs">{row.email || 'Demo'}</td>
+                            <td className="py-2 px-3 text-purple-400 text-xs font-medium">{row.playbook_type}</td>
+                            <td className="py-2 px-3">
+                              <span className={`px-1.5 py-0.5 rounded text-xs ${
+                                row.status === 'completed' ? 'bg-green-500/20 text-green-400' : 
+                                row.status === 'failed' ? 'bg-red-500/20 text-red-400' : 
+                                'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {row.status}
+                              </span>
+                            </td>
+                            <td className="py-2 px-3 text-slate-400 text-xs">{new Date(row.generated_at).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {playbookActivity.length === 0 && (
+                      <div className="text-center py-8 text-slate-500">No playbook activity found</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Affiliate Clicks */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <h4 className="text-md font-semibold text-white mb-4 flex items-center gap-2">
+                    <ArrowTrendingUpIcon className="h-4 w-4 text-cyan-400" />
+                    Affiliate Clicks (Recent 100)
+                  </h4>
+                  <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-slate-900">
+                        <tr className="border-b border-slate-800">
+                          <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Ticker</th>
+                          <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Destination</th>
+                          <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Time</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {affiliateClicks.map((row, idx) => (
+                          <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                            <td className="py-2 px-3 text-cyan-400 text-xs font-bold">{row.ticker}</td>
+                            <td className="py-2 px-3 text-white text-xs">{row.destination}</td>
+                            <td className="py-2 px-3 text-slate-400 text-xs">{new Date(row.clicked_at).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {affiliateClicks.length === 0 && (
+                      <div className="text-center py-8 text-slate-500">No affiliate clicks found</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Watchlist Activity */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mt-6">
+                <h4 className="text-md font-semibold text-white mb-4 flex items-center gap-2">
+                  <TableCellsIcon className="h-4 w-4 text-amber-400" />
+                  Watchlist Additions (Recent 100)
+                </h4>
+                <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
+                  <table className="w-full" data-testid="table-watchlist-activity">
+                    <thead className="sticky top-0 bg-slate-900">
+                      <tr className="border-b border-slate-800">
+                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Ticker</th>
+                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Added At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {watchlistActivity.map((row, idx) => (
+                        <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30" data-testid={`row-watchlist-${idx}`}>
+                          <td className="py-2 px-3 text-amber-400 text-xs font-bold">{row.ticker}</td>
+                          <td className="py-2 px-3 text-slate-400 text-xs">{new Date(row.added_at).toLocaleString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {watchlistActivity.length === 0 && (
+                    <div className="text-center py-8 text-slate-500">No watchlist activity found</div>
+                  )}
+                </div>
+              </div>
+              </>
+            )}
+          </div>
+        )}
 
       </div>
     </div>
