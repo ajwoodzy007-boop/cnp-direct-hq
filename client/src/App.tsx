@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SettingsProvider } from "@/contexts/SettingsContext";
-import { AuthProvider } from "@/hooks/use-auth";
-
 import AppLayout from './components/AppLayout';
 import AuthPage from './components/AuthPage';
 import AuthLock from './components/AuthLock';
@@ -28,7 +26,7 @@ import AiAssistant from './components/AiAssistant';
 import AdminDashboard from './components/AdminDashboard';
 
 function MainDashboard() {
-  const [location, setLocation] = useLocation();
+  const [currentTab, setTab] = useState('summary');
   const [user, setUser] = useState<{ email: string; tier: string } | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -60,37 +58,27 @@ function MainDashboard() {
   const handleLogout = () => {
     fetch('/api/auth/logout', { method: 'POST' }).then(() => {
       setUser(null);
-      setLocation('/'); 
+      setTab('summary');
     });
   };
 
   const renderContent = () => {
-    switch (location) {
-      case '/': 
-        return <TheSummary onNavigate={(path: string) => setLocation(path === 'summary' ? '/' : path)} />;
-
-      case '/radar':
-        return <MarketRadar />;
-
-      case '/academy': 
-        return <TheAcademy />;
-
-      case '/oracle': 
+    switch (currentTab) {
+      case 'summary': return <TheSummary onNavigate={setTab} />;
+      case 'radar': return <MarketRadar />;
+      case 'academy': return <TheAcademy />;
+      case 'oracle': 
         if (!user) return <AuthLock featureName="The Oracle" description="identifies high-conviction daily setups using AI sentiment analysis. Create a free account to see today's top 3 buy signals." onLoginClick={() => setShowAuthModal(true)} />;
         if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Oracle" />;
         return <TheOracle />;
-
-      case '/strategist': 
+      case 'strategist': 
         if (!user) return <AuthLock featureName="The Strategist" description="calculates the perfect Option Greeks and strike prices for any stock. Log in to generate institutional-grade trade plans instantly." onLoginClick={() => setShowAuthModal(true)} />;
         if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Strategist" />;
         return <TheStrategist />;
-
-      case '/history': 
+      case 'vault': 
         if (!user) return <AuthLock featureName="The Vault" description="is your secure trading journal. You must be logged in to save your trade history, track your P&L, and analyze your win rate." onLoginClick={() => setShowAuthModal(true)} />;
         return <TheVault />;
-
-      default: 
-        return <TheSummary onNavigate={(path: string) => setLocation(path === 'summary' ? '/' : path)} />;
+      default: return <TheSummary onNavigate={setTab} />;
     }
   };
 
@@ -108,7 +96,15 @@ function MainDashboard() {
     return (
       <div className="relative">
         <div className="absolute inset-0 filter blur-sm h-screen overflow-hidden">
-           <AppLayout>
+           <AppLayout 
+             currentTab={currentTab} 
+             setTab={() => {}} 
+             user={user} 
+             onLoginClick={() => {}} 
+             onLogoutClick={() => {}}
+             onLegalClick={() => {}}
+             onAboutClick={() => {}}
+           >
              {renderContent()}
            </AppLayout>
         </div>
@@ -128,10 +124,18 @@ function MainDashboard() {
 
   return (
     <>
-      <AppLayout>
+      <AppLayout 
+        currentTab={currentTab} 
+        setTab={setTab} 
+        user={user}
+        onLoginClick={() => setShowAuthModal(true)}
+        onLogoutClick={() => setShowSettings(true)}
+        onLegalClick={(page) => setLegalPage(page)}
+        onAboutClick={() => setShowAbout(true)}
+      >
         {renderContent()}
       </AppLayout>
-
+      
       {showSettings && user && (
         <SettingsModal 
           user={user} 
@@ -156,29 +160,20 @@ function MainDashboard() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <SettingsProvider>
-          <TooltipProvider>
-            <Toaster />
-            <SonnerToaster position="top-right" richColors />
-            <Switch>
-              <Route path="/pricing" component={Pricing} />
-              <Route path="/checkout/success" component={CheckoutSuccess} />
-              <Route path="/checkout/cancel" component={CheckoutCancel} />
-
-              <Route path="/radar" component={MainDashboard} />
-              <Route path="/oracle" component={MainDashboard} />
-              <Route path="/strategist" component={MainDashboard} />
-              <Route path="/academy" component={MainDashboard} />
-              <Route path="/history" component={MainDashboard} />
-
-              <Route path="/" component={MainDashboard} />
-              <Route component={MainDashboard} />
-            </Switch>
-            <AiAssistant />
-          </TooltipProvider>
-        </SettingsProvider>
-      </AuthProvider>
+      <SettingsProvider>
+        <TooltipProvider>
+          <Toaster />
+          <SonnerToaster position="top-right" richColors />
+          <Switch>
+            <Route path="/" component={MainDashboard} />
+            <Route path="/pricing" component={Pricing} />
+            <Route path="/checkout/success" component={CheckoutSuccess} />
+            <Route path="/checkout/cancel" component={CheckoutCancel} />
+            <Route component={MainDashboard} />
+          </Switch>
+          <AiAssistant />
+        </TooltipProvider>
+      </SettingsProvider>
     </QueryClientProvider>
   );
 }
