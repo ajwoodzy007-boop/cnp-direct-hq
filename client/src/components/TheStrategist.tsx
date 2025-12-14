@@ -461,13 +461,14 @@ export default function TheStrategist() {
       {mode === 'PLAYBOOK' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-4 space-y-6">
-            <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-                <ViewfinderCircleIcon className="h-4 w-4 text-purple-400" /> Mission Parameters
+            <div className="bg-slate-900 border border-purple-500/30 p-6 rounded-xl">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-1 flex items-center gap-2">
+                <BoltIcon className="h-4 w-4 text-purple-400" /> Strike Zone Parameters
               </h3>
+              <p className="text-xs text-purple-400/70 mb-4">Options Trading Analysis • Calls & Puts</p>
               <form onSubmit={handleGenerate} className="space-y-4">
                 <div>
-                  <label className="text-xs text-slate-500 font-bold uppercase">Target Asset</label>
+                  <label className="text-xs text-slate-500 font-bold uppercase">Underlying Asset</label>
                   <div className="relative">
                     <MagnifyingGlassIcon className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
                     <input 
