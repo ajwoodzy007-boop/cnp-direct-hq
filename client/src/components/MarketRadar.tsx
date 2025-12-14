@@ -93,7 +93,7 @@ export default function MarketRadar() {
     setLoadingFull(true);
     try {
       const res = await fetch('/api/academy/full-report');
-      if (res.status === 403) {
+      if (res.status === 401 || res.status === 403) {
         setShowPremiumModal(true);
         setLoadingFull(false);
         return;
