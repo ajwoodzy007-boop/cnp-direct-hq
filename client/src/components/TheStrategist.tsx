@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CpuChipIcon, MagnifyingGlassIcon, BoltIcon, ShieldCheckIcon, ArrowTrendingUpIcon, ExclamationTriangleIcon, ViewfinderCircleIcon, CurrencyDollarIcon, FireIcon, ChevronRightIcon, ArrowTrendingDownIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import HelpTip from '../../components/HelpTip';
 
 export default function TheStrategist() {
   const [mode, setMode] = useState<'ANALYZE' | 'PLAYBOOK' | 'CRYPTO' | 'EARNINGS'>('ANALYZE');
@@ -465,7 +466,7 @@ export default function TheStrategist() {
               <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-1 flex items-center gap-2">
                 <BoltIcon className="h-4 w-4 text-purple-400" /> Strike Zone Parameters
               </h3>
-              <p className="text-xs text-purple-400/70 mb-4">Options Trading Analysis • Calls & Puts</p>
+              <p className="text-xs text-purple-400/70 mb-4">Options Trading Analysis • Calls & Puts <HelpTip content="AI-powered options strategy generator. Analyzes volatility, price targets, and Greeks to recommend optimal call/put strategies for your capital and risk tolerance." /></p>
               <form onSubmit={handleGenerate} className="space-y-4">
                 <div>
                   <label className="text-xs text-slate-500 font-bold uppercase">Underlying Asset</label>
@@ -536,7 +537,7 @@ export default function TheStrategist() {
                       <p className="text-purple-300 text-sm mt-1">{playbook.thesis}</p>
                     </div>
                     <div className="bg-slate-950 border border-slate-800 px-4 py-2 rounded-lg text-center">
-                      <div className="text-[10px] text-slate-500 uppercase font-bold">Risk Score</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center justify-center">Risk Score <HelpTip content="AI assessment of trade risk on a 1-10 scale. Lower scores indicate safer trades with higher probability of success. Scores above 7 require careful position sizing." /></div>
                       <div className={`text-xl font-bold ${playbook.riskScore > 7 ? 'text-red-500' : 'text-green-500'}`} data-testid="text-risk-score">{playbook.riskScore}/10</div>
                     </div>
                   </div>
@@ -689,7 +690,7 @@ export default function TheStrategist() {
                       <p className="text-orange-300 text-sm mt-1">{cryptoPlaybook.thesis}</p>
                     </div>
                     <div className="bg-slate-950 border border-slate-800 px-4 py-2 rounded-lg text-center">
-                      <div className="text-[10px] text-slate-500 uppercase font-bold">Risk Score</div>
+                      <div className="text-[10px] text-slate-500 uppercase font-bold flex items-center justify-center">Risk Score <HelpTip content="AI assessment of trade risk on a 1-10 scale. Lower scores indicate safer trades with higher probability of success. Scores above 7 require careful position sizing." /></div>
                       <div className={`text-xl font-bold ${cryptoPlaybook.riskScore > 7 ? 'text-red-500' : 'text-green-500'}`} data-testid="text-crypto-risk">{cryptoPlaybook.riskScore}/10</div>
                     </div>
                   </div>

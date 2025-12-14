@@ -4,6 +4,7 @@ import StockChart from './StockChart';
 import Skeleton from './Skeleton';
 import FullReportModal from './FullReportModal';
 import { useBackToClose } from '../../hooks/useBackToClose';
+import HelpTip from '../../components/HelpTip';
 
 interface SentinelData {
   ticker: string;
@@ -306,11 +307,11 @@ export default function MarketRadar() {
               <div className="flex items-center gap-4 md:gap-6 shrink-0">
                 <div className="hidden md:flex gap-6">
                   <div className="text-center">
-                    <div className="text-xs text-slate-500 uppercase flex items-center gap-1"><SignalIcon className="h-3 w-3" /> RSI</div>
+                    <div className="text-xs text-slate-500 uppercase flex items-center gap-1"><SignalIcon className="h-3 w-3" /> RSI <HelpTip content="Relative Strength Index measures momentum. Below 30 = Oversold (potential buy). Above 70 = Overbought (potential sell). Why It Matters: RSI helps identify when assets may be due for a reversal." /></div>
                     <div className={`font-mono font-bold ${item.rsi > 70 ? 'text-red-400' : item.rsi < 30 ? 'text-green-400' : 'text-slate-300'}`}>{item.rsi}</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-xs text-slate-500 uppercase flex items-center gap-1"><ChartBarIcon className="h-3 w-3" /> RVOL</div>
+                    <div className="text-xs text-slate-500 uppercase flex items-center gap-1"><ChartBarIcon className="h-3 w-3" /> RVOL <HelpTip content="Relative Volume compared to 30-day average. Values above 1.5x indicate unusual trading interest. Why It Matters: High volume confirms conviction behind price moves." /></div>
                     <div className={`font-mono font-bold ${item.rvol > 2 ? 'text-cyan-400' : 'text-slate-300'}`}>{item.rvol}x</div>
                   </div>
                   {activeTab === 'crypto' && item.marketCap && (
