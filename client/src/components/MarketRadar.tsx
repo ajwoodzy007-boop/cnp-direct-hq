@@ -34,6 +34,7 @@ export default function MarketRadar() {
   const [loadingFull, setLoadingFull] = useState(false);
   const [showFullModal, setShowFullModal] = useState(false);
   const [showBriefingModal, setShowBriefingModal] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const fetchStockScan = async () => {
     setLoading(true);
@@ -93,7 +94,7 @@ export default function MarketRadar() {
     try {
       const res = await fetch('/api/academy/full-report');
       if (res.status === 403) {
-        alert("This report is classified. Upgrade to Premium to access the full intelligence briefing.");
+        setShowPremiumModal(true);
         setLoadingFull(false);
         return;
       }
@@ -441,6 +442,43 @@ export default function MarketRadar() {
 
       {showFullModal && fullReport && (
         <FullReportModal data={fullReport} onClose={() => setShowFullModal(false)} />
+      )}
+
+      {showPremiumModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-amber-500/30 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-slate-800 bg-gradient-to-r from-amber-500/10 to-orange-500/10">
+              <div className="flex items-center justify-center gap-3">
+                <span className="text-4xl">🔒</span>
+                <h3 className="text-xl font-bold text-white">Premium Feature</h3>
+              </div>
+            </div>
+            <div className="p-6 text-center space-y-4">
+              <p className="text-slate-300">
+                The Full Intelligence Report is an exclusive Premium feature.
+              </p>
+              <p className="text-slate-400 text-sm">
+                Upgrade to Premium to unlock detailed market analysis, advanced AI insights, and comprehensive trading strategies.
+              </p>
+              <div className="pt-4 space-y-3">
+                <a
+                  href="/pricing"
+                  className="block w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold rounded-lg transition-all"
+                  data-testid="link-upgrade-premium"
+                >
+                  Upgrade to Premium
+                </a>
+                <button
+                  onClick={() => setShowPremiumModal(false)}
+                  className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg transition-colors"
+                  data-testid="button-close-premium-modal"
+                >
+                  Maybe Later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
