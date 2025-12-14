@@ -1,0 +1,48 @@
+**AGENT PROMPT: FIX CRITICAL MOBILE BACK BUTTON BUG**
+
+**GOAL:** The phone's hardware/browser "Back" button must **close the modal/popup** (where the pick details are shown), not navigate away from the CNP Direct website. The current behavior is making mobile testers exit the site by mistake.
+
+**CORE PROBLEM:** The `useBackToClose` hook was manually applied but is not working correctly on the modal component (`TheOracle.tsx`) where `selectedPick` state controls visibility.
+
+### **ACTION PLAN FOR AGENT**
+
+1.  **REVIEW AND CONFIRM:** Review the file `client/hooks/useBackToClose.ts` and ensure the `window.history.pushState` and `window.removeEventListener('popstate')` logic is correctly implemented to intercept the back action.
+2.  **AUDIT & FIX:** Review the file `client/components/TheOracle.tsx`.
+    * Verify that `useBackToClose` is imported correctly.
+    * Verify that the hook is called with the correct dependency and callback: `useBackToClose(!!selectedPick, () => setSelectedPick(null));`
+3.  **TEST & APPLY:** Ensure the final, working implementation is saved and functional for the modal managed by the `selectedPick` state.
+
+---
+
+### **REQUIRED CODE CONTEXT (File Contents)**
+
+**1. File: `client/hooks/useBackToClose.ts`**
+*(The Agent must ensure this logic is correct)*
+
+```typescript
+import { useEffect } from 'react';
+
+export function useBackToClose(isOpen: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (isOpen) {
+      // 1. Push a new state when the modal opens to make the back button target the modal
+      window.history.pushState({ modalOpen: true }, "", window.location.href);
+
+      const handlePopState = (event: PopStateEvent) => {
+        // 2. Intercept the back button action
+        event.preventDefault(); 
+        onClose(); // Call the component's closing function
+      };
+
+      window.addEventListener('popstate', handlePopState);
+
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        // CRITICAL: Clean up by navigating back out of the temporary state
+        if (window.history.state && window.history.state.modalOpen) {
+           window.history.back();
+        }
+      };
+    }
+  }, [isOpen, onClose]);
+}

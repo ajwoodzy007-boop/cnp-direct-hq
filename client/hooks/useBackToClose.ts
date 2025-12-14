@@ -1,20 +1,37 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 export function useBackToClose(isOpen: boolean, onClose: () => void) {
+  const hasAddedHistoryRef = useRef(false);
+  
+  const stableOnClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (isOpen) {
+      if (!hasAddedHistoryRef.current) {
+        window.history.pushState({ modalOpen: true }, '', window.location.href);
+        hasAddedHistoryRef.current = true;
+      }
 
-    window.history.pushState({ modal: true }, '');
+      const handlePopState = (event: PopStateEvent) => {
+        if (hasAddedHistoryRef.current) {
+          hasAddedHistoryRef.current = false;
+          stableOnClose();
+        }
+      };
 
-    const handlePopState = (event: PopStateEvent) => {
-      event.preventDefault();
-      onClose();
-    };
+      window.addEventListener('popstate', handlePopState);
 
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [isOpen, onClose]);
+      return () => {
+        window.removeEventListener('popstate', handlePopState);
+        if (hasAddedHistoryRef.current) {
+          hasAddedHistoryRef.current = false;
+          window.history.back();
+        }
+      };
+    } else {
+      hasAddedHistoryRef.current = false;
+    }
+  }, [isOpen, stableOnClose]);
 }
