@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Squares2X2Icon, PlusIcon, SignalIcon, ChartPieIcon, ArrowTrendingUpIcon, ClockIcon, ExclamationCircleIcon, PencilIcon, TrashIcon, XMarkIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import Skeleton from './Skeleton';
+import { useBackToClose } from '../../hooks/useBackToClose';
 
 export default function TheVault() {
   const [positions, setPositions] = useState<any[]>([]);
@@ -16,6 +17,8 @@ export default function TheVault() {
   const [newShares, setNewShares] = useState('1');
   const [newStrike, setNewStrike] = useState('');
   const [newExpiry, setNewExpiry] = useState('');
+
+  useBackToClose(showModal, () => setShowModal(false));
 
   const fetchPortfolio = async () => {
     try {

@@ -3,6 +3,7 @@ import { ShieldExclamationIcon, ArrowPathIcon, ChevronDownIcon, ChevronUpIcon, S
 import StockChart from './StockChart';
 import Skeleton from './Skeleton';
 import FullReportModal from './FullReportModal';
+import { useBackToClose } from '../../hooks/useBackToClose';
 
 interface SentinelData {
   ticker: string;
@@ -35,6 +36,10 @@ export default function MarketRadar() {
   const [showFullModal, setShowFullModal] = useState(false);
   const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+
+  useBackToClose(showFullModal, () => setShowFullModal(false));
+  useBackToClose(showBriefingModal, () => setShowBriefingModal(false));
+  useBackToClose(showPremiumModal, () => setShowPremiumModal(false));
 
   const fetchStockScan = async () => {
     setLoading(true);

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon, ArrowPathIcon, CpuChipIcon } from '@heroicons/react/24/outline';
+import { useBackToClose } from '../../hooks/useBackToClose';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -15,6 +16,8 @@ export default function AiAssistant() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useBackToClose(isOpen, () => setIsOpen(false));
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
