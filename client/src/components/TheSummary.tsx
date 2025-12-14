@@ -280,38 +280,6 @@ export default function TheSummary({ onNavigate, user }: Props) {
           </div>
         </div>
       </div>
-
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700 rounded-xl p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-1">Quick Actions</h3>
-            <p className="text-sm text-slate-400">Jump to your most used features</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap gap-3 mt-4">
-          <button 
-            onClick={() => onNavigate('radar')}
-            className="px-4 py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-cyan-400 text-sm font-medium transition-all"
-            data-testid="button-quick-scanner"
-          >
-            🎯 Scan Markets
-          </button>
-          <button 
-            onClick={() => onNavigate('oracle')}
-            className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-400 text-sm font-medium transition-all"
-            data-testid="button-quick-predictions"
-          >
-            🔮 View Predictions
-          </button>
-          <button 
-            onClick={() => onNavigate('strategist')}
-            className="px-4 py-2 bg-pink-500/10 hover:bg-pink-500/20 border border-pink-500/30 rounded-lg text-pink-400 text-sm font-medium transition-all"
-            data-testid="button-quick-ai"
-          >
-            🧠 AI Analysis
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
