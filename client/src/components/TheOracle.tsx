@@ -460,7 +460,7 @@ export default function TheOracle() {
               data-testid="button-view-history"
             >
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
-                Win Rate <HelpTip content="Percentage of predictions that closed in profit. Why It Matters: A consistent 55%+ win rate with proper position sizing can generate significant returns over time." />
+                Live Win Rate <HelpTip content="Live model win rate based on actual predictions made since launch. This is real performance data, not backtested results." />
               </div>
               <div className="text-2xl font-bold text-green-400">{currentStats.winRate}%</div>
               <div className="text-xs text-slate-600">{currentStats.wins}W / {currentStats.losses}L</div>
@@ -1469,7 +1469,7 @@ export default function TheOracle() {
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
               <CalendarIcon className="text-emerald-400 h-5 w-5" />
-              Sentinel Performance Audit
+              Backtest Performance Audit
             </DialogTitle>
             <button 
               onClick={() => setShow30DayModal(false)} 
@@ -1531,10 +1531,16 @@ export default function TheOracle() {
                     </div>
                   </div>
 
+                  <div className="bg-amber-900/30 border border-amber-500/50 p-3 rounded-lg mb-4">
+                    <p className="text-amber-300 text-xs font-bold text-center">
+                      ⚠️ PAST PERFORMANCE IS HYPOTHETICAL AND DOES NOT GUARANTEE FUTURE RESULTS.
+                    </p>
+                  </div>
+
                   <div className="bg-gradient-to-r from-emerald-900/20 to-cyan-900/20 border border-emerald-500/30 p-6 rounded-lg">
                     <h4 className="text-lg font-bold text-emerald-400 mb-3 flex items-center gap-2">
                       <TrophyIcon className="h-5 w-5" />
-                      30-Day Performance Summary
+                      30-Day Backtest Summary
                     </h4>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
