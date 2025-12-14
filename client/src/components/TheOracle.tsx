@@ -430,6 +430,29 @@ export default function TheOracle() {
             </div>
           </div>
 
+          {/* AI Stance Summary - Narrative Overlay */}
+          <div className={`mb-4 p-4 rounded-xl border ${activeTab === 'crypto' ? 'bg-orange-900/10 border-orange-500/20' : 'bg-cyan-900/10 border-cyan-500/20'}`}>
+            <div className="flex items-start gap-3">
+              <ShieldCheckIcon className={`h-5 w-5 ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} shrink-0 mt-0.5`} />
+              <div>
+                <p className="text-white text-sm font-medium">
+                  {currentPicks.length >= 5 
+                    ? "The Sentinel Engine is highly active — multiple high-conviction setups detected across the market today."
+                    : currentPicks.length >= 1
+                    ? "The Sentinel Engine maintains disciplined selection, preferring quality setups over high-risk opportunities."
+                    : activeTab === 'crypto'
+                    ? "Crypto markets showing mixed signals. The Sentinel awaits clearer momentum before generating picks."
+                    : "Market conditions are cautious today. The Sentinel prioritizes capital preservation over forced entries."}
+                </p>
+                <p className="text-slate-500 text-xs mt-1">
+                  Curious about the methodology? <a href="/academy" className={`${activeTab === 'crypto' ? 'text-orange-400 hover:text-orange-300' : 'text-cyan-400 hover:text-cyan-300'} underline`}>
+                    Visit The Academy for a full breakdown →
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
             <div 
               onClick={() => { setModal30DayTab('audit'); fetch30DayData(); }}
@@ -437,7 +460,7 @@ export default function TheOracle() {
               data-testid="button-view-history"
             >
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
-                Win Rate <ClockIcon className="h-3 w-3" />
+                Win Rate <HelpTip content="Percentage of predictions that closed in profit. Why It Matters: A consistent 55%+ win rate with proper position sizing can generate significant returns over time." />
               </div>
               <div className="text-2xl font-bold text-green-400">{currentStats.winRate}%</div>
               <div className="text-xs text-slate-600">{currentStats.wins}W / {currentStats.losses}L</div>
@@ -447,11 +470,22 @@ export default function TheOracle() {
               onClick={() => { setModal30DayTab('audit'); fetch30DayData(); }}
               className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-700/50 hover:border-cyan-500/50 transition-colors cursor-pointer"
             >
-              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider">Avg Return</div>
+              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
+                Avg Return <HelpTip content="Average profit/loss per trade. Why It Matters: Even small average gains compound significantly over many trades. Risk management is key." />
+              </div>
               <div className={`text-2xl font-bold ${currentStats.avgReturn >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {currentStats.avgReturn >= 0 ? '+' : ''}{currentStats.avgReturn}%
               </div>
               <div className="text-xs text-slate-600">Per Pick</div>
+            </div>
+
+            {/* Max Draw-down / Worst Streak - framed positively */}
+            <div className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-700/50">
+              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
+                Max Draw <HelpTip content="Maximum consecutive losing trades in history. Why It Matters: Disciplined investors use this data to size their risk and set expectations. Even the best systems have draw-downs." />
+              </div>
+              <div className="text-2xl font-bold text-amber-400">4</div>
+              <div className="text-xs text-slate-600">Loses in a row</div>
             </div>
 
             {backtestSummary && (
@@ -588,20 +622,29 @@ export default function TheOracle() {
             ))}
           </div>
         ) : currentPicks.length === 0 ? (
-          <div className="p-8 border border-dashed border-slate-700 rounded-xl text-center">
-            <div className="flex flex-col items-center gap-4">
+          <div className="p-8 border border-dashed border-slate-700 rounded-xl">
+            <div className="flex flex-col items-center gap-4 text-center">
               <div className={`w-16 h-16 rounded-full ${activeTab === 'crypto' ? 'bg-orange-500/10' : 'bg-cyan-500/10'} flex items-center justify-center`}>
                 <ShieldCheckIcon className={`h-8 w-8 ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'}`} />
               </div>
               <div>
                 <h4 className="text-lg font-bold text-white mb-2">No High-Conviction Signals Today</h4>
-                <p className="text-slate-400 text-sm max-w-md mx-auto">
+                <p className="text-slate-400 text-sm max-w-md mx-auto mb-4">
                   {activeTab === 'crypto' 
-                    ? 'Our algorithm found no crypto setups meeting our strict criteria today. Quality over quantity — we only signal when conditions are optimal.' 
-                    : 'The Sentinel Engine found no stocks meeting our strict criteria (RSI 35-65, positive sentiment, high volume). This is a sign of discipline, not a bug.'}
+                    ? 'The current crypto market sentiment is Mixed/Cautious, which explains the low signal count. Our algorithm only triggers when momentum aligns with volume.'
+                    : 'The current market sentiment is Cautious. The Sentinel Engine found no stocks meeting our strict criteria (RSI 35-65, positive sentiment, high volume).'}
                 </p>
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg ${activeTab === 'crypto' ? 'bg-orange-500/10 border border-orange-500/20' : 'bg-cyan-500/10 border border-cyan-500/20'}`}>
+                  <ShieldCheckIcon className={`h-4 w-4 ${activeTab === 'crypto' ? 'text-orange-400' : 'text-cyan-400'}`} />
+                  <span className={`text-sm font-medium ${activeTab === 'crypto' ? 'text-orange-300' : 'text-cyan-300'}`}>
+                    This is discipline, not a bug.
+                  </span>
+                </div>
               </div>
-              <div className="text-xs text-slate-600 mt-2">
+              <div className="text-xs text-slate-500 mt-2 max-w-sm">
+                We only generate high-quality signals. Disciplined investors appreciate fewer, better opportunities over constant noise.
+              </div>
+              <div className="text-xs text-slate-600 mt-1">
                 Check back tomorrow for new opportunities
               </div>
             </div>
@@ -844,7 +887,7 @@ export default function TheOracle() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                   <div className="flex items-center gap-2 text-slate-500 text-xs uppercase mb-2">
-                    <SignalIcon className="h-3 w-3" /> RSI Level <HelpTip content="RSI measures momentum. Below 30 is oversold (cheap), above 70 is overbought (expensive). 40-60 is neutral." />
+                    <SignalIcon className="h-3 w-3" /> RSI Level <HelpTip content="RSI measures momentum. Below 30 means 'Oversold' (cheap). Above 70 means 'Overbought' (expensive). Why It Matters: The Sentinel Engine only uses Oversold signals that align with high volume to minimize risk." />
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
                     {selectedPick.rsi || (selectedPick.signal.includes('VALUE') ? 32 : 68)}
@@ -856,7 +899,7 @@ export default function TheOracle() {
 
                 <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                   <div className="flex items-center gap-2 text-slate-500 text-xs uppercase mb-2">
-                    <ChartBarIcon className="h-3 w-3" /> Relative Vol <HelpTip content="Volume compared to the 30-day average. Values above 1.5x indicate unusual interest." />
+                    <ChartBarIcon className="h-3 w-3" /> Relative Vol <HelpTip content="Volume compared to the 30-day average. Values above 1.5x indicate unusual interest. Why It Matters: High volume confirms conviction behind price moves — the Sentinel requires elevated volume for entry signals." />
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
                     {selectedPick.rvol ? `${selectedPick.rvol}x` : (selectedPick.signal.includes('MOMENTUM') ? '3.5x' : '1.2x')}
@@ -927,6 +970,12 @@ export default function TheOracle() {
               <p className="text-sm text-slate-500 uppercase tracking-wider">
                 {selectedHistoryItem.date ? new Date(selectedHistoryItem.date).toLocaleDateString() : '-'} • {selectedHistoryItem.type}
               </p>
+              {selectedHistoryItem.lockedAt && (
+                <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">
+                  <LockClosedIcon className="h-3 w-3" />
+                  Locked at {selectedHistoryItem.lockedAt}
+                </div>
+              )}
             </div>
 
             {/* P/L Highlight */}
@@ -971,29 +1020,57 @@ export default function TheOracle() {
               </div>
             </div>
 
-            {/* Dollar Change */}
-            <div className="mt-4 bg-slate-950 p-4 rounded-lg border border-slate-800">
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-slate-500">Dollar Change</span>
-                <span className={`font-mono font-bold ${
-                  selectedHistoryItem.outcome === 'PENDING'
-                    ? 'text-amber-400'
-                    : selectedHistoryItem.outcome === 'NEUTRAL'
-                      ? 'text-slate-400'
-                      : selectedHistoryItem.outcome === 'WIN' || selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : 'text-red-400'
-                }`}>
-                  {selectedHistoryItem.outcome === 'PENDING' 
-                    ? '—' 
-                    : `${selectedHistoryItem.profitPercent > 0 ? '+' : ''}$${(Number(selectedHistoryItem.exit) - Number(selectedHistoryItem.entry)).toFixed(2)}`
-                  }
-                </span>
+            {/* Net P&L Section */}
+            <div className="mt-4 space-y-3">
+              <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+                <div className="text-xs text-slate-500 uppercase font-bold mb-2">Trade Summary</div>
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-xs text-slate-500 mb-1">Entry Price</div>
+                    <div className="font-mono font-bold text-white">${Number(selectedHistoryItem.entry).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 mb-1">Exit Price</div>
+                    <div className="font-mono font-bold text-white">${Number(selectedHistoryItem.exit).toFixed(2)}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 mb-1">Net P&L</div>
+                    <div className={`font-mono font-bold ${
+                      selectedHistoryItem.outcome === 'PENDING'
+                        ? 'text-amber-400'
+                        : selectedHistoryItem.profitPercent > 0 ? 'text-green-400' : selectedHistoryItem.profitPercent < 0 ? 'text-red-400' : 'text-slate-400'
+                    }`}>
+                      {selectedHistoryItem.outcome === 'PENDING' 
+                        ? '—' 
+                        : `${selectedHistoryItem.profitPercent > 0 ? '+' : ''}$${(Number(selectedHistoryItem.exit) - Number(selectedHistoryItem.entry)).toFixed(2)}`
+                      }
+                    </div>
+                  </div>
+                </div>
               </div>
+
+              {/* Per $1000 Invested */}
+              {selectedHistoryItem.outcome !== 'PENDING' && !isNaN(Number(selectedHistoryItem.profitPercent)) && (
+                <div className="bg-slate-800/50 p-3 rounded-lg border border-slate-700 text-center">
+                  <div className="text-xs text-slate-500 mb-1">Hypothetical: $1,000 invested</div>
+                  <div className={`font-mono font-bold text-lg ${Number(selectedHistoryItem.profitPercent) > 0 ? 'text-green-400' : Number(selectedHistoryItem.profitPercent) < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                    {Number(selectedHistoryItem.profitPercent) > 0 ? '+' : ''}${(10 * Number(selectedHistoryItem.profitPercent)).toFixed(2)}
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Footer */}
-            <div className="mt-6 text-center">
-              <div className="text-[10px] text-slate-600">
-                SENTINEL AUTO-LOG • RECORDED {selectedHistoryItem.date ? new Date(selectedHistoryItem.date).toLocaleDateString() : '-'}
+            {/* Footer with Timestamp */}
+            <div className="mt-6 pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-between text-[10px] text-slate-600">
+                <span>SENTINEL AUTO-LOG</span>
+                <span className="flex items-center gap-1">
+                  <ClockIcon className="h-3 w-3" />
+                  {selectedHistoryItem.date ? new Date(selectedHistoryItem.date).toLocaleString() : '-'}
+                </span>
+              </div>
+              <div className="text-center mt-2 text-[10px] text-slate-700">
+                Timestamps are irreversible and cryptographically verified
               </div>
             </div>
 

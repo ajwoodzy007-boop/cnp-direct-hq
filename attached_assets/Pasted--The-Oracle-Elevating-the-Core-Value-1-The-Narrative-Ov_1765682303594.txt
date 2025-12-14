@@ -1,0 +1,47 @@
+💎 The Oracle: Elevating the Core Value
+1. The "Narrative" Overlay (The Interpretation)
+Users don't just want a number; they want to know what to do next and why they should trust you.
+
+Element	Action to Implement	Value to User
+Simple Takeaway	Immediately under the Win Rate/Stats, add a 1-sentence summary of the AI's current stance.	Example: "The Sentinel Engine maintains high confidence, preferring quality setups over volatile markets."
+Sentiment Status	In the empty state (like your screenshot), don't just say "No Signals." Explain the market.	Implementation: Add a brief bullet point or sentence: "The current market sentiment is Cautious/Greedy/Fearful (based on data), which explains the low signal count."
+Worst Streak	(Pending Agent Fix) Once implemented, frame the number positively.	Example: "Maximum historical draw-down is 4 Loses in a row. Disciplined investors use this data to size their risk." (You are teaching them how to trade responsibly).
+
+Export to Sheets
+
+2. The "Educational" Trust Builder (Closing the Knowledge Gap)
+You noted that Kristian has a learning disability and felt intimidated. Your job is to make the education a seamless part of the experience.
+
+Deepen the Tooltips: Expand the <HelpTip /> definitions (once the Agent is done) to include a "Why It Matters" context.
+
+RSI Definition: RSI measures momentum. Below 30 means the stock is 'Oversold' (Cheap).
+
+New Context: Why It Matters: "The Sentinel Engine only uses Oversold signals that align with high volume to minimize risk." (This validates your system's discipline).
+
+The "Academy" Link: Add a subtle, context-aware link near the main statistics:
+
+Example: "Curious about the data? Visit The Academy for a full breakdown of the Sentinel methodology." This keeps the page clean but gives the user an immediate path to deeper learning.
+
+3. The "Accountability" Feature (Proof Log Upgrade)
+The "View Proof Log" button is your strongest asset. Make the log irrefutable.
+
+Final Outcome Status: When a signal is logged as Complete, ensure the log shows three specific data points clearly:
+
+Entry Price: (Price at generated_at time)
+
+Exit Price: (Price at resolution/close)
+
+Net P&L: (The calculated return).
+
+Irreversible Logging: Ensure your server-side logic makes the generated_at timestamp irreversible. This is the technical defense against any accusation of back-dating signals—the most common attack against signal services.
+
+Summary: The Oracle's New Story
+The Oracle must communicate three things:
+
+We Are Honest: See our worst streak and exact entry times.
+
+We Are Disciplined: We only generate high-quality signals, even if the count is low.
+
+We Are Here to Teach: Here are the numbers, and here is what they mean.
+
+The next step is to ensure the Agent successfully executed the previous MASTER PROMPT. Once that is confirmed, we can build the narrative/content around the newly implemented features.
