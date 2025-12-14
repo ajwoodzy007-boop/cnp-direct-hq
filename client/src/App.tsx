@@ -24,6 +24,7 @@ import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
 import AiAssistant from './components/AiAssistant';
 import AdminDashboard from './components/AdminDashboard';
+import { useGoHomeOnExhaust } from '../hooks/useGoHomeOnExhaust';
 
 function MainDashboard() {
   const [currentTab, setTab] = useState('summary');
@@ -157,21 +158,28 @@ function MainDashboard() {
   );
 }
 
+function GlobalNavigationHandler({ children }: { children: React.ReactNode }) {
+  useGoHomeOnExhaust();
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SettingsProvider>
         <TooltipProvider>
-          <Toaster />
-          <SonnerToaster position="top-right" richColors />
-          <Switch>
-            <Route path="/" component={MainDashboard} />
-            <Route path="/pricing" component={Pricing} />
-            <Route path="/checkout/success" component={CheckoutSuccess} />
-            <Route path="/checkout/cancel" component={CheckoutCancel} />
-            <Route component={MainDashboard} />
-          </Switch>
-          <AiAssistant />
+          <GlobalNavigationHandler>
+            <Toaster />
+            <SonnerToaster position="top-right" richColors />
+            <Switch>
+              <Route path="/" component={MainDashboard} />
+              <Route path="/pricing" component={Pricing} />
+              <Route path="/checkout/success" component={CheckoutSuccess} />
+              <Route path="/checkout/cancel" component={CheckoutCancel} />
+              <Route component={MainDashboard} />
+            </Switch>
+            <AiAssistant />
+          </GlobalNavigationHandler>
         </TooltipProvider>
       </SettingsProvider>
     </QueryClientProvider>
