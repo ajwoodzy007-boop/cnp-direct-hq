@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShieldCheckIcon, UsersIcon, ArrowTrendingUpIcon, TrophyIcon, ArrowLeftIcon, SparklesIcon, ArrowPathIcon, TicketIcon, ClipboardIcon, TrashIcon, PlusIcon, BoltIcon, TableCellsIcon, ChartBarIcon, CurrencyDollarIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, UsersIcon, ArrowTrendingUpIcon, TrophyIcon, ArrowLeftIcon, SparklesIcon, ArrowPathIcon, TicketIcon, ClipboardIcon, TrashIcon, PlusIcon, BoltIcon, ChartBarIcon, CurrencyDollarIcon, ClockIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 
 type AdminTab = 'overview' | 'winrates' | 'portfolios' | 'activity';
 
@@ -73,11 +73,6 @@ interface AffiliateClick {
   clicked_at: string;
 }
 
-interface WatchlistActivity {
-  ticker: string;
-  added_at: string;
-}
-
 interface AdminStats {
   users: {
     total: number;
@@ -141,7 +136,6 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [portfolioSummary, setPortfolioSummary] = useState<PortfolioSummary[]>([]);
   const [playbookActivity, setPlaybookActivity] = useState<PlaybookActivity[]>([]);
   const [affiliateClicks, setAffiliateClicks] = useState<AffiliateClick[]>([]);
-  const [watchlistActivity, setWatchlistActivity] = useState<WatchlistActivity[]>([]);
   const [loadingWinRates, setLoadingWinRates] = useState(false);
   const [loadingPortfolios, setLoadingPortfolios] = useState(false);
   const [loadingActivity, setLoadingActivity] = useState(false);
@@ -231,7 +225,6 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       if (json.success) {
         setPlaybookActivity(json.data.playbookActivity || []);
         setAffiliateClicks(json.data.affiliateClicks || []);
-        setWatchlistActivity(json.data.watchlistActivity || []);
       }
     } catch (e) {
       console.error(e);
@@ -268,6 +261,26 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     navigator.clipboard.writeText(code);
     setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const exportToCsv = (filename: string, rows: Record<string, any>[]) => {
+    if (rows.length === 0) return;
+    const headers = Object.keys(rows[0]);
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => headers.map(h => {
+        const val = row[h];
+        const str = val === null || val === undefined ? '' : String(val);
+        return str.includes(',') || str.includes('"') ? `"${str.replace(/"/g, '""')}"` : str;
+      }).join(','))
+    ].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const forceFinalize = async (type: 'stocks' | 'crypto') => {
@@ -415,7 +428,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             data-testid="tab-winrates"
           >
             <ChartBarIcon className="h-4 w-4" />
-            Win Rates
+            All Predictions
           </button>
           <button
             onClick={() => setActiveTab('portfolios')}
@@ -643,12 +656,22 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-white">All Users</h3>
-              <button 
-                onClick={() => setShowUsers(false)}
-                className="text-sm text-slate-400 hover:text-white"
-              >
-                Close
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => exportToCsv(`users_${new Date().toISOString().split('T')[0]}.csv`, users)}
+                  className="px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded text-sm flex items-center gap-2 border border-cyan-500/30"
+                  data-testid="btn-download-users"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Download CSV
+                </button>
+                <button 
+                  onClick={() => setShowUsers(false)}
+                  className="text-sm text-slate-400 hover:text-white px-3 py-1.5"
+                >
+                  Close
+                </button>
+              </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -767,15 +790,29 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                   All Entries
                 </button>
               </div>
-              <button
-                onClick={fetchWinRates}
-                disabled={loadingWinRates}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-green-400 rounded text-sm flex items-center gap-2"
-                data-testid="btn-refresh-winrates"
-              >
-                <ArrowPathIcon className={`h-4 w-4 ${loadingWinRates ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const data = winRateView === 'byDate' ? winRateByDate : winRateView === 'byTicker' ? winRateByTicker : winRateEntries;
+                    exportToCsv(`predictions_${winRateView}_${new Date().toISOString().split('T')[0]}.csv`, data);
+                  }}
+                  disabled={loadingWinRates}
+                  className="px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded text-sm flex items-center gap-2 border border-green-500/30"
+                  data-testid="btn-download-predictions"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Download CSV
+                </button>
+                <button
+                  onClick={fetchWinRates}
+                  disabled={loadingWinRates}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-green-400 rounded text-sm flex items-center gap-2"
+                  data-testid="btn-refresh-winrates"
+                >
+                  <ArrowPathIcon className={`h-4 w-4 ${loadingWinRates ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {loadingWinRates ? (
@@ -900,15 +937,26 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                 <CurrencyDollarIcon className="h-5 w-5 text-amber-400" />
                 User Vault Portfolios
               </h3>
-              <button
-                onClick={fetchPortfolios}
-                disabled={loadingPortfolios}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 rounded text-sm flex items-center gap-2"
-                data-testid="btn-refresh-portfolios"
-              >
-                <ArrowPathIcon className={`h-4 w-4 ${loadingPortfolios ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => exportToCsv(`user_portfolios_${new Date().toISOString().split('T')[0]}.csv`, portfolioSummary)}
+                  disabled={loadingPortfolios}
+                  className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 rounded text-sm flex items-center gap-2 border border-amber-500/30"
+                  data-testid="btn-download-portfolios"
+                >
+                  <ArrowDownTrayIcon className="h-4 w-4" />
+                  Download CSV
+                </button>
+                <button
+                  onClick={fetchPortfolios}
+                  disabled={loadingPortfolios}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-amber-400 rounded text-sm flex items-center gap-2"
+                  data-testid="btn-refresh-portfolios"
+                >
+                  <ArrowPathIcon className={`h-4 w-4 ${loadingPortfolios ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
             </div>
 
             {loadingPortfolios ? (
@@ -1087,35 +1135,6 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
                       <div className="text-center py-8 text-slate-500">No affiliate clicks found</div>
                     )}
                   </div>
-                </div>
-              </div>
-
-              {/* Watchlist Activity */}
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 mt-6">
-                <h4 className="text-md font-semibold text-white mb-4 flex items-center gap-2">
-                  <TableCellsIcon className="h-4 w-4 text-amber-400" />
-                  Watchlist Additions (Recent 100)
-                </h4>
-                <div className="overflow-x-auto max-h-[300px] overflow-y-auto">
-                  <table className="w-full" data-testid="table-watchlist-activity">
-                    <thead className="sticky top-0 bg-slate-900">
-                      <tr className="border-b border-slate-800">
-                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Ticker</th>
-                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Added At</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {watchlistActivity.map((row, idx) => (
-                        <tr key={idx} className="border-b border-slate-800/50 hover:bg-slate-800/30" data-testid={`row-watchlist-${idx}`}>
-                          <td className="py-2 px-3 text-amber-400 text-xs font-bold">{row.ticker}</td>
-                          <td className="py-2 px-3 text-slate-400 text-xs">{new Date(row.added_at).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {watchlistActivity.length === 0 && (
-                    <div className="text-center py-8 text-slate-500">No watchlist activity found</div>
-                  )}
                 </div>
               </div>
               </>
