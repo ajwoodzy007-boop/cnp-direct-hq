@@ -341,6 +341,37 @@ export default function TheOracle() {
     fetchDailyPicks();
   }, []);
 
+  // Fetch live prices from sentinel and merge into picks
+  const picksLoaded = picks.length > 0;
+  useEffect(() => {
+    if (!picksLoaded) return;
+    
+    async function updateLivePrices() {
+      try {
+        const res = await fetch('/api/market/sentinel');
+        const json = await res.json();
+        if (json.success && json.data) {
+          const priceMap = new Map<string, number>();
+          json.data.forEach((s: any) => priceMap.set(s.ticker, s.price));
+          
+          setPicks(prev => prev.map(pick => ({
+            ...pick,
+            currentPrice: priceMap.get(pick.ticker) || pick.currentPrice || pick.entryPrice
+          })));
+        }
+      } catch (e) {
+        // Silently fail - prices will update on next interval
+      }
+    }
+    
+    // Initial fetch
+    updateLivePrices();
+    
+    // Refresh every 30 seconds
+    const interval = setInterval(updateLivePrices, 30000);
+    return () => clearInterval(interval);
+  }, [picksLoaded]);
+
   const sortedPicks = useMemo(() => {
     const sorted = [...picks];
     switch (sortBy) {
