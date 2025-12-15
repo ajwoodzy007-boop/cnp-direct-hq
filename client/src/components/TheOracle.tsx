@@ -1116,7 +1116,7 @@ export default function TheOracle() {
 
               <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                  <ViewfinderCircleIcon className="h-3 w-3" /> Exit Price
+                  <ViewfinderCircleIcon className="h-3 w-3" /> Close Price
                 </div>
                 <div className="font-mono text-lg text-white">${Number(selectedHistoryItem.exit).toFixed(2)}</div>
               </div>
@@ -1132,7 +1132,7 @@ export default function TheOracle() {
                     <div className="font-mono font-bold text-white">${Number(selectedHistoryItem.open || selectedHistoryItem.entry).toFixed(2)}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-slate-500 mb-1">Exit Price</div>
+                    <div className="text-xs text-slate-500 mb-1">Close Price</div>
                     <div className="font-mono font-bold text-white">${Number(selectedHistoryItem.exit).toFixed(2)}</div>
                   </div>
                   <div>
@@ -1805,8 +1805,8 @@ export default function TheOracle() {
                       <th className="px-4 py-3">Asset</th>
                       <th className="px-4 py-3">Date</th>
                       <th className="px-4 py-3">Type</th>
-                      <th className="px-4 py-3">Entry</th>
-                      <th className="px-4 py-3">Exit</th>
+                      <th className="px-4 py-3">Open</th>
+                      <th className="px-4 py-3">Close</th>
                       <th className="px-4 py-3 text-right">Result</th>
                     </tr>
                   </thead>
@@ -1821,7 +1821,7 @@ export default function TheOracle() {
                         <td className="px-4 py-3 font-bold text-white">{trade.ticker}</td>
                         <td className="px-4 py-3 text-slate-400">{trade.date ? new Date(trade.date).toLocaleDateString() : '-'}</td>
                         <td className="px-4 py-3 text-slate-400">{trade.type}</td>
-                        <td className="px-4 py-3 font-mono text-slate-300">${Number(trade.entry).toFixed(2)}</td>
+                        <td className="px-4 py-3 font-mono text-slate-300">${Number(trade.open || trade.entry).toFixed(2)}</td>
                         <td className="px-4 py-3 font-mono text-slate-300">${Number(trade.exit).toFixed(2)}</td>
                         <td className="px-4 py-3 text-right flex items-center justify-end gap-2">
                           <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
