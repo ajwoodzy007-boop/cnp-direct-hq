@@ -196,6 +196,7 @@ async function getHistoricalOpenPrice(ticker: string, date: Date): Promise<numbe
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
     
+    // First try daily interval
     const chart = await yf.chart(ticker, {
       period1: startOfDay,
       period2: endOfDay,
@@ -206,6 +207,34 @@ async function getHistoricalOpenPrice(ticker: string, date: Date): Promise<numbe
       const dayCandle = chart.quotes[0];
       if (dayCandle && dayCandle.open && dayCandle.open > 0) {
         return dayCandle.open;
+      }
+    }
+    
+    // If daily data not available (recent dates), try 5-minute intraday data
+    const now = new Date();
+    const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysDiff <= 7) {
+      console.log(`[Oracle] Daily data not available for ${ticker} on ${date.toISOString().split('T')[0]}, trying intraday...`);
+      
+      // Set market open time (9:30 AM ET = 14:30 UTC)
+      const marketOpen = new Date(date);
+      marketOpen.setUTCHours(14, 30, 0, 0);
+      const marketClose = new Date(date);
+      marketClose.setUTCHours(21, 0, 0, 0);
+      
+      const intradayChart = await yf.chart(ticker, {
+        period1: marketOpen,
+        period2: marketClose,
+        interval: '5m'
+      });
+      
+      if (intradayChart && intradayChart.quotes && intradayChart.quotes.length > 0) {
+        const firstCandle = intradayChart.quotes[0];
+        if (firstCandle && firstCandle.open && firstCandle.open > 0) {
+          console.log(`[Oracle] Got intraday open for ${ticker}: $${firstCandle.open.toFixed(2)}`);
+          return firstCandle.open;
+        }
       }
     }
     
