@@ -1,5 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
+import TickerInfo from './TickerInfo';
 import { 
   ArrowTrendingUpIcon, ArrowTrendingDownIcon, ViewfinderCircleIcon, BriefcaseIcon, CpuChipIcon, 
   ArrowUpRightIcon, ArrowDownRightIcon, ClockIcon, BoltIcon, TrophyIcon,
@@ -101,7 +102,7 @@ export default function TheSummary({ onNavigate, user }: Props) {
                 <div key={stock.ticker} className="flex items-center justify-between py-1.5 border-b border-slate-800/50 last:border-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-600 w-4">{i + 1}</span>
-                    <span className="font-mono font-medium text-white">{stock.ticker}</span>
+                    <TickerInfo ticker={stock.ticker} size="sm" />
                     {stock.signal === 'MOMENTUM BUY' && (
                       <span className="text-[10px] px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded">BUY</span>
                     )}
@@ -152,7 +153,7 @@ export default function TheSummary({ onNavigate, user }: Props) {
                     }`}>
                       {i + 1}
                     </div>
-                    <span className="font-mono font-medium text-white">{pred.ticker}</span>
+                    <TickerInfo ticker={pred.ticker} size="sm" />
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-0.5 rounded ${

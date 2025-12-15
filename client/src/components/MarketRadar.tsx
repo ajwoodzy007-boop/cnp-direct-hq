@@ -5,6 +5,7 @@ import Skeleton from './Skeleton';
 import FullReportModal from './FullReportModal';
 import { useModalBack } from '../../hooks/useNavigationStack';
 import HelpTip from '../../components/HelpTip';
+import TickerInfo from './TickerInfo';
 
 interface SentinelData {
   ticker: string;
@@ -295,8 +296,7 @@ export default function MarketRadar() {
                 </div>
                 <div>
                   <h3 className="font-bold text-white flex items-center gap-2">
-                    {item.ticker}
-                    {item.name && <span className="text-xs text-slate-500 font-normal hidden md:inline">{item.name}</span>}
+                    <TickerInfo ticker={item.ticker} name={item.name} isCrypto={activeTab === 'crypto'} size="md" />
                   </h3>
                   <div className={`text-sm ${item.changePercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                     {formatPrice(item.price)} ({item.changePercent > 0 ? '+' : ''}{item.changePercent.toFixed(2)}%)

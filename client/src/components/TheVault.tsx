@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Squares2X2Icon, PlusIcon, SignalIcon, ChartPieIcon, ArrowTrendingUpIcon, ClockIcon, ExclamationCircleIcon, PencilIcon, TrashIcon, XMarkIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import Skeleton from './Skeleton';
 import { useModalBack } from '../../hooks/useNavigationStack';
+import TickerInfo from './TickerInfo';
 
 export default function TheVault() {
   const [positions, setPositions] = useState<any[]>([]);
@@ -197,7 +198,7 @@ export default function TheVault() {
                   ) : options.map((p) => (
                     <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50" data-testid={`row-option-${p.id}`}>
                       <td className="px-6 py-4">
-                        <div className="font-bold text-white">{p.ticker}</div>
+                        <TickerInfo ticker={p.ticker} size="md" />
                         <div className={`text-xs font-bold ${p.type === 'CALL' ? 'text-green-400' : 'text-red-400'}`}>{p.type}</div>
                       </td>
                       <td className="px-6 py-4 text-slate-300">${p.strikePrice}</td>
@@ -257,7 +258,7 @@ export default function TheVault() {
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <CurrencyDollarIcon className="h-4 w-4 text-orange-500" />
-                          <span className="font-bold text-white">{p.ticker}</span>
+                          <TickerInfo ticker={p.ticker} isCrypto size="md" />
                         </div>
                       </td>
                       <td className="px-6 py-4 text-slate-400">${p.entryPrice?.toFixed(2)}</td>
@@ -324,7 +325,7 @@ export default function TheVault() {
                   ))
                 ) : equities.map((p) => (
                   <tr key={p.id} className="border-b border-slate-800 hover:bg-slate-800/50" data-testid={`row-equity-${p.id}`}>
-                    <td className="px-6 py-4 font-bold text-white">{p.ticker}</td>
+                    <td className="px-6 py-4"><TickerInfo ticker={p.ticker} size="md" /></td>
                     <td className="px-6 py-4 text-slate-400">${p.entryPrice?.toFixed(2)}</td>
                     <td className="px-6 py-4 text-white">${p.currentPrice?.toFixed(2)}</td>
                     <td className="px-6 py-4 text-slate-400">{p.shares}</td>

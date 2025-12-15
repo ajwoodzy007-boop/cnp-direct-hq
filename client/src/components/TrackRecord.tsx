@@ -3,6 +3,7 @@ import { TrophyIcon, ArrowTrendingUpIcon, ViewfinderCircleIcon, CalendarIcon, Ch
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { useModalBack } from '../../hooks/useNavigationStack';
+import TickerInfo from './TickerInfo';
 
 interface BacktestPick {
   ticker: string;

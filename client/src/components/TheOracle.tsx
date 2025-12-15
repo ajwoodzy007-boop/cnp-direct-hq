@@ -8,6 +8,7 @@ import PremiumLock from './PremiumLock';
 import Skeleton from './Skeleton';
 import { useModalBack } from '../../hooks/useNavigationStack';
 import HelpTip from '../../components/HelpTip';
+import TickerInfo from './TickerInfo';
 
 interface PickData {
   ticker: string;
@@ -748,14 +749,11 @@ export default function TheOracle() {
                     <div>
                       <div className="flex items-center gap-2">
                         {isCrypto && <CurrencyDollarIcon className="h-5 w-5 text-orange-400" />}
-                        <h4 className={`text-2xl font-bold text-white group-hover:text-${accentColor}-400 transition-colors`}>
-                          {pick.ticker}
-                        </h4>
-                        {pick.name && <span className="text-xs text-slate-500 hidden md:inline">{pick.name}</span>}
+                        <TickerInfo ticker={pick.ticker} name={pick.name} isCrypto={isCrypto} size="xl" />
                         <Popover>
                           <PopoverTrigger asChild>
                             <button className={`text-slate-500 hover:text-${accentColor}-400`} data-testid={`button-why-${pick.ticker}`}>
-                              <InformationCircleIcon className="h-4 w-4" />
+                              <BoltIcon className="h-4 w-4" />
                             </button>
                           </PopoverTrigger>
                           <PopoverContent className="w-72 bg-slate-900 border-slate-700 text-slate-300 text-sm">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CpuChipIcon, MagnifyingGlassIcon, BoltIcon, ShieldCheckIcon, ArrowTrendingUpIcon, ExclamationTriangleIcon, ViewfinderCircleIcon, CurrencyDollarIcon, FireIcon, ChevronRightIcon, ArrowTrendingDownIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 import HelpTip from '../../components/HelpTip';
+import TickerInfo from './TickerInfo';
 
 export default function TheStrategist() {
   const [mode, setMode] = useState<'ANALYZE' | 'PLAYBOOK' | 'CRYPTO' | 'EARNINGS'>('ANALYZE');
@@ -288,7 +289,7 @@ export default function TheStrategist() {
                   <div className="flex items-start justify-between">
                     <div>
                       <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-2xl font-bold text-white">{analysis.ticker}</h3>
+                        <TickerInfo ticker={analysis.ticker} name={analysis.name} isCrypto={analysis.assetType === 'crypto'} size="xl" />
                         <span className={`px-2 py-1 rounded text-xs font-bold ${analysis.assetType === 'crypto' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'}`}>
                           {analysis.assetType === 'crypto' ? 'CRYPTO' : 'STOCK'}
                         </span>
@@ -780,7 +781,7 @@ export default function TheStrategist() {
                   data-testid={`card-earnings-${item.ticker}`}
                 >
                   <div className="flex justify-between items-center">
-                    <span className="font-bold text-white text-lg">{item.ticker}</span>
+                    <TickerInfo ticker={item.ticker} size="lg" />
                     <span className="text-xs bg-amber-900/30 text-amber-400 px-2 py-1 rounded border border-amber-500/30">{item.daysAway} Days</span>
                   </div>
                   <div className="flex justify-between mt-2 text-sm">
