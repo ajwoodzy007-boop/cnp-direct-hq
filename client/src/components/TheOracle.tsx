@@ -792,7 +792,16 @@ export default function TheOracle() {
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Target (AI)</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <span className="text-slate-500 cursor-help flex items-center gap-1">
+                            Target (AI) <InformationCircleIcon className="h-3 w-3 text-slate-600" />
+                          </span>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 bg-slate-900 border-slate-700 text-xs text-slate-300">
+                          AI-predicted price target based on RSI, volume, sentiment, and historical patterns. This is where the model expects the price to move within the trading session.
+                        </PopoverContent>
+                      </Popover>
                       <span className={`text-${accentColor}-400 font-mono font-bold`}>
                         {isCrypto && pick.predictedPrice >= 1000 
                           ? `$${pick.predictedPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
@@ -800,7 +809,16 @@ export default function TheOracle() {
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Potential</span>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <span className="text-slate-500 cursor-help flex items-center gap-1">
+                            Potential <InformationCircleIcon className="h-3 w-3 text-slate-600" />
+                          </span>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-64 bg-slate-900 border-slate-700 text-xs text-slate-300">
+                          Expected return if the price reaches the AI target. Calculated as the percentage difference between entry price and predicted target price.
+                        </PopoverContent>
+                      </Popover>
                       <span className="text-green-400 font-mono font-bold">+{potentialReturn}%</span>
                     </div>
                   </div>
