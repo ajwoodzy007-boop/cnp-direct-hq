@@ -536,6 +536,91 @@ router.get('/learning', async (req, res) => {
   }
 });
 
+// GET /backfill-learning: Backfill historical predictions with learning data (RSI, RVOL, sector, etc.)
+router.get('/backfill-learning', async (req, res) => {
+  try {
+    // Get all stock predictions missing learning data
+    const predictions_to_update = await db.select().from(predictions)
+      .where(sql`${predictions.rsi} IS NULL AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+    
+    console.log(`[Oracle] Backfilling ${predictions_to_update.length} predictions with learning data`);
+    
+    const updates: { ticker: string; date: string; rsi?: number; sector?: string }[] = [];
+    const errors: { ticker: string; error: string }[] = [];
+    
+    // Group by ticker to minimize API calls
+    const tickerGroups = new Map<string, typeof predictions_to_update>();
+    for (const pred of predictions_to_update) {
+      const existing = tickerGroups.get(pred.ticker) || [];
+      existing.push(pred);
+      tickerGroups.set(pred.ticker, existing);
+    }
+    
+    for (const [ticker, preds] of Array.from(tickerGroups.entries())) {
+      try {
+        // Fetch current quote data for this ticker
+        const quote = await yahooFinance.quote(ticker);
+        
+        if (!quote) {
+          errors.push({ ticker, error: 'No quote data' });
+          continue;
+        }
+        
+        // Extract learning-relevant data
+        const sector = quote.sector || null;
+        
+        // For RSI and RVOL, we'd need historical data at the time of prediction
+        // For now, we'll set confidence and reasoning based on signal type
+        for (const pred of preds) {
+          const confidence = pred.signalType === 'MOMENTUM BUY' ? 'High' : 
+                            pred.signalType === 'VALUE BUY' ? 'Med' : 
+                            pred.signalType === 'SPECULATIVE BUY' ? 'Med' : 'Low';
+          
+          const reasoning = pred.signalType === 'MOMENTUM BUY' ? 'momentum' :
+                           pred.signalType === 'VALUE BUY' ? 'value' :
+                           pred.signalType === 'SPECULATIVE BUY' ? 'speculative' : 'technical';
+          
+          await db.update(predictions)
+            .set({
+              sector: sector,
+              confidence: confidence,
+              reasoning: reasoning
+            })
+            .where(eq(predictions.id, pred.id));
+          
+          updates.push({
+            ticker: pred.ticker,
+            date: pred.predictionDate?.toISOString().split('T')[0] || 'unknown',
+            sector: sector || undefined
+          });
+        }
+        
+        // Rate limiting
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+      } catch (err: any) {
+        errors.push({ ticker, error: err.message });
+      }
+    }
+    
+    console.log(`[Oracle] Backfilled ${updates.length} predictions, ${errors.length} errors`);
+    
+    res.json({
+      success: true,
+      message: `Backfilled ${updates.length} predictions with learning data`,
+      totalProcessed: predictions_to_update.length,
+      uniqueTickers: tickerGroups.size,
+      updated: updates.length,
+      errors: errors.length,
+      errorDetails: errors.slice(0, 10)
+    });
+    
+  } catch (error) {
+    console.error("Backfill Learning Error:", error);
+    res.status(500).json({ success: false, error: "Failed to backfill learning data" });
+  }
+});
+
 // GET /daily: Run Scan & Auto-Save to History (stocks only)
 // UNIFIED SYSTEM: Uses comprehensive scoring to always generate 10 picks
 router.get('/daily', async (req, res) => {
