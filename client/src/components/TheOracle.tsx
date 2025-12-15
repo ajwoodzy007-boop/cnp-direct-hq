@@ -380,8 +380,10 @@ export default function TheOracle() {
         return sorted.sort((a, b) => (b.confidenceScore || 70) - (a.confidenceScore || 70));
       case 'return':
         return sorted.sort((a, b) => {
-          const returnA = ((a.predictedPrice - a.entryPrice) / a.entryPrice) * 100;
-          const returnB = ((b.predictedPrice - b.entryPrice) / b.entryPrice) * 100;
+          const basePriceA = a.openPrice || a.entryPrice;
+          const basePriceB = b.openPrice || b.entryPrice;
+          const returnA = ((a.predictedPrice - basePriceA) / basePriceA) * 100;
+          const returnB = ((b.predictedPrice - basePriceB) / basePriceB) * 100;
           return returnB - returnA;
         });
       case 'risk':
@@ -399,8 +401,10 @@ export default function TheOracle() {
         return sorted.sort((a, b) => (b.confidenceScore || 70) - (a.confidenceScore || 70));
       case 'return':
         return sorted.sort((a, b) => {
-          const returnA = ((a.predictedPrice - a.entryPrice) / a.entryPrice) * 100;
-          const returnB = ((b.predictedPrice - b.entryPrice) / b.entryPrice) * 100;
+          const basePriceA = a.openPrice || a.entryPrice;
+          const basePriceB = b.openPrice || b.entryPrice;
+          const returnA = ((a.predictedPrice - basePriceA) / basePriceA) * 100;
+          const returnB = ((b.predictedPrice - basePriceB) / basePriceB) * 100;
           return returnB - returnA;
         });
       case 'risk':
@@ -417,11 +421,11 @@ export default function TheOracle() {
   const currentHistory = activeTab === 'stocks' ? historyData : cryptoHistoryData;
 
   const getProgressToTarget = (pick: PickData) => {
-    const current = pick.currentPrice || pick.entryPrice;
+    const openPrice = pick.openPrice || pick.entryPrice;
+    const current = pick.currentPrice || openPrice;
     const target = pick.predictedPrice;
-    const entry = pick.entryPrice;
-    if (target === entry) return 0;
-    const progress = ((current - entry) / (target - entry)) * 100;
+    if (target === openPrice) return 0;
+    const progress = ((current - openPrice) / (target - openPrice)) * 100;
     return Math.min(Math.max(progress, 0), 100);
   };
 
@@ -735,7 +739,8 @@ export default function TheOracle() {
             {currentPicks.map((pick, index) => {
               const confScore = pick.confidenceScore || (pick.confidence === 'High' ? 85 : 60);
               const progress = getProgressToTarget(pick);
-              const potentialReturn = ((pick.predictedPrice - pick.entryPrice) / pick.entryPrice * 100).toFixed(1);
+              const basePrice = pick.openPrice || pick.entryPrice;
+              const potentialReturn = ((pick.predictedPrice - basePrice) / basePrice * 100).toFixed(1);
               const riskLevel = pick.riskLevel || 'Medium';
               const stopLoss = pick.stopLoss || (pick.entryPrice * 0.95);
               const rr = pick.riskRewardRatio || 2.5;
@@ -790,31 +795,14 @@ export default function TheOracle() {
                       <Popover>
                         <PopoverTrigger asChild>
                           <span className="text-slate-500 cursor-help flex items-center gap-1">
-                            Entry Price <InformationCircleIcon className="h-3 w-3 text-slate-600" />
-                          </span>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-56 bg-slate-900 border-slate-700 text-xs text-slate-300">
-                          Price when prediction was generated (9:00 AM ET for stocks, 8:00 AM ET for crypto)
-                        </PopoverContent>
-                      </Popover>
-                      <span className="text-white font-mono">
-                        {isCrypto && pick.entryPrice >= 1000 
-                          ? `$${pick.entryPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                          : `$${pick.entryPrice.toFixed(2)}`}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <span className="text-slate-500 cursor-help flex items-center gap-1">
                             Open Price <InformationCircleIcon className="h-3 w-3 text-slate-600" />
                           </span>
                         </PopoverTrigger>
                         <PopoverContent className="w-56 bg-slate-900 border-slate-700 text-xs text-slate-300">
-                          Market open price for the trading day (9:30 AM ET)
+                          Market open price for the trading day (9:30 AM ET). This is used for calculating P/L.
                         </PopoverContent>
                       </Popover>
-                      <span className="text-slate-400 font-mono">
+                      <span className="text-white font-mono">
                         {isCrypto && (pick.openPrice || pick.entryPrice) >= 1000 
                           ? `$${(pick.openPrice || pick.entryPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                           : `$${(pick.openPrice || pick.entryPrice).toFixed(2)}`}
@@ -845,7 +833,7 @@ export default function TheOracle() {
                           </span>
                         </PopoverTrigger>
                         <PopoverContent className="w-64 bg-slate-900 border-slate-700 text-xs text-slate-300">
-                          Expected return if the price reaches the AI target. Calculated as the percentage difference between entry price and predicted target price.
+                          Expected return if the price reaches the AI target. Calculated as the percentage difference between open price and predicted target price.
                         </PopoverContent>
                       </Popover>
                       <span className="text-green-400 font-mono font-bold">+{potentialReturn}%</span>
@@ -854,8 +842,9 @@ export default function TheOracle() {
 
                   <div className="mb-4">
                     {(() => {
-                      const currentPrice = pick.currentPrice || pick.entryPrice;
-                      const gainPercent = ((currentPrice - pick.entryPrice) / pick.entryPrice) * 100;
+                      const openPrice = pick.openPrice || pick.entryPrice;
+                      const currentPrice = pick.currentPrice || openPrice;
+                      const gainPercent = ((currentPrice - openPrice) / openPrice) * 100;
                       const isPositive = gainPercent >= 0;
                       const maxSwing = 5;
                       const barWidth = Math.min(Math.abs(gainPercent) / maxSwing * 50, 50);
@@ -884,7 +873,7 @@ export default function TheOracle() {
                           </div>
                           <div className="flex justify-between text-[10px] text-slate-600 mt-1">
                             <span>-5%</span>
-                            <span className="text-slate-500">Entry: ${pick.entryPrice.toFixed(2)}</span>
+                            <span className="text-slate-500">Open: ${openPrice.toFixed(2)}</span>
                             <span>+5%</span>
                           </div>
                         </>
@@ -1120,9 +1109,9 @@ export default function TheOracle() {
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
-                  <ArrowTrendingUpIcon className="h-3 w-3" /> Entry Price
+                  <ArrowTrendingUpIcon className="h-3 w-3" /> Open Price
                 </div>
-                <div className="font-mono text-lg text-white">${Number(selectedHistoryItem.entry).toFixed(2)}</div>
+                <div className="font-mono text-lg text-white">${Number(selectedHistoryItem.open || selectedHistoryItem.entry).toFixed(2)}</div>
               </div>
 
               <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
@@ -1139,8 +1128,8 @@ export default function TheOracle() {
                 <div className="text-xs text-slate-500 uppercase font-bold mb-2">Trade Summary</div>
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <div className="text-xs text-slate-500 mb-1">Entry Price</div>
-                    <div className="font-mono font-bold text-white">${Number(selectedHistoryItem.entry).toFixed(2)}</div>
+                    <div className="text-xs text-slate-500 mb-1">Open Price</div>
+                    <div className="font-mono font-bold text-white">${Number(selectedHistoryItem.open || selectedHistoryItem.entry).toFixed(2)}</div>
                   </div>
                   <div>
                     <div className="text-xs text-slate-500 mb-1">Exit Price</div>
@@ -1155,7 +1144,7 @@ export default function TheOracle() {
                     }`}>
                       {selectedHistoryItem.outcome === 'PENDING' 
                         ? '—' 
-                        : `${selectedHistoryItem.profitPercent > 0 ? '+' : ''}$${(Number(selectedHistoryItem.exit) - Number(selectedHistoryItem.entry)).toFixed(2)}`
+                        : `${selectedHistoryItem.profitPercent > 0 ? '+' : ''}$${(Number(selectedHistoryItem.exit) - Number(selectedHistoryItem.open || selectedHistoryItem.entry)).toFixed(2)}`
                       }
                     </div>
                   </div>

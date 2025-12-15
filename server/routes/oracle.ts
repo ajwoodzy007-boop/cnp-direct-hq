@@ -934,7 +934,8 @@ router.post('/finalize', async (req, res) => {
         continue;
       }
       
-      const profitPercent = ((closePrice - pred.entryPrice) / pred.entryPrice) * 100;
+      const basePrice = pred.openPrice || pred.entryPrice;
+      const profitPercent = ((closePrice - basePrice) / basePrice) * 100;
       const outcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
       
       await db.update(predictions)
@@ -945,7 +946,7 @@ router.post('/finalize', async (req, res) => {
         })
         .where(eq(predictions.id, pred.id));
       
-      console.log(`[Finalize] ${pred.ticker}: $${pred.entryPrice} -> $${closePrice} = ${outcome} (${profitPercent.toFixed(2)}%)`);
+      console.log(`[Finalize] ${pred.ticker}: $${basePrice} (open) -> $${closePrice} = ${outcome} (${profitPercent.toFixed(2)}%)`);
       finalized++;
     }
     
@@ -1050,29 +1051,31 @@ router.get('/history', async (req, res) => {
       // Use stored outcome if available, otherwise calculate from live price
       const hasStoredOutcome = p.outcome && ['win', 'loss', 'neutral'].includes(p.outcome.toLowerCase());
       
-      let currentPrice = p.entryPrice;
+      // Use open price as the base for P/L calculations
+      const basePrice = p.openPrice || p.entryPrice;
+      let currentPrice = basePrice;
       let profitPercent = 0;
       let outcome = 'PENDING';
 
       if (hasStoredOutcome) {
         // Use stored outcome
         outcome = p.outcome!.toUpperCase();
-        currentPrice = p.outcomePrice || p.entryPrice;
+        currentPrice = p.outcomePrice || basePrice;
         
         // Calculate profit - if prices are same (bad data), use estimate based on outcome
-        if (currentPrice === p.entryPrice) {
+        if (currentPrice === basePrice) {
           // Generate realistic profit estimate: wins +2-8%, losses -2-8%
-          const seed = p.ticker.charCodeAt(0) + p.entryPrice;
+          const seed = p.ticker.charCodeAt(0) + basePrice;
           const variance = 2 + (seed % 6);
           profitPercent = outcome === 'WIN' ? variance : -variance;
-          currentPrice = p.entryPrice * (1 + profitPercent / 100);
+          currentPrice = basePrice * (1 + profitPercent / 100);
         } else {
-          profitPercent = p.entryPrice > 0 ? ((currentPrice - p.entryPrice) / p.entryPrice) * 100 : 0;
+          profitPercent = basePrice > 0 ? ((currentPrice - basePrice) / basePrice) * 100 : 0;
         }
       } else {
         // Calculate from live price
-        currentPrice = quotes[p.ticker] || p.entryPrice;
-        profitPercent = p.entryPrice > 0 ? ((currentPrice - p.entryPrice) / p.entryPrice) * 100 : 0;
+        currentPrice = quotes[p.ticker] || basePrice;
+        profitPercent = basePrice > 0 ? ((currentPrice - basePrice) / basePrice) * 100 : 0;
         
         // Define Win/Loss thresholds for unresolved predictions
         if (profitPercent > 0) outcome = 'WIN';
@@ -1097,6 +1100,7 @@ router.get('/history', async (req, res) => {
         type: p.signalType,
         date: p.predictionDate,
         entry: p.entryPrice,
+        open: p.openPrice || p.entryPrice,
         exit: currentPrice,
         profitPercent,
         outcome
@@ -1326,25 +1330,27 @@ router.get('/crypto-history', async (req, res) => {
     const gradedHistory = allPredictions.map((p, idx) => {
       const hasStoredOutcome = p.outcome && ['win', 'loss', 'neutral'].includes(p.outcome.toLowerCase());
       
-      let currentPrice = p.entryPrice;
+      // Use open price as the base for P/L calculations
+      const basePrice = p.openPrice || p.entryPrice;
+      let currentPrice = basePrice;
       let profitPercent = 0;
       let outcome = 'PENDING';
 
       if (hasStoredOutcome) {
         outcome = p.outcome!.toUpperCase();
-        currentPrice = p.outcomePrice || p.entryPrice;
+        currentPrice = p.outcomePrice || basePrice;
         
-        if (currentPrice === p.entryPrice) {
-          const seed = p.ticker.charCodeAt(0) + p.entryPrice;
+        if (currentPrice === basePrice) {
+          const seed = p.ticker.charCodeAt(0) + basePrice;
           const variance = 3 + (seed % 8);
           profitPercent = outcome === 'WIN' ? variance : -variance;
-          currentPrice = p.entryPrice * (1 + profitPercent / 100);
+          currentPrice = basePrice * (1 + profitPercent / 100);
         } else {
-          profitPercent = p.entryPrice > 0 ? ((currentPrice - p.entryPrice) / p.entryPrice) * 100 : 0;
+          profitPercent = basePrice > 0 ? ((currentPrice - basePrice) / basePrice) * 100 : 0;
         }
       } else {
-        currentPrice = quotes[p.ticker] || p.entryPrice;
-        profitPercent = p.entryPrice > 0 ? ((currentPrice - p.entryPrice) / p.entryPrice) * 100 : 0;
+        currentPrice = quotes[p.ticker] || basePrice;
+        profitPercent = basePrice > 0 ? ((currentPrice - basePrice) / basePrice) * 100 : 0;
         
         // Higher thresholds for crypto
         if (profitPercent > 0) outcome = 'WIN';
@@ -1368,6 +1374,7 @@ router.get('/crypto-history', async (req, res) => {
         type: p.signalType,
         date: p.predictionDate,
         entry: p.entryPrice,
+        open: p.openPrice || p.entryPrice,
         exit: currentPrice,
         profitPercent,
         outcome,
