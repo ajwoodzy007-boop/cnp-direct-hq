@@ -855,14 +855,43 @@ export default function TheOracle() {
                   </div>
 
                   <div className="mb-4">
-                    <div className="flex justify-between text-xs text-slate-500 mb-1">
-                      <span>Progress to Target</span>
-                      <span>{progress.toFixed(0)}%</span>
-                    </div>
-                    <Progress 
-                      value={progress} 
-                      className="h-2 bg-slate-800"
-                    />
+                    {(() => {
+                      const currentPrice = pick.currentPrice || pick.entryPrice;
+                      const gainPercent = ((currentPrice - pick.entryPrice) / pick.entryPrice) * 100;
+                      const isPositive = gainPercent >= 0;
+                      const maxSwing = 5;
+                      const barWidth = Math.min(Math.abs(gainPercent) / maxSwing * 50, 50);
+                      
+                      return (
+                        <>
+                          <div className="flex justify-between text-xs text-slate-500 mb-1">
+                            <span>Live P/L</span>
+                            <span className={`font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
+                              ${currentPrice.toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden">
+                            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-600 z-10" />
+                            {isPositive ? (
+                              <div 
+                                className="absolute left-1/2 top-0 bottom-0 bg-green-500 rounded-r-full transition-all"
+                                style={{ width: `${barWidth}%` }}
+                              />
+                            ) : (
+                              <div 
+                                className="absolute right-1/2 top-0 bottom-0 bg-red-500 rounded-l-full transition-all"
+                                style={{ width: `${barWidth}%` }}
+                              />
+                            )}
+                          </div>
+                          <div className="flex justify-between text-[10px] text-slate-600 mt-1">
+                            <span>-5%</span>
+                            <span className="text-slate-500">Entry: ${pick.entryPrice.toFixed(2)}</span>
+                            <span>+5%</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex justify-between text-xs text-slate-500 mb-4 border-t border-slate-800 pt-3">
