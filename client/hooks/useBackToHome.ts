@@ -21,7 +21,11 @@ export function useBackToHome(currentTab: string, setTab: (tab: string) => void)
 
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      if (hasAddedHistoryRef.current) {
+      if (event.state?.modalOpen) {
+        return;
+      }
+      
+      if (hasAddedHistoryRef.current && event.state?.tabView) {
         hasAddedHistoryRef.current = false;
         setTab('summary');
       }
