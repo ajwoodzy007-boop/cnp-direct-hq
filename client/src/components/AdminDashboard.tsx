@@ -149,6 +149,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [regenerateResult, setRegenerateResult] = useState<string | null>(null);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState<string | null>(null);
+  const [adminKey, setAdminKey] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [businessMetrics, setBusinessMetrics] = useState<BusinessMetrics | null>(null);
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   
@@ -165,12 +167,41 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [loadingActivity, setLoadingActivity] = useState(false);
   const [winRateView, setWinRateView] = useState<'byDate' | 'byTicker' | 'entries'>('byDate');
 
+  // Helper for authenticated admin API calls
+  const adminFetch = async (url: string, options: RequestInit = {}) => {
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string> || {}),
+    };
+    if (adminKey) {
+      headers['X-Admin-Key'] = adminKey;
+    }
+    return fetch(url, { ...options, headers });
+  };
+
+  const verifyAdminKey = async () => {
+    if (!adminKey) return false;
+    try {
+      const res = await adminFetch('/api/admin/stats');
+      const json = await res.json();
+      if (json.success) {
+        setIsAuthenticated(true);
+        return true;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return false;
+  };
+
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/stats');
+      const res = await adminFetch('/api/admin/stats');
       const json = await res.json();
-      if (json.success) setStats(json.data);
+      if (json.success) {
+        setStats(json.data);
+        setIsAuthenticated(true);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -180,7 +211,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users');
+      const res = await adminFetch('/api/admin/users');
       const json = await res.json();
       if (json.success) setUsers(json.users);
     } catch (e) {
@@ -190,7 +221,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
   const fetchBetaPasses = async () => {
     try {
-      const res = await fetch('/api/admin/beta-passes');
+      const res = await adminFetch('/api/admin/beta-passes');
       const json = await res.json();
       if (json.success) setBetaPasses(json.passes);
     } catch (e) {
@@ -201,7 +232,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const fetchBusinessMetrics = async () => {
     setLoadingMetrics(true);
     try {
-      const res = await fetch('/api/admin/business-metrics');
+      const res = await adminFetch('/api/admin/business-metrics');
       const json = await res.json();
       if (json.success) setBusinessMetrics(json.data);
     } catch (e) {
@@ -213,7 +244,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
   const fetchDiagnostics = async () => {
     try {
-      const res = await fetch('/api/admin/diagnostics');
+      const res = await adminFetch('/api/admin/diagnostics');
       const json = await res.json();
       if (json.success) setDiagnostics(json.diagnostics);
     } catch (e) {
@@ -224,7 +255,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const fetchWinRates = async () => {
     setLoadingWinRates(true);
     try {
-      const res = await fetch('/api/admin/win-rates');
+      const res = await adminFetch('/api/admin/win-rates');
       const json = await res.json();
       if (json.success) {
         setWinRateEntries(json.data.entries || []);
@@ -241,7 +272,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const fetchPortfolios = async () => {
     setLoadingPortfolios(true);
     try {
-      const res = await fetch('/api/admin/portfolios');
+      const res = await adminFetch('/api/admin/portfolios');
       const json = await res.json();
       if (json.success) {
         setPortfolioPositions(json.data.positions || []);
@@ -257,7 +288,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const fetchActivity = async () => {
     setLoadingActivity(true);
     try {
-      const res = await fetch('/api/admin/activity');
+      const res = await adminFetch('/api/admin/activity');
       const json = await res.json();
       if (json.success) {
         setPlaybookActivity(json.data.playbookActivity || []);
@@ -273,7 +304,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const generateBetaPass = async () => {
     setGeneratingPass(true);
     try {
-      const res = await fetch('/api/admin/beta-passes/generate', { method: 'POST' });
+      const res = await adminFetch('/api/admin/beta-passes/generate', { method: 'POST' });
       const json = await res.json();
       if (json.success) {
         fetchBetaPasses();
@@ -346,7 +377,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     setFinalizingAll(true);
     setFinalizeResult(null);
     try {
-      const res = await fetch('/api/admin/force-finalize-all', { method: 'POST' });
+      const res = await adminFetch('/api/admin/force-finalize-all', { method: 'POST' });
       const json = await res.json();
       if (json.success) {
         setFinalizeResult(`ALL PENDING: ${json.message || 'Finalized successfully'}`);
@@ -388,7 +419,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     setBackfilling(true);
     setBackfillResult(null);
     try {
-      const res = await fetch('/api/admin/backfill-predictions', { 
+      const res = await adminFetch('/api/admin/backfill-predictions', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ days: 14 })
@@ -487,6 +518,43 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           >
             <ArrowPathIcon className="h-5 w-5" />
           </button>
+        </div>
+
+        {/* Admin Authentication */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <label className="text-xs text-slate-500 mb-1 block">Admin Password (for live site)</label>
+              <input
+                type="password"
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                placeholder="Enter ADMIN_PASSWORD to unlock controls on production"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
+                data-testid="input-admin-key"
+              />
+            </div>
+            <button
+              onClick={async () => {
+                const success = await verifyAdminKey();
+                if (success) {
+                  setFinalizeResult('Admin key verified!');
+                } else {
+                  setFinalizeResult('Invalid admin key');
+                }
+              }}
+              className="px-4 py-2 bg-cyan-600/30 hover:bg-cyan-600/40 text-cyan-300 rounded-lg border border-cyan-400/50 transition-all mt-5"
+              data-testid="button-verify-admin"
+            >
+              Verify
+            </button>
+            {isAuthenticated && (
+              <div className="flex items-center gap-2 text-green-400 mt-5">
+                <ShieldCheckIcon className="h-5 w-5" />
+                <span className="text-sm">Authenticated</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tab Navigation */}

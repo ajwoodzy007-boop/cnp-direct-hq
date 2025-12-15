@@ -7,11 +7,25 @@ const router = Router();
 // Admin emails from environment variable (comma-separated for multiple admins)
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(e => e);
 
+// Secret key for API access (bypasses session auth)
+const ADMIN_SECRET = process.env.ADMIN_PASSWORD || '';
+
+function checkSecretKey(req: Request): boolean {
+  const key = req.headers['x-admin-key'] as string || req.query.adminKey as string;
+  return ADMIN_SECRET && key === ADMIN_SECRET;
+}
+
 function isAdminEmail(email: string): boolean {
   return ADMIN_EMAILS.includes(email.toLowerCase());
 }
 
 function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  // First check for API key authentication (for production admin access)
+  if (checkSecretKey(req)) {
+    return next();
+  }
+  
+  // Fall back to session-based authentication
   const user = (req.session as any).user;
   
   if (!user) {
