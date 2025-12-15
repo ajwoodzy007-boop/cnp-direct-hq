@@ -393,23 +393,88 @@ async function saveDbCache(cacheType: string, data: BacktestSummary): Promise<vo
 // GET /30-day - Rolling 30-day backtest (returns preloaded data instantly)
 router.get('/30-day', async (req, res) => {
   try {
-    // First check database cache (instant)
-    const dbCached = await getDbCache('30day');
-    if (dbCached && dbCached.days && dbCached.days.length > 0) {
-      return res.json({ success: true, fromCache: true, data: dbCached });
+    // Get real predictions from database for last 30 days
+    const { predictions } = await import('@shared/schema');
+    const { sql, gte } = await import('drizzle-orm');
+    
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const realPredictions = await db.select().from(predictions)
+      .where(sql`${predictions.predictionDate} >= ${thirtyDaysAgo} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND ${predictions.outcome} IN ('win', 'loss')`)
+      .orderBy(sql`${predictions.predictionDate} DESC`);
+    
+    if (realPredictions.length === 0) {
+      // Fallback to preloaded if no real data
+      console.log('[Backtest] No real predictions found, using preloaded data');
+      return res.json({ success: true, fromCache: true, preloaded: true, data: PRELOADED_30DAY_DATA });
     }
     
-    // Check in-memory cache
-    const cacheKey = '30day';
-    const cached = cachedResults[cacheKey];
+    // Group predictions by date
+    const dayMap = new Map<string, BacktestPick[]>();
     
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL && cached.data.days && cached.data.days.length > 0) {
-      return res.json({ success: true, fromCache: true, data: cached.data });
+    for (const pred of realPredictions) {
+      const dateStr = pred.predictionDate.toISOString().split('T')[0];
+      const openPrice = pred.openPrice || pred.entryPrice;
+      const closePrice = pred.outcomePrice || pred.entryPrice;
+      const returnPercent = openPrice > 0 ? ((closePrice - openPrice) / openPrice) * 100 : 0;
+      
+      const pick: BacktestPick = {
+        ticker: pred.ticker,
+        signal: pred.signalType,
+        openPrice: openPrice,
+        closePrice: closePrice,
+        returnPercent: Math.round(returnPercent * 100) / 100,
+        win: pred.outcome === 'win'
+      };
+      
+      const existing = dayMap.get(dateStr) || [];
+      existing.push(pick);
+      dayMap.set(dateStr, existing);
     }
     
-    // No cache - return preloaded data instantly (no API calls)
-    console.log('[Backtest] Returning preloaded 30-day data');
-    res.json({ success: true, fromCache: true, preloaded: true, data: PRELOADED_30DAY_DATA });
+    // Convert to days array
+    const days: DayResult[] = [];
+    for (const [date, picks] of Array.from(dayMap.entries())) {
+      const winCount = picks.filter(p => p.win).length;
+      const lossCount = picks.filter(p => !p.win).length;
+      const avgReturn = picks.length > 0 ? 
+        Math.round((picks.reduce((sum, p) => sum + p.returnPercent, 0) / picks.length) * 100) / 100 : 0;
+      
+      days.push({ date, picks, winCount, lossCount, avgReturn });
+    }
+    
+    // Sort by date descending
+    days.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Calculate summary
+    const totalPicks = realPredictions.length;
+    const wins = realPredictions.filter(p => p.outcome === 'win').length;
+    const losses = realPredictions.filter(p => p.outcome === 'loss').length;
+    const winRate = totalPicks > 0 ? Math.round((wins / totalPicks) * 1000) / 10 : 0;
+    const avgReturn = days.length > 0 ? 
+      Math.round((days.reduce((sum, d) => sum + d.avgReturn, 0) / days.length) * 100) / 100 : 0;
+    const cumulativeReturn = Math.round(days.reduce((sum, d) => sum + d.avgReturn, 0) * 100) / 100;
+    const winningDays = days.filter(d => d.winCount > d.lossCount).length;
+    const losingDays = days.filter(d => d.lossCount > d.winCount).length;
+    const dayWinRate = days.length > 0 ? Math.round((winningDays / days.length) * 1000) / 10 : 0;
+    
+    const result: BacktestSummary = {
+      totalDays: days.length,
+      totalPicks,
+      wins,
+      losses,
+      winRate,
+      avgReturn,
+      cumulativeReturn,
+      winningDays,
+      losingDays,
+      dayWinRate,
+      days
+    };
+    
+    console.log(`[Backtest] Returning real 30-day data: ${totalPicks} picks, ${wins} wins, ${losses} losses`);
+    res.json({ success: true, fromCache: false, realData: true, data: result });
   } catch (error) {
     console.error('30-day backtest error:', error);
     // Fallback to preloaded data on error
@@ -444,71 +509,61 @@ router.get('/6-month', async (req, res) => {
   }
 });
 
-// GET /summary - Quick summary stats (uses DB cache or defaults)
+// GET /summary - Quick summary stats from REAL predictions
 router.get('/summary', async (req, res) => {
   try {
-    // Try database cache first (instant)
-    const db30 = await getDbCache('30day');
-    const db6m = await getDbCache('6month');
+    // Get real predictions from database for last 30 days
+    const { predictions } = await import('@shared/schema');
+    const { sql } = await import('drizzle-orm');
     
-    if (db30) {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const realPredictions = await db.select().from(predictions)
+      .where(sql`${predictions.predictionDate} >= ${thirtyDaysAgo} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND ${predictions.outcome} IN ('win', 'loss')`)
+      .orderBy(sql`${predictions.predictionDate} DESC`);
+    
+    if (realPredictions.length === 0) {
+      // Fallback to defaults if no real data
       return res.json({
         success: true,
         thirtyDay: {
-          winRate: db30.winRate,
-          avgReturn: db30.avgReturn,
-          totalPicks: db30.totalPicks,
-          wins: db30.wins,
-          losses: db30.losses
+          winRate: 0,
+          avgReturn: 0,
+          totalPicks: 0,
+          wins: 0,
+          losses: 0
         },
-        sixMonth: db6m ? {
-          winRate: db6m.winRate,
-          avgReturn: db6m.avgReturn,
-          totalPicks: db6m.totalPicks,
-          cumulativeReturn: db6m.cumulativeReturn
-        } : null
+        sixMonth: null
       });
     }
     
-    // Try in-memory cache
-    const cached30 = cachedResults['30day'];
-    const cached6m = cachedResults['6month'];
+    const totalPicks = realPredictions.length;
+    const wins = realPredictions.filter(p => p.outcome === 'win').length;
+    const losses = realPredictions.filter(p => p.outcome === 'loss').length;
+    const winRate = totalPicks > 0 ? Math.round((wins / totalPicks) * 1000) / 10 : 0;
     
-    if (cached30 && Date.now() - cached30.timestamp < CACHE_TTL) {
-      return res.json({
-        success: true,
-        thirtyDay: {
-          winRate: cached30.data.winRate,
-          avgReturn: cached30.data.avgReturn,
-          totalPicks: cached30.data.totalPicks,
-          wins: cached30.data.wins,
-          losses: cached30.data.losses
-        },
-        sixMonth: cached6m ? {
-          winRate: cached6m.data.winRate,
-          avgReturn: cached6m.data.avgReturn,
-          totalPicks: cached6m.data.totalPicks,
-          cumulativeReturn: cached6m.data.cumulativeReturn
-        } : null
-      });
+    // Calculate average return
+    let totalReturn = 0;
+    for (const pred of realPredictions) {
+      const openPrice = pred.openPrice || pred.entryPrice;
+      const closePrice = pred.outcomePrice || pred.entryPrice;
+      if (openPrice > 0) {
+        totalReturn += ((closePrice - openPrice) / openPrice) * 100;
+      }
     }
+    const avgReturn = totalPicks > 0 ? Math.round((totalReturn / totalPicks) * 100) / 100 : 0;
     
-    // Return pre-computed defaults
     res.json({
       success: true,
       thirtyDay: {
-        winRate: 97.3,
-        avgReturn: 2.58,
-        totalPicks: 37,
-        wins: 36,
-        losses: 1
+        winRate,
+        avgReturn,
+        totalPicks,
+        wins,
+        losses
       },
-      sixMonth: {
-        winRate: 98.5,
-        avgReturn: 2.77,
-        totalPicks: 66,
-        cumulativeReturn: 182.85
-      }
+      sixMonth: null // Not computing 6-month from real data yet
     });
   } catch (error) {
     console.error('Summary error:', error);
