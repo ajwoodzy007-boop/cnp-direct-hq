@@ -32,14 +32,10 @@ router.get('/', async (req, res) => {
   try {
     const userId = getUserIdFromSession(req);
     
-    if (!userId) {
-      return res.json({ success: true, data: [] });
-    }
-    
-    const result = await query(
-      'SELECT * FROM portfolio WHERE status = $1 AND user_id = $2', 
-      ['OPEN', userId]
-    );
+    // If user is logged in, show their positions; otherwise show all open positions (like Command Center)
+    const result = userId
+      ? await query('SELECT * FROM portfolio WHERE status = $1 AND user_id = $2', ['OPEN', userId])
+      : await query('SELECT * FROM portfolio WHERE status = $1', ['OPEN']);
     const portfolio = result.rows;
     
     const symbolsToFetch: string[] = [];
