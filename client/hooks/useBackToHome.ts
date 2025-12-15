@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
+import { getOpenModalCount } from './modalState';
 
 export function useBackToHome(currentTab: string, setTab: (tab: string) => void) {
   const hasAddedHistoryRef = useRef(false);
-  const previousTabRef = useRef(currentTab);
 
   useEffect(() => {
     const isNotHome = currentTab !== 'summary';
@@ -15,8 +15,6 @@ export function useBackToHome(currentTab: string, setTab: (tab: string) => void)
     if (currentTab === 'summary') {
       hasAddedHistoryRef.current = false;
     }
-
-    previousTabRef.current = currentTab;
   }, [currentTab]);
 
   useEffect(() => {
@@ -25,7 +23,11 @@ export function useBackToHome(currentTab: string, setTab: (tab: string) => void)
         return;
       }
       
-      if (hasAddedHistoryRef.current && event.state?.tabView) {
+      if (getOpenModalCount() > 0) {
+        return;
+      }
+      
+      if (hasAddedHistoryRef.current) {
         hasAddedHistoryRef.current = false;
         setTab('summary');
       }
