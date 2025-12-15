@@ -558,9 +558,10 @@ router.get('/daily', async (req, res) => {
       return res.json({ success: true, fromCache: false, data: [] });
     }
 
-    // COMPREHENSIVE SCORING SYSTEM - Always generates 10 picks
-    // Score all stocks using multiple factors, then take top 10
+    // ENHANCED SCORING SYSTEM - Quality-weighted picks
+    // Score all stocks using multiple factors with risk penalties
     const seenTickers = new Set<string>();
+    const seenSectors = new Map<string, number>(); // Track sector concentration
     
     const scoredStocks = scanResults
       .filter(s => s.price > 0 && s.ticker) // Basic validity
@@ -568,66 +569,112 @@ router.get('/daily', async (req, res) => {
         let score = 0;
         const reasons: string[] = [];
         
-        // Signal type scoring (highest weight)
+        // === SIGNAL TYPE SCORING (40% weight) ===
         if (s.signal === 'MOMENTUM BUY') {
           score += 50;
           reasons.push('momentum');
         } else if (s.signal === 'VALUE BUY') {
           score += 40;
           reasons.push('value');
+        } else if (s.signal === 'SPECULATIVE BUY') {
+          score += 25;
         } else if (s.signal === 'WAIT') {
-          score += 20;
+          score += 15;
         } else if (s.signal === 'SELL WARNING') {
-          score -= 10; // Penalize sell signals
+          score -= 20; // Strong penalty for sell signals
         }
         
-        // RSI scoring (optimal range 35-65)
+        // === RSI SCORING (20% weight) ===
         const rsi = s.rsi || 50;
-        if (rsi >= 35 && rsi <= 65) {
-          score += 25; // Optimal zone
+        if (rsi >= 40 && rsi <= 60) {
+          score += 25; // Optimal neutral zone
           if (rsi >= 45 && rsi <= 55) score += 10; // Sweet spot bonus
-        } else if (rsi < 35) {
-          score += 15; // Oversold bounce potential
+        } else if (rsi >= 30 && rsi < 40) {
+          score += 20; // Mildly oversold - good bounce potential
           reasons.push('oversold');
+        } else if (rsi < 30) {
+          score += 10; // Deeply oversold - may be distressed
         } else if (rsi > 70) {
           score -= 15; // Overbought penalty
         }
         
-        // Sentiment scoring
+        // === SENTIMENT SCORING (15% weight) ===
         const sentiment = s.sentimentScore || 0;
-        if (sentiment > 0.1) {
-          score += sentiment * 40;
+        if (sentiment > 0.15) {
+          score += 25;
           reasons.push('bullish news');
-        } else if (sentiment > 0) {
-          score += sentiment * 20;
+        } else if (sentiment > 0.05) {
+          score += 15;
         } else if (sentiment < -0.1) {
-          score -= 10;
+          score -= 15; // Negative news penalty
         }
         
-        // Volume scoring (RVOL)
+        // === VOLUME SCORING (15% weight) ===
         const rvol = s.rvol || 1;
-        if (rvol >= 2) {
-          score += Math.min(rvol * 8, 30);
+        if (rvol >= 2 && rvol <= 5) {
+          score += 25; // Strong but not extreme volume
           reasons.push(`${rvol.toFixed(1)}x volume`);
         } else if (rvol >= 1.5) {
           score += 15;
+        } else if (rvol > 5) {
+          score += 10; // Very high volume may indicate volatility risk
         }
         
-        // Change percent scoring (positive momentum)
+        // === PRICE MOMENTUM (10% weight) ===
         const change = s.changePercent || 0;
-        if (change > 0 && change < 10) {
-          score += change * 3;
-          if (change > 2) reasons.push(`+${change.toFixed(1)}%`);
-        } else if (change > 10) {
-          score -= 5; // May be overextended
+        if (change > 1 && change <= 8) {
+          score += 15; // Healthy positive momentum
+          if (change > 3) reasons.push(`+${change.toFixed(1)}%`);
+        } else if (change > 8 && change <= 15) {
+          score += 5; // Strong move but may be extended
+        } else if (change > 15) {
+          score -= 10; // Overextended penalty
+        } else if (change < -5) {
+          score -= 10; // Falling knife penalty
         }
         
-        // Calculate confidence based on signal strength
+        // === QUALITY BONUSES ===
+        // Market cap bonus (larger = more stable)
+        const marketCap = s.marketCap || 0;
+        if (marketCap >= 10e9) {
+          score += 15; // Large cap bonus ($10B+)
+          reasons.push('large cap');
+        } else if (marketCap >= 2e9) {
+          score += 10; // Mid cap bonus ($2B+)
+        } else if (marketCap >= 500e6) {
+          score += 5; // Small cap ($500M+)
+        }
+        
+        // === RISK PENALTIES ===
+        // Penny stock proximity penalty
+        if (s.price < 10) {
+          score -= 10;
+        }
+        
+        // Low volume day penalty (even if avg volume is ok)
+        if (rvol < 0.5) {
+          score -= 15; // Very low volume day
+        }
+        
+        // Calculate confidence based on signal strength and quality factors
         let confidence = 50;
-        if (s.signal === 'MOMENTUM BUY') confidence = 80;
-        else if (s.signal === 'VALUE BUY') confidence = 70;
-        else if (sentiment > 0.1 && rvol >= 1.5) confidence = 75;
-        else if (reasons.length >= 2) confidence = 65;
+        if (s.signal === 'MOMENTUM BUY') {
+          confidence = 80;
+          if (marketCap >= 2e9) confidence += 5;
+        } else if (s.signal === 'VALUE BUY') {
+          confidence = 70;
+          if (sentiment > 0.1) confidence += 5;
+        } else if (sentiment > 0.1 && rvol >= 1.5) {
+          confidence = 75;
+        } else if (reasons.length >= 2) {
+          confidence = 65;
+        }
+        
+        // Confidence penalty for risky factors
+        if (change > 12) confidence -= 10;
+        if (rsi > 70 || rsi < 30) confidence -= 5;
+        
+        confidence = Math.max(40, Math.min(95, confidence));
         
         return {
           ...s,
@@ -638,13 +685,30 @@ router.get('/daily', async (req, res) => {
       })
       .sort((a, b) => b.score - a.score);
     
-    // Take top 10 unique picks
+    // Take top 10 unique picks with sector diversification
     const topPicks: typeof scoredStocks = [];
+    const MAX_PER_SECTOR = 3; // Maximum 3 stocks from same known sector
+    
     for (const s of scoredStocks) {
-      if (!seenTickers.has(s.ticker) && topPicks.length < 10) {
-        seenTickers.add(s.ticker);
-        topPicks.push(s);
+      if (seenTickers.has(s.ticker)) continue;
+      if (topPicks.length >= 10) break;
+      
+      // Check sector concentration (only for stocks with known sectors)
+      const sector = s.sector;
+      
+      if (sector && sector !== 'Unknown') {
+        const sectorCount = seenSectors.get(sector) || 0;
+        
+        if (sectorCount >= MAX_PER_SECTOR) {
+          console.log(`[Oracle] Skipping ${s.ticker}: sector ${sector} limit reached (${sectorCount})`);
+          continue;
+        }
+        
+        seenSectors.set(sector, sectorCount + 1);
       }
+      
+      seenTickers.add(s.ticker);
+      topPicks.push(s);
     }
     
     console.log(`[Oracle] Generated ${topPicks.length} picks from ${scanResults.length} scanned stocks`);
