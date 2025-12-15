@@ -60,11 +60,13 @@ export default function TheOracle() {
   useBackToClose(!!selectedPick, () => setSelectedPick(null));
   const [sortBy, setSortBy] = useState<SortOption>('rank');
   const [showSignals, setShowSignals] = useState(false);
+  useBackToClose(showSignals, () => setShowSignals(false));
   const [signalsLocked, setSignalsLocked] = useState(false);
   const [signalsLoading, setSignalsLoading] = useState(false);
   const [liveSignals, setLiveSignals] = useState<any[]>([]);
   const [signalsType, setSignalsType] = useState<'stocks' | 'crypto'>('stocks');
   const [selectedSignal, setSelectedSignal] = useState<any>(null);
+  useBackToClose(!!selectedSignal, () => { setSelectedSignal(null); setSignalAnalysis(null); });
   const [signalAnalysis, setSignalAnalysis] = useState<any>(null);
   const [analyzingSignal, setAnalyzingSignal] = useState(false);
   
@@ -74,7 +76,9 @@ export default function TheOracle() {
   // Backtest Track Record state
   const [backtestSummary, setBacktestSummary] = useState<BacktestSummaryData | null>(null);
   const [show30DayModal, setShow30DayModal] = useState(false);
+  useBackToClose(show30DayModal, () => setShow30DayModal(false));
   const [show6MonthModal, setShow6MonthModal] = useState(false);
+  useBackToClose(show6MonthModal, () => setShow6MonthModal(false));
   const [modal30DayTab, setModal30DayTab] = useState<'performance' | 'audit'>('performance');
   
   // Detailed backtest data
@@ -87,6 +91,7 @@ export default function TheOracle() {
 
   // Deep AI Analysis modal state
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
+  useBackToClose(showDeepAnalysis, () => setShowDeepAnalysis(false));
   const [deepAnalysis, setDeepAnalysis] = useState<any>(null);
   const [deepAnalysisLoading, setDeepAnalysisLoading] = useState(false);
   const [deepAnalysisError, setDeepAnalysisError] = useState<string | null>(null);
@@ -124,6 +129,7 @@ export default function TheOracle() {
   const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0, bestPick: null as { ticker: string; return: number } | null });
   const [cryptoStats, setCryptoStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0, bestPick: null as { ticker: string; return: number } | null });
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
+  useBackToClose(!!selectedHistoryItem, () => setSelectedHistoryItem(null));
 
   // Fetch real stats & history
   const fetchHistory = async () => {
