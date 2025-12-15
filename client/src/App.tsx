@@ -25,12 +25,9 @@ import CheckoutCancel from "@/pages/CheckoutCancel";
 import AiAssistant from './components/AiAssistant';
 import AdminDashboard from './components/AdminDashboard';
 import { useGoHomeOnExhaust } from '../hooks/useGoHomeOnExhaust';
-import { useBackToHome } from '../hooks/useBackToHome';
 
 function MainDashboard() {
   const [currentTab, setTab] = useState('summary');
-  
-  useBackToHome(currentTab, setTab);
   const [user, setUser] = useState<{ email: string; tier: string } | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
