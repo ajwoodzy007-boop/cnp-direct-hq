@@ -25,9 +25,13 @@ import CheckoutCancel from "@/pages/CheckoutCancel";
 import AiAssistant from './components/AiAssistant';
 import AdminDashboard from './components/AdminDashboard';
 import { useGoHomeOnExhaust } from '../hooks/useGoHomeOnExhaust';
+import { NavigationStackProvider, useTabBack } from '../hooks/useNavigationStack';
 
 function MainDashboard() {
   const [currentTab, setTab] = useState('summary');
+  
+  useTabBack(currentTab, setTab);
+  
   const [user, setUser] = useState<{ email: string; tier: string } | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -167,20 +171,22 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <SettingsProvider>
-        <TooltipProvider>
-          <GlobalNavigationHandler>
-            <Toaster />
-            <SonnerToaster position="top-right" richColors />
-            <Switch>
-              <Route path="/" component={MainDashboard} />
-              <Route path="/pricing" component={Pricing} />
-              <Route path="/checkout/success" component={CheckoutSuccess} />
-              <Route path="/checkout/cancel" component={CheckoutCancel} />
-              <Route component={MainDashboard} />
-            </Switch>
-            <AiAssistant />
-          </GlobalNavigationHandler>
-        </TooltipProvider>
+        <NavigationStackProvider>
+          <TooltipProvider>
+            <GlobalNavigationHandler>
+              <Toaster />
+              <SonnerToaster position="top-right" richColors />
+              <Switch>
+                <Route path="/" component={MainDashboard} />
+                <Route path="/pricing" component={Pricing} />
+                <Route path="/checkout/success" component={CheckoutSuccess} />
+                <Route path="/checkout/cancel" component={CheckoutCancel} />
+                <Route component={MainDashboard} />
+              </Switch>
+              <AiAssistant />
+            </GlobalNavigationHandler>
+          </TooltipProvider>
+        </NavigationStackProvider>
       </SettingsProvider>
     </QueryClientProvider>
   );

@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import PremiumLock from './PremiumLock';
 import Skeleton from './Skeleton';
-import { useBackToClose } from '../../hooks/useBackToClose';
+import { useModalBack } from '../../hooks/useNavigationStack';
 import HelpTip from '../../components/HelpTip';
 
 interface PickData {
@@ -57,16 +57,16 @@ export default function TheOracle() {
   const [loading, setLoading] = useState(true);
   const [cryptoLoading, setCryptoLoading] = useState(false);
   const [selectedPick, setSelectedPick] = useState<PickData | null>(null);
-  useBackToClose(!!selectedPick, () => setSelectedPick(null));
+  useModalBack(!!selectedPick, () => setSelectedPick(null), 'oracle-selected-pick');
   const [sortBy, setSortBy] = useState<SortOption>('rank');
   const [showSignals, setShowSignals] = useState(false);
-  useBackToClose(showSignals, () => setShowSignals(false));
+  useModalBack(showSignals, () => setShowSignals(false), 'oracle-signals');
   const [signalsLocked, setSignalsLocked] = useState(false);
   const [signalsLoading, setSignalsLoading] = useState(false);
   const [liveSignals, setLiveSignals] = useState<any[]>([]);
   const [signalsType, setSignalsType] = useState<'stocks' | 'crypto'>('stocks');
   const [selectedSignal, setSelectedSignal] = useState<any>(null);
-  useBackToClose(!!selectedSignal, () => { setSelectedSignal(null); setSignalAnalysis(null); });
+  useModalBack(!!selectedSignal, () => { setSelectedSignal(null); setSignalAnalysis(null); }, 'oracle-signal-analysis');
   const [signalAnalysis, setSignalAnalysis] = useState<any>(null);
   const [analyzingSignal, setAnalyzingSignal] = useState(false);
   
@@ -76,9 +76,9 @@ export default function TheOracle() {
   // Backtest Track Record state
   const [backtestSummary, setBacktestSummary] = useState<BacktestSummaryData | null>(null);
   const [show30DayModal, setShow30DayModal] = useState(false);
-  useBackToClose(show30DayModal, () => setShow30DayModal(false));
+  useModalBack(show30DayModal, () => setShow30DayModal(false), 'oracle-30day-modal');
   const [show6MonthModal, setShow6MonthModal] = useState(false);
-  useBackToClose(show6MonthModal, () => setShow6MonthModal(false));
+  useModalBack(show6MonthModal, () => setShow6MonthModal(false), 'oracle-6month-modal');
   const [modal30DayTab, setModal30DayTab] = useState<'performance' | 'audit'>('performance');
   
   // Detailed backtest data
@@ -91,7 +91,7 @@ export default function TheOracle() {
 
   // Deep AI Analysis modal state
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
-  useBackToClose(showDeepAnalysis, () => setShowDeepAnalysis(false));
+  useModalBack(showDeepAnalysis, () => setShowDeepAnalysis(false), 'oracle-deep-analysis');
   const [deepAnalysis, setDeepAnalysis] = useState<any>(null);
   const [deepAnalysisLoading, setDeepAnalysisLoading] = useState(false);
   const [deepAnalysisError, setDeepAnalysisError] = useState<string | null>(null);
@@ -129,7 +129,7 @@ export default function TheOracle() {
   const [stats, setStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0, bestPick: null as { ticker: string; return: number } | null });
   const [cryptoStats, setCryptoStats] = useState({ wins: 0, losses: 0, winRate: 0, avgReturn: 0, bestPick: null as { ticker: string; return: number } | null });
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<any>(null);
-  useBackToClose(!!selectedHistoryItem, () => setSelectedHistoryItem(null));
+  useModalBack(!!selectedHistoryItem, () => setSelectedHistoryItem(null), 'oracle-history-item');
 
   // Fetch real stats & history
   const fetchHistory = async () => {

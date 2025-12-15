@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TrophyIcon, ArrowTrendingUpIcon, ViewfinderCircleIcon, CalendarIcon, ChevronRightIcon, XMarkIcon, ArrowPathIcon, ChartBarIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { useBackToClose } from '../../hooks/useBackToClose';
+import { useModalBack } from '../../hooks/useNavigationStack';
 
 interface BacktestPick {
   ticker: string;
@@ -60,8 +60,8 @@ export default function TrackRecord() {
   const [sixMonthData, setSixMonthData] = useState<BacktestSummary | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  useBackToClose(show30DayModal, () => setShow30DayModal(false));
-  useBackToClose(show6MonthModal, () => setShow6MonthModal(false));
+  useModalBack(show30DayModal, () => setShow30DayModal(false), 'track-30day-modal');
+  useModalBack(show6MonthModal, () => setShow6MonthModal(false), 'track-6month-modal');
 
   useEffect(() => {
     fetchSummary();

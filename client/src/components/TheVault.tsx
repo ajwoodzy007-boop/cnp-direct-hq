@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Squares2X2Icon, PlusIcon, SignalIcon, ChartPieIcon, ArrowTrendingUpIcon, ClockIcon, ExclamationCircleIcon, PencilIcon, TrashIcon, XMarkIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import Skeleton from './Skeleton';
-import { useBackToClose } from '../../hooks/useBackToClose';
+import { useModalBack } from '../../hooks/useNavigationStack';
 
 export default function TheVault() {
   const [positions, setPositions] = useState<any[]>([]);
@@ -18,7 +18,7 @@ export default function TheVault() {
   const [newStrike, setNewStrike] = useState('');
   const [newExpiry, setNewExpiry] = useState('');
 
-  useBackToClose(showModal, () => setShowModal(false));
+  useModalBack(showModal, () => setShowModal(false), 'vault-modal');
 
   const fetchPortfolio = async () => {
     try {
