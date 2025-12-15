@@ -735,13 +735,23 @@ router.get('/daily', async (req, res) => {
       })
       .sort((a, b) => b.score - a.score);
     
-    // Take top 10 unique picks with sector diversification
+    // Take 5-10 unique picks based on signal quality
+    // Minimum 5 picks, maximum 10 if signals are strong enough
     const topPicks: typeof scoredStocks = [];
     const MAX_PER_SECTOR = 3; // Maximum 3 stocks from same known sector
+    const MIN_PICKS = 5;
+    const MAX_PICKS = 10;
+    const MIN_QUALITY_SCORE = 40; // Minimum score for picks 6-10 (quality threshold)
     
     for (const s of scoredStocks) {
       if (seenTickers.has(s.ticker)) continue;
-      if (topPicks.length >= 10) break;
+      if (topPicks.length >= MAX_PICKS) break;
+      
+      // After first 5 picks, only include if quality score is high enough
+      if (topPicks.length >= MIN_PICKS && s.score < MIN_QUALITY_SCORE) {
+        console.log(`[Oracle] Stopping at ${topPicks.length} picks: ${s.ticker} score ${s.score.toFixed(1)} below quality threshold ${MIN_QUALITY_SCORE}`);
+        break;
+      }
       
       // Check sector concentration (only for stocks with known sectors)
       const sector = s.sector;
@@ -761,7 +771,7 @@ router.get('/daily', async (req, res) => {
       topPicks.push(s);
     }
     
-    console.log(`[Oracle] Generated ${topPicks.length} picks from ${scanResults.length} scanned stocks`);
+    console.log(`[Oracle] Generated ${topPicks.length} picks from ${scanResults.length} scanned stocks (min: ${MIN_PICKS}, quality threshold: ${MIN_QUALITY_SCORE})`);
 
     // 3. AUTO-SAVE to database
     const formattedPicks = topPicks.map(p => {
