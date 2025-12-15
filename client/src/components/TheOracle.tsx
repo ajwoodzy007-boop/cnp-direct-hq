@@ -63,6 +63,7 @@ export default function TheOracle() {
   const [signalsLocked, setSignalsLocked] = useState(false);
   const [signalsLoading, setSignalsLoading] = useState(false);
   const [liveSignals, setLiveSignals] = useState<any[]>([]);
+  const [signalsType, setSignalsType] = useState<'stocks' | 'crypto'>('stocks');
   const [selectedSignal, setSelectedSignal] = useState<any>(null);
   const [signalAnalysis, setSignalAnalysis] = useState<any>(null);
   const [analyzingSignal, setAnalyzingSignal] = useState(false);
@@ -283,8 +284,29 @@ export default function TheOracle() {
     setShowSignals(true);
     setSignalsLoading(true);
     setSignalsLocked(false);
+    setSignalsType('stocks');
     try {
       const res = await fetch('/api/oracle/signals');
+      if (res.status === 403) {
+        setSignalsLocked(true);
+        return;
+      }
+      const json = await res.json();
+      if (json.success) setLiveSignals(json.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSignalsLoading(false);
+    }
+  };
+
+  const fetchCryptoSignals = async () => {
+    setShowSignals(true);
+    setSignalsLoading(true);
+    setSignalsLocked(false);
+    setSignalsType('crypto');
+    try {
+      const res = await fetch('/api/oracle/crypto-signals');
       if (res.status === 403) {
         setSignalsLocked(true);
         return;
@@ -545,6 +567,15 @@ export default function TheOracle() {
                 onClick={(e) => { e.stopPropagation(); fetchSignals(); }}
                 className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 px-5 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 transition-all text-sm"
                 data-testid="button-live-signals"
+              >
+                <BoltIcon className="h-4 w-4" /> Live Signals
+              </button>
+            )}
+            {activeTab === 'crypto' && (
+              <button
+                onClick={(e) => { e.stopPropagation(); fetchCryptoSignals(); }}
+                className="bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 px-5 py-2.5 rounded-xl font-bold text-white flex items-center gap-2 transition-all text-sm"
+                data-testid="button-live-crypto-signals"
               >
                 <BoltIcon className="h-4 w-4" /> Live Signals
               </button>
@@ -1088,10 +1119,14 @@ export default function TheOracle() {
                 <div className="p-6 border-b border-slate-800 flex justify-between items-center">
                   <div>
                     <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <BoltIcon className="text-cyan-400 h-5 w-5" />
-                      Live Trading Signals
+                      <BoltIcon className={`${signalsType === 'crypto' ? 'text-orange-400' : 'text-cyan-400'} h-5 w-5`} />
+                      {signalsType === 'crypto' ? 'Live Crypto Signals' : 'Live Trading Signals'}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">Real-time entry points from the Sentinel Engine</p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {signalsType === 'crypto' 
+                        ? 'Real-time crypto entry points • 24/7 markets' 
+                        : 'Real-time entry points from the Sentinel Engine'}
+                    </p>
                   </div>
                   <button 
                     onClick={() => setShowSignals(false)} 
@@ -1104,7 +1139,7 @@ export default function TheOracle() {
                 <div className="p-6 overflow-auto max-h-[60vh]">
                   {signalsLoading ? (
                     <div className="text-center py-12 text-slate-500 animate-pulse">
-                      Scanning markets for signals...
+                      {signalsType === 'crypto' ? 'Scanning crypto markets...' : 'Scanning markets for signals...'}
                     </div>
                   ) : liveSignals.length === 0 ? (
                     <div className="text-center py-12 text-slate-500">
@@ -1116,28 +1151,36 @@ export default function TheOracle() {
                         <div 
                           key={i} 
                           onClick={() => analyzeSignal(sig)}
-                          className="bg-slate-950 border border-slate-800 rounded-lg p-4 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 hover:bg-slate-800/50 transition-all group"
+                          className={`bg-slate-950 border border-slate-800 rounded-lg p-4 flex items-center justify-between cursor-pointer ${signalsType === 'crypto' ? 'hover:border-orange-500/50' : 'hover:border-cyan-500/50'} hover:bg-slate-800/50 transition-all group`}
                           data-testid={`signal-row-${i}`}
                         >
                           <div className="flex items-center gap-4">
                             <div className={`h-10 w-10 rounded-lg flex items-center justify-center font-bold text-sm ${
                               sig.signal.includes('BUY') ? 'bg-green-500/20 text-green-400' : 
                               sig.signal.includes('SELL') ? 'bg-red-500/20 text-red-400' : 
-                              'bg-slate-700 text-slate-300'
+                              signalsType === 'crypto' ? 'bg-orange-500/20 text-orange-300' : 'bg-slate-700 text-slate-300'
                             }`}>
-                              {sig.ticker?.slice(0, 3)}
+                              {signalsType === 'crypto' && <CurrencyDollarIcon className="h-4 w-4" />}
+                              {signalsType !== 'crypto' && sig.ticker?.slice(0, 3)}
                             </div>
                             <div>
-                              <div className="text-white font-bold">{sig.ticker}</div>
+                              <div className="text-white font-bold flex items-center gap-1">
+                                {signalsType === 'crypto' && <span className="text-orange-400">$</span>}
+                                {sig.ticker}
+                              </div>
                               <div className="text-xs text-slate-500">{sig.signal}</div>
                             </div>
                           </div>
                           <div className="flex items-center gap-4">
                             <div className="text-right">
-                              <div className="text-white font-mono">${sig.price?.toFixed(2)}</div>
+                              <div className="text-white font-mono">
+                                {sig.price >= 1000 
+                                  ? `$${sig.price?.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                                  : `$${sig.price?.toFixed(2)}`}
+                              </div>
                               <div className="text-xs text-slate-500">RSI: {sig.rsi?.toFixed(0)}</div>
                             </div>
-                            <ArrowRightIcon className="h-4 w-4 text-slate-600 group-hover:text-cyan-400 transition-colors" />
+                            <ArrowRightIcon className={`h-4 w-4 text-slate-600 ${signalsType === 'crypto' ? 'group-hover:text-orange-400' : 'group-hover:text-cyan-400'} transition-colors`} />
                           </div>
                         </div>
                       ))}

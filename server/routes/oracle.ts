@@ -912,6 +912,28 @@ router.get('/signals', requirePremium, async (req, res) => {
   }
 });
 
+// GET /crypto-signals: Live crypto trading signals (Premium)
+router.get('/crypto-signals', requirePremium, async (req, res) => {
+  try {
+    const scanResults = await runCryptoScan();
+
+    const signals = scanResults
+      .filter(s => s.signal !== 'WAIT')
+      .map(s => ({
+        ticker: s.ticker,
+        price: s.price,
+        signal: s.signal,
+        rsi: s.rsi,
+        changePercent: s.changePercent,
+        timestamp: new Date().toISOString()
+      }));
+
+    res.json({ success: true, data: signals });
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Crypto Signal Generation Failed" });
+  }
+});
+
 // GET /history: The "Proof Log" with graded stock predictions
 router.get('/history', async (req, res) => {
   try {
