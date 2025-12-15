@@ -727,7 +727,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           <p className="text-sm text-slate-400 mb-4">
             Manually trigger the Oracle to generate new predictions for today. This will <strong className="text-green-400">replace existing picks</strong> for the current day.
           </p>
-          <div className="flex gap-3 flex-wrap">
+          <div className="flex gap-3 flex-wrap mb-4">
             <button
               onClick={() => regeneratePicks('stocks')}
               disabled={regeneratingStocks}
@@ -745,6 +745,36 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             >
               <ArrowPathIcon className={`h-4 w-4 ${regeneratingCrypto ? 'animate-spin' : ''}`} />
               {regeneratingCrypto ? 'Generating Crypto...' : 'Generate Crypto Picks'}
+            </button>
+          </div>
+          <p className="text-sm text-slate-400 mb-3">After generating picks, finalize them to record outcomes:</p>
+          <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={() => forceFinalize('stocks')}
+              disabled={finalizingStocks}
+              className="px-4 py-2 bg-cyan-600/30 hover:bg-cyan-600/40 text-cyan-300 rounded-lg flex items-center gap-2 border border-cyan-400/50 disabled:opacity-50 transition-all"
+              data-testid="button-finalize-stocks-quick"
+            >
+              <BoltIcon className="h-4 w-4" />
+              {finalizingStocks ? 'Finalizing...' : 'Finalize Stocks'}
+            </button>
+            <button
+              onClick={() => forceFinalize('crypto')}
+              disabled={finalizingCrypto}
+              className="px-4 py-2 bg-orange-600/30 hover:bg-orange-600/40 text-orange-300 rounded-lg flex items-center gap-2 border border-orange-400/50 disabled:opacity-50 transition-all"
+              data-testid="button-finalize-crypto-quick"
+            >
+              <BoltIcon className="h-4 w-4" />
+              {finalizingCrypto ? 'Finalizing...' : 'Finalize Crypto'}
+            </button>
+            <button
+              onClick={forceFinallizeAll}
+              disabled={finalizingAll}
+              className="px-4 py-2 bg-red-600/30 hover:bg-red-600/40 text-red-300 rounded-lg flex items-center gap-2 border border-red-400/50 disabled:opacity-50 transition-all font-semibold"
+              data-testid="button-finalize-all-quick"
+            >
+              <BoltIcon className="h-4 w-4" />
+              {finalizingAll ? 'Finalizing All...' : 'FINALIZE ALL'}
             </button>
           </div>
           {regenerateResult && (
