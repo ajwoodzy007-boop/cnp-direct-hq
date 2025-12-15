@@ -144,6 +144,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [finalizingCrypto, setFinalizingCrypto] = useState(false);
   const [finalizingAll, setFinalizingAll] = useState(false);
   const [finalizeResult, setFinalizeResult] = useState<string | null>(null);
+  const [regeneratingStocks, setRegeneratingStocks] = useState(false);
+  const [regeneratingCrypto, setRegeneratingCrypto] = useState(false);
+  const [regenerateResult, setRegenerateResult] = useState<string | null>(null);
   const [businessMetrics, setBusinessMetrics] = useState<BusinessMetrics | null>(null);
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   
@@ -353,6 +356,29 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       setFinalizeResult(`Error: ${e.message || 'Network error'}`);
     } finally {
       setFinalizingAll(false);
+    }
+  };
+
+  const regeneratePicks = async (type: 'stocks' | 'crypto') => {
+    const setLoading = type === 'stocks' ? setRegeneratingStocks : setRegeneratingCrypto;
+    const endpoint = type === 'stocks' ? '/api/oracle/daily?refresh=true' : '/api/oracle/crypto-daily?refresh=true';
+    
+    setLoading(true);
+    setRegenerateResult(null);
+    try {
+      const res = await fetch(endpoint);
+      const json = await res.json();
+      if (json.success) {
+        const count = json.data?.length || 0;
+        setRegenerateResult(`${type === 'stocks' ? 'Stocks' : 'Crypto'}: Generated ${count} new picks`);
+        fetchStats();
+      } else {
+        setRegenerateResult(`Error: ${json.error || 'Failed to generate picks'}`);
+      }
+    } catch (e: any) {
+      setRegenerateResult(`Error: ${e.message || 'Network error'}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -690,6 +716,46 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="bg-slate-900 border border-green-800/50 rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <ArrowPathIcon className="h-5 w-5 text-green-400" /> Regenerate Daily Picks
+            </h3>
+          </div>
+          <p className="text-sm text-slate-400 mb-4">
+            Manually trigger the Oracle to generate new predictions for today. This will <strong className="text-green-400">replace existing picks</strong> for the current day.
+          </p>
+          <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={() => regeneratePicks('stocks')}
+              disabled={regeneratingStocks}
+              className="px-4 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded-lg flex items-center gap-2 border border-cyan-500/30 disabled:opacity-50 transition-all"
+              data-testid="button-regenerate-stocks"
+            >
+              <ArrowPathIcon className={`h-4 w-4 ${regeneratingStocks ? 'animate-spin' : ''}`} />
+              {regeneratingStocks ? 'Generating Stocks...' : 'Generate Stock Picks'}
+            </button>
+            <button
+              onClick={() => regeneratePicks('crypto')}
+              disabled={regeneratingCrypto}
+              className="px-4 py-2 bg-orange-600/20 hover:bg-orange-600/30 text-orange-400 rounded-lg flex items-center gap-2 border border-orange-500/30 disabled:opacity-50 transition-all"
+              data-testid="button-regenerate-crypto"
+            >
+              <ArrowPathIcon className={`h-4 w-4 ${regeneratingCrypto ? 'animate-spin' : ''}`} />
+              {regeneratingCrypto ? 'Generating Crypto...' : 'Generate Crypto Picks'}
+            </button>
+          </div>
+          {regenerateResult && (
+            <div className={`mt-4 p-3 rounded-lg text-sm ${
+              regenerateResult.startsWith('Error') 
+                ? 'bg-red-900/30 text-red-400 border border-red-500/30' 
+                : 'bg-green-900/30 text-green-400 border border-green-500/30'
+            }`}>
+              {regenerateResult}
+            </div>
+          )}
         </div>
 
         <div className="bg-slate-900 border border-red-800/50 rounded-xl p-5">
