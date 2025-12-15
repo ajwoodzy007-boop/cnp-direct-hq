@@ -1,19 +1,24 @@
-import { useEffect, useRef } from 'react';
-import { getOpenModalCount } from './modalState';
+import { useEffect, useRef, useCallback } from 'react';
 
 export function useBackToHome(currentTab: string, setTab: (tab: string) => void) {
-  const hasAddedHistoryRef = useRef(false);
+  const initializedRef = useRef(false);
+  const currentTabRef = useRef(currentTab);
+  
+  currentTabRef.current = currentTab;
+
+  const stableSetTab = useCallback((tab: string) => {
+    setTab(tab);
+  }, [setTab]);
 
   useEffect(() => {
-    const isNotHome = currentTab !== 'summary';
-    
-    if (isNotHome && !hasAddedHistoryRef.current) {
-      window.history.pushState({ tabView: currentTab }, '', window.location.href);
-      hasAddedHistoryRef.current = true;
+    if (currentTab !== 'summary' && !initializedRef.current) {
+      window.history.replaceState({ tabView: 'summary', isHome: true }, '', window.location.href);
+      window.history.pushState({ tabView: currentTab, isHome: false }, '', window.location.href);
+      initializedRef.current = true;
     }
     
     if (currentTab === 'summary') {
-      hasAddedHistoryRef.current = false;
+      initializedRef.current = false;
     }
   }, [currentTab]);
 
@@ -23,13 +28,9 @@ export function useBackToHome(currentTab: string, setTab: (tab: string) => void)
         return;
       }
       
-      if (getOpenModalCount() > 0) {
-        return;
-      }
-      
-      if (hasAddedHistoryRef.current) {
-        hasAddedHistoryRef.current = false;
-        setTab('summary');
+      if (event.state?.isHome === true && currentTabRef.current !== 'summary') {
+        initializedRef.current = false;
+        stableSetTab('summary');
       }
     };
 
@@ -38,5 +39,5 @@ export function useBackToHome(currentTab: string, setTab: (tab: string) => void)
     return () => {
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [setTab]);
+  }, [stableSetTab]);
 }
