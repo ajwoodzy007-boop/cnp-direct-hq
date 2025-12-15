@@ -83,10 +83,7 @@ export default function TrackRecord() {
   };
 
   const fetch30DayData = async () => {
-    if (thirtyDayData) {
-      setShow30DayModal(true);
-      return;
-    }
+    // Always fetch fresh data (no caching)
     setLoadingDetail(true);
     setShow30DayModal(true);
     try {
