@@ -6,6 +6,7 @@ import { db } from '../db';
 import { predictions, userPortfolio } from '@shared/schema';
 import { desc, eq, sql, and } from 'drizzle-orm';
 import * as YahooFinanceModule from 'yahoo-finance2';
+import { analyzePredictionPerformance, applyLearningToScore, getLearningStats, type LearningFactors } from '../lib/learningEngine';
 const yahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
 
 const router = express.Router();
@@ -503,6 +504,38 @@ router.post('/fix-all-historical-prices', async (req, res) => {
   }
 });
 
+// GET /learning: View learning insights from historical performance
+router.get('/learning', async (req, res) => {
+  try {
+    const { factors, insights } = await getLearningStats();
+    
+    res.json({
+      success: true,
+      sampleSize: factors.sampleSize,
+      lastUpdated: factors.lastUpdated,
+      insights,
+      factors: {
+        signalMultipliers: factors.signalMultipliers,
+        rsiRangeMultipliers: factors.rsiRangeMultipliers,
+        topSectors: Object.entries(factors.sectorMultipliers)
+          .filter(([_, m]) => m > 1.0)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5),
+        underperformingSectors: Object.entries(factors.sectorMultipliers)
+          .filter(([_, m]) => m < 1.0)
+          .sort((a, b) => a[1] - b[1])
+          .slice(0, 5),
+        confidenceMultipliers: factors.confidenceMultipliers,
+        volumeMultiplier: factors.volumeMultiplier,
+        sentimentMultiplier: factors.sentimentMultiplier
+      }
+    });
+  } catch (error) {
+    console.error("Learning Stats Error:", error);
+    res.status(500).json({ success: false, error: "Failed to get learning stats" });
+  }
+});
+
 // GET /daily: Run Scan & Auto-Save to History (stocks only)
 // UNIFIED SYSTEM: Uses comprehensive scoring to always generate 10 picks
 router.get('/daily', async (req, res) => {
@@ -558,7 +591,13 @@ router.get('/daily', async (req, res) => {
       return res.json({ success: true, fromCache: false, data: [] });
     }
 
-    // ENHANCED SCORING SYSTEM - Quality-weighted picks
+    // Get learning factors from historical performance
+    const learningFactors = await analyzePredictionPerformance();
+    if (learningFactors.sampleSize >= 20) {
+      console.log(`[Oracle] Applying learning from ${learningFactors.sampleSize} historical predictions`);
+    }
+
+    // ENHANCED SCORING SYSTEM - Quality-weighted picks with learning
     // Score all stocks using multiple factors with risk penalties
     const seenTickers = new Set<string>();
     const seenSectors = new Map<string, number>(); // Track sector concentration
@@ -676,9 +715,20 @@ router.get('/daily', async (req, res) => {
         
         confidence = Math.max(40, Math.min(95, confidence));
         
+        // Apply learning multipliers to adjust score based on historical performance
+        const baseScore = Math.max(1, score);
+        const adjustedScore = applyLearningToScore(baseScore, learningFactors, {
+          signal: s.signal || 'WAIT',
+          rsi: s.rsi,
+          sector: s.sector,
+          confidence: confidence >= 75 ? 'High' : confidence >= 60 ? 'Med' : 'Low',
+          rvol: s.rvol,
+          hasBullishSentiment: sentiment > 0.1
+        });
+        
         return {
           ...s,
-          score: Math.max(1, score),
+          score: adjustedScore,
           confidence,
           reasoning: reasons.length > 0 ? reasons.slice(0, 3).join(', ') : 'technical setup'
         };
@@ -724,7 +774,10 @@ router.get('/daily', async (req, res) => {
         signal: p.signal || 'MOMENTUM BUY',
         confidence: p.confidence >= 75 ? 'High' : p.confidence >= 60 ? 'Med' : 'Low',
         outcome: 'pending',
-        reasoning: p.reasoning
+        reasoning: p.reasoning,
+        rsi: p.rsi,
+        rvol: p.rvol,
+        sector: p.sector
       };
     });
 
@@ -735,7 +788,12 @@ router.get('/daily', async (req, res) => {
         entryPrice: p.entryPrice,
         openPrice: p.openPrice,
         predictedPrice: p.predictedPrice,
-        assetType: 'stock'
+        assetType: 'stock',
+        rsi: p.rsi,
+        rvol: p.rvol,
+        sector: p.sector,
+        confidence: p.confidence,
+        reasoning: p.reasoning
       });
     }
 
@@ -834,14 +892,19 @@ router.post('/admin/regenerate', async (req, res) => {
       }
     }
     
-    // 3. Save new predictions
+    // 3. Save new predictions with learning data
     for (const p of topPicks) {
       await db.insert(predictions).values({
         ticker: p.ticker,
         signalType: p.signal,
         entryPrice: p.price,
         openPrice: p.openPrice || p.price,
-        assetType: 'stock'
+        assetType: 'stock',
+        rsi: p.rsi,
+        rvol: p.rvol,
+        sector: p.sector,
+        confidence: p.signal === 'MOMENTUM BUY' ? 'High' : 'Med',
+        reasoning: p.signal === 'MOMENTUM BUY' ? 'momentum' : p.signal === 'VALUE BUY' ? 'value' : 'technical'
       });
     }
     

@@ -30,6 +30,11 @@ export const predictions = pgTable("predictions", {
   outcomePrice: real("outcome_price"),
   outcomeDate: timestamp("outcome_date"),
   assetType: text("asset_type").notNull().default("stock"),
+  rsi: real("rsi"),
+  rvol: real("rvol"),
+  sector: text("sector"),
+  confidence: text("confidence"),
+  reasoning: text("reasoning"),
 });
 
 export const insertPredictionSchema = createInsertSchema(predictions).omit({
