@@ -504,6 +504,7 @@ router.post('/fix-all-historical-prices', async (req, res) => {
 });
 
 // GET /daily: Run Scan & Auto-Save to History (stocks only)
+// UNIFIED SYSTEM: Uses comprehensive scoring to always generate 10 picks
 router.get('/daily', async (req, res) => {
   try {
     // Check if market is open (weekday, not holiday)
@@ -518,105 +519,148 @@ router.get('/daily', async (req, res) => {
     }
     
     const today = getTodayDate();
+    const forceRefresh = req.query.refresh === 'true';
 
-    // 1. Check if we already generated stock picks for TODAY in DB
-    const existing = await db.select().from(predictions)
-      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+    // 1. Check if we already generated stock picks for TODAY in DB (unless force refresh)
+    if (!forceRefresh) {
+      const existing = await db.select().from(predictions)
+        .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
 
-    if (existing.length > 0) {
-      // Return saved picks (don't re-scan and change them mid-day)
-      return res.json({
-        success: true,
-        fromCache: true,
-        data: existing.map(row => ({
-          ticker: row.ticker,
-          entryPrice: row.entryPrice,
-          openPrice: row.openPrice || row.entryPrice,
-          closePrice: row.outcomePrice || null,
-          outcomePrice: row.outcomePrice || null,
-          predictedPrice: row.predictedPrice || calculateDynamicTarget(row.entryPrice, row.signalType || 'VALUE BUY', undefined, undefined, undefined, 'stock'),
-          signal: row.signalType,
-          confidence: row.signalType === 'MOMENTUM BUY' ? 'High' : 'Med',
-          outcome: row.outcome || 'pending'
-        }))
-      });
+      if (existing.length > 0) {
+        return res.json({
+          success: true,
+          fromCache: true,
+          data: existing.map(row => ({
+            ticker: row.ticker,
+            entryPrice: row.entryPrice,
+            openPrice: row.openPrice || row.entryPrice,
+            closePrice: row.outcomePrice || null,
+            outcomePrice: row.outcomePrice || null,
+            predictedPrice: row.predictedPrice || calculateDynamicTarget(row.entryPrice, row.signalType || 'VALUE BUY', undefined, undefined, undefined, 'stock'),
+            signal: row.signalType,
+            confidence: row.signalType === 'MOMENTUM BUY' ? 'High' : 'Med',
+            outcome: row.outcome || 'pending'
+          }))
+        });
+      }
+    } else {
+      // Clear today's predictions if force refresh
+      await db.delete(predictions)
+        .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+      console.log(`[Oracle] Force refresh: cleared today's predictions`);
     }
 
-    // 2. Run Sentinel Engine for new picks
+    // 2. Run Sentinel Engine for market scan
     const scanResults = await runMarketScan();
+    
+    if (!scanResults || scanResults.length === 0) {
+      console.log('[Oracle] No scan results available');
+      return res.json({ success: true, fromCache: false, data: [] });
+    }
 
-    // HIGH CONVICTION FILTERS for better win rate:
-    // - Only MOMENTUM BUY and VALUE BUY signals (skip SPECULATIVE)
-    // - RSI 35-65 (not overbought, not extremely oversold)
-    // - Sentiment >= 0.1 (clearly positive news required)
-    // - RVOL >= 1.5 (real institutional interest)
-    // - Reduce to 5 picks (quality over quantity)
+    // COMPREHENSIVE SCORING SYSTEM - Always generates 10 picks
+    // Score all stocks using multiple factors, then take top 10
     const seenTickers = new Set<string>();
     
-    // First pass: High conviction picks only (MOMENTUM BUY, VALUE BUY with strict filters)
-    const highConviction = scanResults
-      .filter(s => s.signal === 'MOMENTUM BUY' || s.signal === 'VALUE BUY')
-      .filter(s => s.rsi >= 35 && s.rsi <= 65) // Optimal RSI range
-      .filter(s => (s.sentimentScore || 0) >= 0.1) // Positive sentiment required
-      .filter(s => (s.rvol || 1) >= 1.5) // Volume confirmation required
-      .map(s => ({
-        ...s,
-        // Scoring: heavily weight signal type and sentiment
-        score: (
-          (s.signal === 'MOMENTUM BUY' ? 50 : 35) + // MOMENTUM preferred
-          (s.rsi >= 45 && s.rsi <= 55 ? 20 : 10) + // Optimal RSI bonus
-          ((s.sentimentScore || 0) * 40) + // Strong sentiment weight
-          (Math.min((s.rvol || 1), 5) * 8) // RVOL weight
-        )
-      }))
+    const scoredStocks = scanResults
+      .filter(s => s.price > 0 && s.ticker) // Basic validity
+      .map(s => {
+        let score = 0;
+        const reasons: string[] = [];
+        
+        // Signal type scoring (highest weight)
+        if (s.signal === 'MOMENTUM BUY') {
+          score += 50;
+          reasons.push('momentum');
+        } else if (s.signal === 'VALUE BUY') {
+          score += 40;
+          reasons.push('value');
+        } else if (s.signal === 'WAIT') {
+          score += 20;
+        } else if (s.signal === 'SELL WARNING') {
+          score -= 10; // Penalize sell signals
+        }
+        
+        // RSI scoring (optimal range 35-65)
+        const rsi = s.rsi || 50;
+        if (rsi >= 35 && rsi <= 65) {
+          score += 25; // Optimal zone
+          if (rsi >= 45 && rsi <= 55) score += 10; // Sweet spot bonus
+        } else if (rsi < 35) {
+          score += 15; // Oversold bounce potential
+          reasons.push('oversold');
+        } else if (rsi > 70) {
+          score -= 15; // Overbought penalty
+        }
+        
+        // Sentiment scoring
+        const sentiment = s.sentimentScore || 0;
+        if (sentiment > 0.1) {
+          score += sentiment * 40;
+          reasons.push('bullish news');
+        } else if (sentiment > 0) {
+          score += sentiment * 20;
+        } else if (sentiment < -0.1) {
+          score -= 10;
+        }
+        
+        // Volume scoring (RVOL)
+        const rvol = s.rvol || 1;
+        if (rvol >= 2) {
+          score += Math.min(rvol * 8, 30);
+          reasons.push(`${rvol.toFixed(1)}x volume`);
+        } else if (rvol >= 1.5) {
+          score += 15;
+        }
+        
+        // Change percent scoring (positive momentum)
+        const change = s.changePercent || 0;
+        if (change > 0 && change < 10) {
+          score += change * 3;
+          if (change > 2) reasons.push(`+${change.toFixed(1)}%`);
+        } else if (change > 10) {
+          score -= 5; // May be overextended
+        }
+        
+        // Calculate confidence based on signal strength
+        let confidence = 50;
+        if (s.signal === 'MOMENTUM BUY') confidence = 80;
+        else if (s.signal === 'VALUE BUY') confidence = 70;
+        else if (sentiment > 0.1 && rvol >= 1.5) confidence = 75;
+        else if (reasons.length >= 2) confidence = 65;
+        
+        return {
+          ...s,
+          score: Math.max(1, score),
+          confidence,
+          reasoning: reasons.length > 0 ? reasons.slice(0, 3).join(', ') : 'technical setup'
+        };
+      })
       .sort((a, b) => b.score - a.score);
     
-    // Take top 5 unique high-conviction picks
-    let topPicks: typeof highConviction = [];
-    for (const s of highConviction) {
-      if (!seenTickers.has(s.ticker) && topPicks.length < 5) {
+    // Take top 10 unique picks
+    const topPicks: typeof scoredStocks = [];
+    for (const s of scoredStocks) {
+      if (!seenTickers.has(s.ticker) && topPicks.length < 10) {
         seenTickers.add(s.ticker);
         topPicks.push(s);
       }
     }
     
-    // FALLBACK: If we have fewer than 3 picks, relax criteria slightly BUT ONLY FOR MOMENTUM/VALUE
-    if (topPicks.length < 3) {
-      const fallbackPicks = scanResults
-        .filter(s => (s.signal === 'MOMENTUM BUY' || s.signal === 'VALUE BUY') && !seenTickers.has(s.ticker))
-        .filter(s => s.rsi >= 40 && s.rsi <= 70) // Slightly wider RSI
-        .filter(s => (s.sentimentScore || 0) >= 0) // At least neutral sentiment
-        .filter(s => (s.rvol || 1) >= 1.2) // Slightly lower RVOL
-        .map(s => ({
-          ...s,
-          score: (
-            (s.signal === 'MOMENTUM BUY' ? 40 : 30) +
-            ((s.sentimentScore || 0) * 30) +
-            (Math.min((s.rvol || 1), 4) * 6)
-          )
-        }))
-        .sort((a, b) => b.score - a.score);
-      
-      const neededCount = 5 - topPicks.length;
-      for (let i = 0; i < Math.min(neededCount, fallbackPicks.length); i++) {
-        if (!seenTickers.has(fallbackPicks[i].ticker)) {
-          seenTickers.add(fallbackPicks[i].ticker);
-          topPicks.push(fallbackPicks[i]);
-        }
-      }
-    }
+    console.log(`[Oracle] Generated ${topPicks.length} picks from ${scanResults.length} scanned stocks`);
 
-    // 3. AUTO-SAVE to database (The "Paper Trail")
+    // 3. AUTO-SAVE to database
     const formattedPicks = topPicks.map(p => {
-      const dynamicTarget = calculateDynamicTarget(p.price, p.signal, p.rsi, p.sentimentScore, p.rvol, 'stock');
+      const dynamicTarget = calculateDynamicTarget(p.price, p.signal || 'MOMENTUM BUY', p.rsi, p.sentimentScore, p.rvol, 'stock');
       return {
         ticker: p.ticker,
         entryPrice: p.price,
         openPrice: p.openPrice || p.price,
         predictedPrice: dynamicTarget,
-        signal: p.signal,
-        confidence: p.signal === 'MOMENTUM BUY' ? 'High' : 'Med',
-        outcome: 'pending'
+        signal: p.signal || 'MOMENTUM BUY',
+        confidence: p.confidence >= 75 ? 'High' : p.confidence >= 60 ? 'Med' : 'Low',
+        outcome: 'pending',
+        reasoning: p.reasoning
       };
     });
 

@@ -196,29 +196,16 @@ function startPredictionScheduler() {
     const isWeekday = day >= 1 && day <= 5;
     
     // 9:00 AM ET - Generate and save predictions (30 min before market open for best pre-market data)
+    // UNIFIED SYSTEM: Uses Oracle's /daily endpoint which saves directly to predictions table
     if (isWeekday && hour === 9 && minute === 0) {
       log("Triggering daily prediction generation at 9:00 AM ET", "scheduler");
       try {
-        // Force regenerate predictions for the new day
-        const response = await fetch(`http://localhost:${port}/api/market/top10-today?refresh=true`);
+        // Use Oracle's unified daily endpoint with force refresh
+        const response = await fetch(`http://localhost:${port}/api/oracle/daily?refresh=true`);
         if (response.ok) {
           const data = await response.json();
-          const picks = data.data?.picks || [];
-          log(`Daily predictions generated successfully - ${picks.length} picks`, "scheduler");
-          
-          // Save to historical database
-          if (picks.length > 0) {
-            const saveResponse = await fetch(`http://localhost:${port}/api/top10/save-run`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ date: getETDateString(), picks }),
-            });
-            if (saveResponse.ok) {
-              log("Predictions saved to historical database", "scheduler");
-            } else {
-              log("Failed to save predictions to history", "scheduler");
-            }
-          }
+          const picks = data.data || [];
+          log(`Daily predictions generated and saved - ${picks.length} picks`, "scheduler");
         } else {
           log("Failed to generate daily predictions", "scheduler");
         }
@@ -264,48 +251,17 @@ function startPredictionScheduler() {
     }
 
     // 4:15 PM ET - Finalize stock predictions with close prices
+    // UNIFIED SYSTEM: Uses Oracle's finalization which updates the predictions table directly
     if (isWeekday && hour === 16 && minute === 15) {
       log("Finalizing daily predictions at 4:15 PM ET", "scheduler");
       try {
-        // Call finalization service directly (works in production)
+        // Call finalization service directly (updates predictions table)
         const result = await runStockFinalization();
         
         if (result.success) {
           log(`Finalized ${result.finalized} Oracle predictions with closing prices`, "scheduler");
         } else {
           log("Failed to finalize Oracle predictions", "scheduler");
-        }
-        
-        // Also finalize the top10 run if it exists
-        const response = await fetch(`http://localhost:${port}/api/market/top10-today`);
-        if (response.ok) {
-          const data = await response.json();
-          const picks = data.data?.picks || [];
-          
-          if (picks.length > 0) {
-            const entries = picks.map((pick: any) => {
-              const entryPrice = pick.openPrice || pick.price;
-              const closePrice = pick.price;
-              const closePnl = ((closePrice - entryPrice) / entryPrice) * 100;
-              return {
-                ticker: pick.ticker,
-                closePrice,
-                currentPrice: closePrice,
-                closePnl: parseFloat(closePnl.toFixed(2)),
-                totalPnl: parseFloat(closePnl.toFixed(2)),
-                outcome: closePnl > 0 ? "win" : "loss",
-              };
-            });
-            
-            const top10Response = await fetch(`http://localhost:${port}/api/top10/finalize-run`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ date: getETDateString(), entries }),
-            });
-            if (top10Response.ok) {
-              log(`Finalized ${entries.length} top10 predictions`, "scheduler");
-            }
-          }
         }
       } catch (error) {
         log(`Error finalizing predictions: ${error}`, "scheduler");

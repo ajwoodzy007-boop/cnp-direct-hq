@@ -169,10 +169,39 @@ The Oracle now includes separate tabs for Stock and Crypto predictions with full
 - Complete separation ensures no data leakage between asset classes
 
 ### Scheduler Timing
-- **Stocks**: Generate at 9:00 AM ET (30 min before market open for best pre-market data), finalize at 4:15 PM ET
+- **Stocks**: Generate at 9:00 AM ET (30 min before market open for best pre-market data), update open prices at 9:35 AM ET, finalize at 4:15 PM ET
 - **Crypto**: Generate at 8:00 AM ET, finalize at 11:59 PM ET (24/7 markets)
 
 ### UI Theming
 - Stocks tab uses cyan accent color (`bg-cyan-600`, `text-cyan-500`)
 - Crypto tab uses orange accent color (`bg-orange-600`, `text-orange-500`)
 - Visual distinction helps users quickly identify asset type
+
+## Unified Prediction System (December 2025)
+
+The Oracle now uses a **unified prediction system** with single source of truth:
+
+### Architecture
+- **Single Database**: All predictions stored in `predictions` table (no more separate `daily_prediction_entries`)
+- **Unified Endpoint**: `GET /api/oracle/daily` handles generation and retrieval
+- **Force Refresh**: Use `?refresh=true` query param to regenerate picks
+
+### Scoring Algorithm
+The unified system scores ALL scanned stocks using multiple factors:
+1. **Signal Type** (50 pts momentum, 40 pts value, 20 pts wait, -10 pts sell warning)
+2. **RSI Range** (25 pts for 35-65 optimal zone, bonus for 45-55 sweet spot)
+3. **Sentiment** (up to 40 pts for bullish news)
+4. **Volume** (up to 30 pts for high RVOL)
+5. **Price Change** (up to 30 pts for positive momentum)
+
+Top 10 unique picks are selected by highest score.
+
+### Historical Price Accuracy
+- `getHistoricalOpenPrice()` uses 5-minute intraday data for recent dates when daily data unavailable
+- Open prices updated at 9:35 AM ET with actual market open prices
+- `/api/oracle/fix-all-historical-prices` endpoint corrects historical data
+
+### Scheduler Flow
+1. **9:00 AM ET**: Generate 10 picks via `/api/oracle/daily?refresh=true`
+2. **9:35 AM ET**: Update with actual 9:30 AM open prices
+3. **4:15 PM ET**: Finalize with closing prices and win/loss outcomes
