@@ -205,3 +205,33 @@ Top 10 unique picks are selected by highest score.
 1. **9:00 AM ET**: Generate 10 picks via `/api/oracle/daily?refresh=true`
 2. **9:35 AM ET**: Update with actual 9:30 AM open prices
 3. **4:15 PM ET**: Finalize with closing prices and win/loss outcomes
+
+## Learning Engine (December 2025)
+
+The Oracle now learns from historical performance to improve future picks:
+
+### How It Works
+- Analyzes last 30 days of predictions with resolved outcomes (win/loss)
+- Calculates win rates by signal type, RSI range, sector, confidence level
+- Creates **learning multipliers** that boost or penalize scores based on historical performance
+
+### Learning Factors
+- **Signal Multipliers**: Signals that win more often get boosted (e.g., MOMENTUM BUY 1.08x)
+- **RSI Range Multipliers**: RSI zones with better outcomes get preferred
+- **Sector Multipliers**: Hot sectors get a boost, underperforming sectors get penalized
+- **Confidence Multipliers**: Adjust based on how well confidence levels correlate with wins
+- **Volume/Sentiment Multipliers**: Adjust based on whether high volume or bullish sentiment predicts wins
+
+### Technical Details
+- **Location**: `server/lib/learningEngine.ts`
+- **Endpoint**: `GET /api/oracle/learning` - View current learning stats and insights
+- **Cache**: Learning factors cached for 1 hour to reduce database queries
+- **Minimum Sample**: Requires 20+ resolved predictions before applying learning
+
+### Predictions Table Schema
+Now stores learning-relevant data for each prediction:
+- `rsi` - RSI value at time of pick
+- `rvol` - Relative volume at time of pick
+- `sector` - Stock sector for sector analysis
+- `confidence` - Confidence level (High/Med/Low)
+- `reasoning` - Human-readable reason for the pick
