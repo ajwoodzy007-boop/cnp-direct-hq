@@ -289,6 +289,113 @@ router.post('/force-finalize-all', requireAdmin, async (req, res) => {
   }
 });
 
+// Backfill predictions for past days
+router.post('/backfill-predictions', requireAdmin, async (req, res) => {
+  try {
+    const { days = 7 } = req.body;
+    console.log(`[ADMIN] Backfill triggered for last ${days} days`);
+    
+    const results: { date: string; action: string; count?: number; error?: string }[] = [];
+    
+    // Get trading days for the last N days
+    const today = new Date();
+    const tradingDays: string[] = [];
+    
+    for (let i = 1; i <= days; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dayOfWeek = d.getDay();
+      // Skip weekends
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        tradingDays.push(d.toISOString().split('T')[0]);
+      }
+    }
+    
+    console.log(`[ADMIN] Trading days to check: ${tradingDays.join(', ')}`);
+    
+    for (const dateStr of tradingDays) {
+      try {
+        // Check if we have predictions for this date
+        const existingResult = await query(
+          `SELECT COUNT(*) as count FROM predictions 
+           WHERE DATE(prediction_date) = $1 
+           AND (asset_type = 'stock' OR asset_type IS NULL)`,
+          [dateStr]
+        );
+        const existingCount = parseInt(existingResult.rows[0]?.count || '0');
+        
+        if (existingCount === 0) {
+          results.push({ date: dateStr, action: 'skipped', error: 'No predictions found for this date' });
+          continue;
+        }
+        
+        // Check how many are finalized
+        const finalizedResult = await query(
+          `SELECT COUNT(*) as count FROM predictions 
+           WHERE DATE(prediction_date) = $1 
+           AND (asset_type = 'stock' OR asset_type IS NULL)
+           AND outcome IS NOT NULL AND outcome != ''`,
+          [dateStr]
+        );
+        const finalizedCount = parseInt(finalizedResult.rows[0]?.count || '0');
+        
+        if (finalizedCount >= existingCount) {
+          results.push({ date: dateStr, action: 'already_finalized', count: finalizedCount });
+          continue;
+        }
+        
+        // Finalize unfilled predictions for this date
+        const unfinalized = await query(
+          `SELECT id, ticker, entry_price, open_price FROM predictions 
+           WHERE DATE(prediction_date) = $1 
+           AND (asset_type = 'stock' OR asset_type IS NULL)
+           AND (outcome IS NULL OR outcome = '')`,
+          [dateStr]
+        );
+        
+        let finalized = 0;
+        for (const pred of unfinalized.rows) {
+          try {
+            // Fetch historical close price for this date
+            const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${pred.ticker}?period1=${Math.floor(new Date(dateStr).getTime() / 1000)}&period2=${Math.floor(new Date(dateStr).getTime() / 1000) + 86400}&interval=1d`);
+            const data = await response.json() as any;
+            
+            const close = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.[0];
+            if (close && close > 0) {
+              const openPrice = pred.open_price || pred.entry_price;
+              const outcome = close > openPrice ? 'win' : 'loss';
+              
+              await query(
+                `UPDATE predictions SET outcome_price = $1, outcome = $2 WHERE id = $3`,
+                [close, outcome, pred.id]
+              );
+              finalized++;
+            }
+          } catch (tickerErr) {
+            console.error(`[ADMIN] Failed to fetch close for ${pred.ticker} on ${dateStr}:`, tickerErr);
+          }
+        }
+        
+        results.push({ date: dateStr, action: 'finalized', count: finalized });
+        
+      } catch (dateErr: any) {
+        results.push({ date: dateStr, action: 'error', error: dateErr.message });
+      }
+    }
+    
+    console.log('[ADMIN] Backfill complete:', results);
+    res.json({ 
+      success: true, 
+      message: `Backfill complete for ${tradingDays.length} trading days`,
+      results 
+    });
+    
+  } catch (e: any) {
+    console.error('Backfill error:', e);
+    res.status(500).json({ success: false, error: e.message || "Failed to backfill predictions" });
+  }
+});
+
 // ============================================
 // WIN RATES SPREADSHEET API
 // ============================================

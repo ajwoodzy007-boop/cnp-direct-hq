@@ -147,6 +147,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [regeneratingStocks, setRegeneratingStocks] = useState(false);
   const [regeneratingCrypto, setRegeneratingCrypto] = useState(false);
   const [regenerateResult, setRegenerateResult] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillResult, setBackfillResult] = useState<string | null>(null);
   const [businessMetrics, setBusinessMetrics] = useState<BusinessMetrics | null>(null);
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   
@@ -379,6 +381,30 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       setRegenerateResult(`Error: ${e.message || 'Network error'}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const backfillPredictions = async () => {
+    setBackfilling(true);
+    setBackfillResult(null);
+    try {
+      const res = await fetch('/api/admin/backfill-predictions', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days: 14 })
+      });
+      const json = await res.json();
+      if (json.success) {
+        const summary = json.results?.map((r: any) => `${r.date}: ${r.action}${r.count ? ` (${r.count})` : ''}`).join(', ') || json.message;
+        setBackfillResult(`Backfill complete: ${summary}`);
+        fetchStats();
+      } else {
+        setBackfillResult(`Error: ${json.error || 'Failed to backfill'}`);
+      }
+    } catch (e: any) {
+      setBackfillResult(`Error: ${e.message || 'Network error'}`);
+    } finally {
+      setBackfilling(false);
     }
   };
 
@@ -777,6 +803,27 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               {finalizingAll ? 'Finalizing All...' : 'FINALIZE ALL'}
             </button>
           </div>
+          <p className="text-sm text-slate-400 mt-4 mb-3">Backfill predictions for past 14 trading days:</p>
+          <div className="flex gap-3 flex-wrap">
+            <button
+              onClick={backfillPredictions}
+              disabled={backfilling}
+              className="px-4 py-2 bg-purple-600/30 hover:bg-purple-600/40 text-purple-300 rounded-lg flex items-center gap-2 border border-purple-400/50 disabled:opacity-50 transition-all font-semibold"
+              data-testid="button-backfill-predictions"
+            >
+              <ClockIcon className="h-4 w-4" />
+              {backfilling ? 'Backfilling...' : 'BACKFILL PAST 14 DAYS'}
+            </button>
+          </div>
+          {backfillResult && (
+            <div className={`mt-4 p-3 rounded-lg text-sm ${
+              backfillResult.startsWith('Error') 
+                ? 'bg-red-900/30 text-red-400 border border-red-500/30' 
+                : 'bg-green-900/30 text-green-400 border border-green-500/30'
+            }`}>
+              {backfillResult}
+            </div>
+          )}
           {regenerateResult && (
             <div className={`mt-4 p-3 rounded-lg text-sm ${
               regenerateResult.startsWith('Error') 
