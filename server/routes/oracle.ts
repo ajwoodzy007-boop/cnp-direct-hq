@@ -1303,28 +1303,39 @@ async function handleFinalize(req: any, res: any) {
     }
     
     // 3. Update each prediction with outcome
+    // CRITICAL: Use OPEN PRICE (market open at 9:30 AM) vs CLOSE PRICE (market close at 4:00 PM)
+    // Never use entryPrice for calculations - only openPrice matters
     let finalized = 0;
     let skipped = 0;
     for (const pred of todaysPredictions) {
       const closePrice = closingPrices[pred.ticker];
       if (closePrice <= 0) {
         skipped++;
+        console.log(`[Finalize] ${pred.ticker}: SKIPPED - no close price available`);
         continue;
       }
       
-      const basePrice = pred.openPrice || pred.entryPrice;
-      const profitPercent = ((closePrice - basePrice) / basePrice) * 100;
+      // ONLY use openPrice for calculations - this is the 9:30 AM market open price
+      const openPrice = pred.openPrice;
+      if (!openPrice || openPrice <= 0) {
+        skipped++;
+        console.log(`[Finalize] ${pred.ticker}: SKIPPED - no open price recorded`);
+        continue;
+      }
+      
+      const profitPercent = ((closePrice - openPrice) / openPrice) * 100;
       const outcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
       
       await db.update(predictions)
         .set({
+          closePrice: closePrice,
           outcomePrice: closePrice,
           outcome: outcome,
           outcomeDate: new Date()
         })
         .where(eq(predictions.id, pred.id));
       
-      console.log(`[Finalize] ${pred.ticker}: $${basePrice} (open) -> $${closePrice} = ${outcome} (${profitPercent.toFixed(2)}%)`);
+      console.log(`[Finalize] ${pred.ticker}: $${openPrice} (OPEN) -> $${closePrice} (CLOSE) = ${outcome} (${profitPercent.toFixed(2)}%)`);
       finalized++;
     }
     

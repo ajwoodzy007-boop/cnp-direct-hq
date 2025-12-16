@@ -2,8 +2,18 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "@shared/schema";
 
+// FORCE production Neon database for all environments
+// NEON_DATABASE_URL takes priority over runtime-provided DATABASE_URL
+const connectionString = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+
+if (process.env.NEON_DATABASE_URL) {
+  console.log("🔒 Using PRODUCTION Neon database (unified)");
+} else {
+  console.log("⚠️ NEON_DATABASE_URL not set, falling back to DATABASE_URL");
+}
+
 const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString,
   ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 30000,
   idleTimeoutMillis: 30000,

@@ -51,3 +51,4 @@ integrations = ["javascript_database:1.0.0", "javascript_openai_ai_integrations:
 
 [userenv.shared]
 ADMIN_EMAILS = "ajwoodzy007@gmail.com"
+NEON_DATABASE_URL = "postgresql://neondb_owner:npg_Aah7nsi2lvyH@ep-patient-cake-afr4ov6x.c-2.us-west-2.aws.neon.tech/neondb?sslmode=require"
