@@ -378,6 +378,17 @@ router.post('/backfill-predictions', requireAdmin, async (req, res) => {
                 const closePrice = quotes.close?.[matchIdx];
                 
                 if (openPrice && closePrice && openPrice > 0 && closePrice > 0) {
+                  // Check if this ticker+date already exists
+                  const existsCheck = await query(
+                    `SELECT id FROM predictions WHERE ticker = $1 AND DATE(prediction_date) = $2`,
+                    [ticker, dateStr]
+                  );
+                  
+                  if (existsCheck.rows.length > 0) {
+                    console.log(`[ADMIN] Skipping ${ticker} on ${dateStr} - already exists`);
+                    continue;
+                  }
+                  
                   const outcome = closePrice > openPrice ? 'win' : 'loss';
                   const predictedPrice = openPrice * 1.03; // 3% target
                   
@@ -481,6 +492,60 @@ router.post('/backfill-predictions', requireAdmin, async (req, res) => {
   } catch (e: any) {
     console.error('Backfill error:', e);
     res.status(500).json({ success: false, error: e.message || "Failed to backfill predictions" });
+  }
+});
+
+// ============================================
+// CLEANUP DUPLICATES
+// ============================================
+
+router.post('/cleanup-duplicates', requireAdmin, async (req, res) => {
+  try {
+    console.log('[ADMIN] Cleanup duplicates triggered');
+    
+    // Find and remove duplicate predictions (same ticker + same date)
+    // Keep only the first entry (by id) for each ticker+date combo
+    const duplicatesQuery = await query(`
+      WITH duplicates AS (
+        SELECT id, ticker, DATE(prediction_date) as pred_date,
+               ROW_NUMBER() OVER (PARTITION BY ticker, DATE(prediction_date) ORDER BY id ASC) as rn
+        FROM predictions
+        WHERE asset_type = 'stock' OR asset_type IS NULL
+      )
+      SELECT id FROM duplicates WHERE rn > 1
+    `);
+    
+    const duplicateIds = duplicatesQuery.rows.map(r => r.id);
+    console.log(`[ADMIN] Found ${duplicateIds.length} duplicate predictions to remove`);
+    
+    if (duplicateIds.length > 0) {
+      // Delete duplicates in batches
+      for (let i = 0; i < duplicateIds.length; i += 100) {
+        const batch = duplicateIds.slice(i, i + 100);
+        await query(`DELETE FROM predictions WHERE id = ANY($1)`, [batch]);
+      }
+    }
+    
+    // Get summary of what's left
+    const summaryResult = await query(`
+      SELECT DATE(prediction_date) as date, COUNT(*) as count
+      FROM predictions
+      WHERE (asset_type = 'stock' OR asset_type IS NULL)
+        AND outcome IS NOT NULL AND outcome IN ('win', 'loss')
+      GROUP BY DATE(prediction_date)
+      ORDER BY date DESC
+      LIMIT 20
+    `);
+    
+    res.json({ 
+      success: true, 
+      duplicatesRemoved: duplicateIds.length,
+      summary: summaryResult.rows
+    });
+    
+  } catch (e: any) {
+    console.error('Cleanup duplicates error:', e);
+    res.status(500).json({ success: false, error: e.message || "Failed to cleanup duplicates" });
   }
 });
 

@@ -149,6 +149,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [regenerateResult, setRegenerateResult] = useState<string | null>(null);
   const [backfilling, setBackfilling] = useState(false);
   const [backfillResult, setBackfillResult] = useState<string | null>(null);
+  const [cleaningUp, setCleaningUp] = useState(false);
   const [adminKey, setAdminKey] = useState<string>('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [businessMetrics, setBusinessMetrics] = useState<BusinessMetrics | null>(null);
@@ -436,6 +437,29 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
       setBackfillResult(`Error: ${e.message || 'Network error'}`);
     } finally {
       setBackfilling(false);
+    }
+  };
+
+  const cleanupDuplicates = async () => {
+    setCleaningUp(true);
+    setBackfillResult(null);
+    try {
+      const res = await adminFetch('/api/admin/cleanup-duplicates', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const json = await res.json();
+      if (json.success) {
+        const summary = json.summary?.map((r: any) => `${r.date}: ${r.count} picks`).join(', ') || '';
+        setBackfillResult(`Cleanup complete: Removed ${json.duplicatesRemoved} duplicates. ${summary}`);
+        fetchStats();
+      } else {
+        setBackfillResult(`Error: ${json.error || 'Failed to cleanup'}`);
+      }
+    } catch (e: any) {
+      setBackfillResult(`Error: ${e.message || 'Network error'}`);
+    } finally {
+      setCleaningUp(false);
     }
   };
 
@@ -881,6 +905,15 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
             >
               <ClockIcon className="h-4 w-4" />
               {backfilling ? 'Backfilling...' : 'BACKFILL PAST 14 DAYS'}
+            </button>
+            <button
+              onClick={cleanupDuplicates}
+              disabled={cleaningUp}
+              className="px-4 py-2 bg-yellow-600/30 hover:bg-yellow-600/40 text-yellow-300 rounded-lg flex items-center gap-2 border border-yellow-400/50 disabled:opacity-50 transition-all font-semibold"
+              data-testid="button-cleanup-duplicates"
+            >
+              <TrashIcon className="h-4 w-4" />
+              {cleaningUp ? 'Cleaning...' : 'CLEANUP DUPLICATES'}
             </button>
           </div>
           {backfillResult && (
