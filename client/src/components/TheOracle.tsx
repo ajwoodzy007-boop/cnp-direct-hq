@@ -747,7 +747,7 @@ export default function TheOracle() {
               const basePrice = pick.openPrice || pick.entryPrice;
               const potentialReturn = ((pick.predictedPrice - basePrice) / basePrice * 100).toFixed(1);
               const riskLevel = pick.riskLevel || 'Medium';
-              const stopLoss = pick.stopLoss || (pick.entryPrice * 0.95);
+              const stopLoss = pick.stopLoss || (basePrice * 0.95);
               const rr = pick.riskRewardRatio || 2.5;
 
               const isCrypto = activeTab === 'crypto';
