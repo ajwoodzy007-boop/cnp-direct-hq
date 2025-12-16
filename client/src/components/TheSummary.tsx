@@ -62,7 +62,7 @@ export default function TheSummary({ onNavigate, user }: Props) {
   return (
     <div className="space-y-6 relative">
       <div 
-        className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03]"
+        className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.12]"
         style={{ zIndex: 0 }}
       >
         <img 
