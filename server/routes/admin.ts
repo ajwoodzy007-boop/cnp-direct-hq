@@ -855,4 +855,71 @@ router.get('/business-metrics', requireAdmin, async (req, res) => {
   }
 });
 
+// User profiles endpoint
+router.get('/profiles', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        up.id,
+        up.user_id,
+        up.first_name,
+        up.last_name,
+        up.email,
+        up.phone,
+        up.subscription_status,
+        up.trading_style,
+        up.risk_tolerance,
+        up.experience_level,
+        up.created_at,
+        up.updated_at,
+        u.email as account_email,
+        u.tier
+      FROM user_profiles up
+      LEFT JOIN users u ON up.user_id = u.id
+      ORDER BY up.created_at DESC
+    `);
+    
+    res.json({ 
+      success: true, 
+      profiles: result.rows.map(p => ({
+        id: p.id,
+        userId: p.user_id,
+        firstName: p.first_name,
+        lastName: p.last_name,
+        email: p.email || p.account_email,
+        phone: p.phone,
+        subscriptionStatus: p.subscription_status,
+        tradingStyle: p.trading_style,
+        riskTolerance: p.risk_tolerance,
+        experienceLevel: p.experience_level,
+        tier: p.tier,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at
+      }))
+    });
+  } catch (e: any) {
+    console.error('Profiles error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// Update user profile
+router.post('/profiles/:id', requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { firstName, lastName, email, phone } = req.body;
+    
+    await query(`
+      UPDATE user_profiles 
+      SET first_name = $1, last_name = $2, email = $3, phone = $4, updated_at = NOW()
+      WHERE id = $5
+    `, [firstName || null, lastName || null, email || null, phone || null, id]);
+    
+    res.json({ success: true });
+  } catch (e: any) {
+    console.error('Update profile error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 export default router;
