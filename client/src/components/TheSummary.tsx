@@ -6,7 +6,7 @@ import {
   ArrowUpRightIcon, ArrowDownRightIcon, ClockIcon, BoltIcon, TrophyIcon,
   ChevronRightIcon, ArrowPathIcon, ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-import logoImage from '@/assets/logo.jpg';
+import logoImage from '@/assets/cnp-eagle-logo.jpg';
 
 interface MarketMover {
   ticker: string;
