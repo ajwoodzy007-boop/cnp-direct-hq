@@ -203,12 +203,21 @@ export default function AuthPage({ onLogin }: AuthProps) {
             </div>
           </div>
 
-          <div className="bg-gradient-to-r from-amber-900/30 to-orange-900/30 border border-amber-500/30 rounded-xl p-3 mb-5 flex items-center gap-3">
-            <GiftIcon className="h-5 w-5 text-amber-400 shrink-0" />
-            <div className="text-sm">
-              <span className="text-amber-300 font-semibold">Beta:</span>
-              <span className="text-slate-300 ml-1">$29/mo locked forever</span>
+          <div className="bg-gradient-to-r from-slate-900/80 to-slate-800/80 border-2 border-green-500/40 rounded-xl p-4 mb-5 shadow-lg shadow-green-500/10">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="px-2 py-0.5 bg-red-500/20 border border-red-500/40 rounded text-xs font-bold uppercase tracking-wider" style={{ color: '#FF3B30' }}>
+                Beta Phase Active
+              </div>
             </div>
+            <div className="flex items-center gap-3">
+              <span className="text-3xl font-bold text-green-400">$29</span>
+              <span className="text-slate-500 text-lg">/mo</span>
+              <div className="ml-3">
+                <span className="text-xs text-slate-500">Standard Price:</span>
+                <span className="text-slate-400 line-through text-sm ml-1">$49/mo</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">Lifetime rate for Early Operatives. Lock in beta pricing forever.</p>
           </div>
 
           <div className="bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-2xl p-6 md:p-8 shadow-2xl">
@@ -292,19 +301,34 @@ export default function AuthPage({ onLogin }: AuthProps) {
 
             {mode === 'SIGNUP' && (
               <div className="mt-6 pt-6 border-t border-slate-800">
-                <div className="text-xs text-slate-500 text-center mb-3">What you get for free:</div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <CheckCircleIcon className="h-4 w-4 text-green-400 shrink-0" />
-                    Real-time market scanner (The Radar)
+                <div className="text-xs text-slate-500 text-center mb-3 uppercase tracking-wider font-bold">Mission Capabilities</div>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-6 w-6 rounded bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <SignalIcon className="h-3.5 w-3.5 text-cyan-400" />
+                    </div>
+                    <div>
+                      <div className="text-sm text-white font-medium">Real-Time AI Oracle Signals</div>
+                      <div className="text-xs text-slate-500">Advanced probability-based entry/exit logic</div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <CheckCircleIcon className="h-4 w-4 text-green-400 shrink-0" />
-                    Market education & daily briefings
+                  <div className="flex items-start gap-3">
+                    <div className="h-6 w-6 rounded bg-red-500/20 border border-red-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <ChartBarIcon className="h-3.5 w-3.5" style={{ color: '#FF3B30' }} />
+                    </div>
+                    <div>
+                      <div className="text-sm text-white font-medium">Tactical Risk Management</div>
+                      <div className="text-xs text-slate-500">High-visibility HUD with real-time drawdown tracking</div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-400">
-                    <CheckCircleIcon className="h-4 w-4 text-green-400 shrink-0" />
-                    View historical prediction performance
+                  <div className="flex items-start gap-3">
+                    <div className="h-6 w-6 rounded bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <ArrowTrendingUpIcon className="h-3.5 w-3.5 text-green-400" />
+                    </div>
+                    <div>
+                      <div className="text-sm text-white font-medium">Targeted Alpha Strategy</div>
+                      <div className="text-xs text-slate-500">Proprietary model designed for 70%+ probability <span className="text-amber-400">(In Beta)</span></div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -324,6 +348,12 @@ export default function AuthPage({ onLogin }: AuthProps) {
 
           <div className="text-center mt-6 text-xs text-slate-600">
             By signing up, you agree to our Terms of Service
+          </div>
+          
+          <div className="mt-6 p-3 rounded-lg bg-slate-900/50 border border-slate-800">
+            <p className="text-[10px] text-slate-500 text-center leading-relaxed">
+              Trading involves significant risk. Beta results are not guaranteed. Never trade capital you cannot afford to lose.
+            </p>
           </div>
 
           <div className="lg:hidden mt-8 bg-slate-800/30 border border-slate-700 rounded-xl p-4">
