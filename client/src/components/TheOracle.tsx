@@ -335,7 +335,7 @@ export default function TheOracle() {
       try {
         // Force CDN cache bypass with unique URL path + timestamp
         const ts = Date.now();
-        const res = await fetch(`/api/oracle/daily?v=2&_t=${ts}`, {
+        const res = await fetch(`/api/oracle/daily?v=3&_t=${ts}`, {
           cache: 'no-store',
           headers: { 
             'Cache-Control': 'no-cache, no-store, must-revalidate',
