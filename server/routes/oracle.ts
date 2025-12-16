@@ -1246,15 +1246,23 @@ router.post('/admin/insert-historical', async (req, res) => {
 });
 
 // POST /finalize: Record closing prices and outcomes for today's stock predictions
+// Use ?force=true to re-finalize already finalized predictions
 router.post('/finalize', async (req, res) => {
   try {
     const today = getTodayDate();
+    const force = req.query.force === 'true';
     
-    // 1. Get today's unfinalized stock predictions (outcome is NULL or empty)
-    const todaysPredictions = await db.select().from(predictions)
-      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
-    
-    console.log(`[Finalize] Found ${todaysPredictions.length} predictions to finalize for ${today}`);
+    // 1. Get today's stock predictions (force mode gets all, normal mode only unfinalized)
+    let todaysPredictions;
+    if (force) {
+      todaysPredictions = await db.select().from(predictions)
+        .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+      console.log(`[Finalize] FORCE MODE - Found ${todaysPredictions.length} predictions for ${today}`);
+    } else {
+      todaysPredictions = await db.select().from(predictions)
+        .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '' OR ${predictions.outcome} = 'pending')`);
+      console.log(`[Finalize] Found ${todaysPredictions.length} predictions to finalize for ${today}`);
+    }
     
     if (todaysPredictions.length === 0) {
       return res.json({ success: true, message: 'No predictions to finalize', finalized: 0, date: today });
