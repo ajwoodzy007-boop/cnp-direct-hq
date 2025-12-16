@@ -348,41 +348,60 @@ router.post('/backfill-predictions', requireAdmin, async (req, res) => {
           let generated = 0;
           for (const ticker of backfillTickers) {
             try {
-              // Fetch historical OHLC for this ticker on this date
-              const dateTs = new Date(dateStr).getTime() / 1000;
+              // Fetch historical OHLC for this ticker - use 30 day range to ensure we get data
+              const targetDate = new Date(dateStr);
+              const startTs = Math.floor(targetDate.getTime() / 1000) - (30 * 86400); // 30 days before
+              const endTs = Math.floor(targetDate.getTime() / 1000) + (2 * 86400); // 2 days after
+              
               const response = await fetch(
-                `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${Math.floor(dateTs)}&period2=${Math.floor(dateTs) + 86400}&interval=1d`
+                `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${startTs}&period2=${endTs}&interval=1d`
               );
               const data = await response.json() as any;
               
-              const quotes = data?.chart?.result?.[0]?.indicators?.quote?.[0];
-              const openPrice = quotes?.open?.[0];
-              const closePrice = quotes?.close?.[0];
+              const timestamps = data?.chart?.result?.[0]?.timestamp || [];
+              const quotes = data?.chart?.result?.[0]?.indicators?.quote?.[0] || {};
               
-              if (openPrice && closePrice && openPrice > 0 && closePrice > 0) {
-                const outcome = closePrice > openPrice ? 'win' : 'loss';
-                const predictedPrice = openPrice * 1.03; // 3% target
+              // Find the index for our target date
+              const targetTs = Math.floor(targetDate.getTime() / 1000);
+              let matchIdx = -1;
+              for (let i = 0; i < timestamps.length; i++) {
+                const dayStart = timestamps[i];
+                const dayEnd = dayStart + 86400;
+                if (targetTs >= dayStart - 43200 && targetTs < dayEnd + 43200) { // +/- 12 hour tolerance
+                  matchIdx = i;
+                  break;
+                }
+              }
+              
+              if (matchIdx >= 0) {
+                const openPrice = quotes.open?.[matchIdx];
+                const closePrice = quotes.close?.[matchIdx];
                 
-                // Insert prediction with historical data
-                await query(
-                  `INSERT INTO predictions 
-                   (ticker, signal, entry_price, open_price, predicted_price, outcome_price, outcome, confidence, prediction_date, asset_type, reasoning)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-                  [
-                    ticker,
-                    'MOMENTUM BUY',
-                    openPrice,
-                    openPrice,
-                    predictedPrice,
-                    closePrice,
-                    outcome,
-                    'Med',
-                    dateStr,
-                    'stock',
-                    'Backfilled from historical data'
-                  ]
-                );
-                generated++;
+                if (openPrice && closePrice && openPrice > 0 && closePrice > 0) {
+                  const outcome = closePrice > openPrice ? 'win' : 'loss';
+                  const predictedPrice = openPrice * 1.03; // 3% target
+                  
+                  // Insert prediction with historical data
+                  await query(
+                    `INSERT INTO predictions 
+                     (ticker, signal_type, entry_price, open_price, predicted_price, outcome_price, outcome, confidence, prediction_date, asset_type, reasoning)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                    [
+                      ticker,
+                      'MOMENTUM BUY',
+                      openPrice,
+                      openPrice,
+                      predictedPrice,
+                      closePrice,
+                      outcome,
+                      'Med',
+                      dateStr,
+                      'stock',
+                      'Backfilled from historical data'
+                    ]
+                  );
+                  generated++;
+                }
               }
             } catch (tickerErr) {
               console.error(`[ADMIN] Failed to fetch data for ${ticker} on ${dateStr}:`, tickerErr);
