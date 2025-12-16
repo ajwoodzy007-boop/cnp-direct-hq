@@ -31,9 +31,14 @@ router.get('/cleanup-weekend', async (req, res) => {
   }
 });
 
-// Helper to get today's date in YYYY-MM-DD format
+// Helper to get today's date in YYYY-MM-DD format (Eastern Time for US markets)
 function getTodayDate(): string {
-  return new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  const year = etTime.getFullYear();
+  const month = String(etTime.getMonth() + 1).padStart(2, '0');
+  const day = String(etTime.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 // Helper to check if today is a trading day (weekday, not a major US holiday)
