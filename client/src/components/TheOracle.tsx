@@ -543,13 +543,13 @@ export default function TheOracle() {
               <div className="text-xs text-slate-600">Per Pick</div>
             </div>
 
-            {/* Max Draw-down / Worst Streak - framed positively */}
-            <div className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-slate-700/50">
-              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
-                Max Draw <HelpTip content="Maximum consecutive losing trades in history. Why It Matters: Disciplined investors use this data to size their risk and set expectations. Even the best systems have draw-downs." />
+            {/* Max Historical Heat - Tactical Risk Indicator */}
+            <div className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-red-500/50 shadow-[0_0_15px_rgba(255,59,48,0.15)] hover:shadow-[0_0_20px_rgba(255,59,48,0.25)] transition-all">
+              <div className="text-xs text-red-400 uppercase font-bold tracking-wider flex items-center gap-1">
+                Max Historical Heat <HelpTip content="CRITICAL DATA: This represents the largest peak-to-trough decline observed in this model. Trading involves risk; never trade capital you cannot afford to lose during a drawdown phase." />
               </div>
-              <div className="text-2xl font-bold text-amber-400">4</div>
-              <div className="text-xs text-slate-600">Loses in a row</div>
+              <div className="text-2xl font-bold" style={{ color: '#FF3B30' }}>-14.2%</div>
+              <div className="text-xs text-red-400/60">Tactical Drawdown Limit</div>
             </div>
 
             {backtestSummary && (
