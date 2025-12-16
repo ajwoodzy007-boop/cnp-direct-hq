@@ -709,6 +709,11 @@ router.get('/backfill-learning', async (req, res) => {
 // GET /daily: Run Scan & Auto-Save to History (stocks only)
 // UNIFIED SYSTEM: Uses comprehensive scoring to always generate 10 picks
 router.get('/daily', async (req, res) => {
+  // Prevent browser/CDN caching - always serve fresh data
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  
   try {
     // Check if market is open (weekday, not holiday)
     const tradingStatus = isTradingDay();
