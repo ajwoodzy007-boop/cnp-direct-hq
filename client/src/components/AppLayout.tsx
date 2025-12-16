@@ -148,8 +148,18 @@ export default function AppLayout({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-950">
-          <div className="max-w-7xl mx-auto space-y-8 pb-20">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 bg-slate-950 relative">
+          <div 
+            className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.08]"
+            style={{ zIndex: 0 }}
+          >
+            <img 
+              src={logoImage} 
+              alt="" 
+              className="w-[800px] h-[800px] object-contain"
+            />
+          </div>
+          <div className="max-w-7xl mx-auto space-y-8 pb-20 relative" style={{ zIndex: 1 }}>
             {children}
             
             <div className="pt-12 pb-6 text-center border-t border-slate-900 mt-8">
