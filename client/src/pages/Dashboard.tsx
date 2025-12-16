@@ -27,7 +27,14 @@ export default function Dashboard() {
   };
 
   return (
-    <AppLayout currentTab={currentTab} setTab={setTab}>
+    <AppLayout 
+      currentTab={currentTab} 
+      setTab={setTab}
+      user={null}
+      onLoginClick={() => {}}
+      onLogoutClick={() => {}}
+      onLegalClick={() => {}}
+    >
       {renderContent()}
     </AppLayout>
   );

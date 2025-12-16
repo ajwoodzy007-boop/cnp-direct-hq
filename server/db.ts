@@ -4,13 +4,34 @@ import * as schema from "@shared/schema";
 
 const pool = new pg.Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 30000,
+  idleTimeoutMillis: 30000,
+  max: 10
 });
 
 export const db = drizzle(pool, { schema });
 
 export async function initDb() {
-  const client = await pool.connect();
+  let client;
+  let retries = 3;
+  
+  while (retries > 0) {
+    try {
+      client = await pool.connect();
+      break;
+    } catch (err) {
+      retries--;
+      console.log(`Database connection attempt failed, ${retries} retries left...`);
+      if (retries === 0) {
+        console.error("Failed to connect to database after 3 attempts");
+        return;
+      }
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  
+  if (!client) return;
   try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS portfolio (

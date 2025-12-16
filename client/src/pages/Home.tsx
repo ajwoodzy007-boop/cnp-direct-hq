@@ -1837,7 +1837,7 @@ export default function Home() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center gap-2">
-                <GraduationCap className="h-5 w-5" />
+                <AcademicCapIcon className="h-5 w-5" />
                 Free Trading Resources
               </CardTitle>
             </CardHeader>
