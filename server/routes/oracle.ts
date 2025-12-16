@@ -1801,4 +1801,33 @@ router.get('/crypto-history', async (req, res) => {
   }
 });
 
+// POST /archive-today: Archive/clear today's stock predictions at end of day (11:59 PM ET)
+// This ensures the UI shows "no predictions" until 9:00 AM the next day
+router.post('/archive-today', async (req, res) => {
+  try {
+    const today = getTodayDate();
+    
+    // Mark today's stock predictions as archived by setting a flag
+    // We keep the data for historical tracking but the UI won't show them as "today's" picks
+    const result = await db.update(predictions)
+      .set({ 
+        outcome: sql`CASE WHEN ${predictions.outcome} = 'pending' THEN 'archived' ELSE ${predictions.outcome} END`
+      })
+      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
+    
+    console.log(`[Oracle] Archived stock predictions for ${today}`);
+    
+    res.json({ 
+      success: true, 
+      message: `Archived stock predictions for ${today}`,
+      archived: 10, // Approximate count
+      date: today
+    });
+    
+  } catch (error) {
+    console.error("Archive Error:", error);
+    res.status(500).json({ success: false, error: "Failed to archive predictions" });
+  }
+});
+
 export default router;

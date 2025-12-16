@@ -268,13 +268,12 @@ function startPredictionScheduler() {
       }
     }
 
-    // 11:59 PM ET - Finalize crypto predictions daily (runs every day)
+    // 11:59 PM ET - Finalize crypto predictions AND archive stock predictions for the day
     if (hour === 23 && minute === 59) {
+      // Finalize crypto predictions
       log("Finalizing daily crypto predictions at 11:59 PM ET", "scheduler");
       try {
-        // Call finalization service directly (works in production)
         const result = await runCryptoFinalization();
-        
         if (result.success) {
           log(`Finalized ${result.finalized} crypto predictions`, "scheduler");
         } else {
@@ -282,6 +281,26 @@ function startPredictionScheduler() {
         }
       } catch (error) {
         log(`Error finalizing crypto predictions: ${error}`, "scheduler");
+      }
+      
+      // Archive/clear stock predictions for the day (mark as archived so they don't show in today's view)
+      // This ensures a clean slate for the next trading day
+      if (isWeekday) {
+        log("Archiving stock predictions for end of day", "scheduler");
+        try {
+          const response = await fetch(`http://localhost:${port}/api/oracle/archive-today`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            log(`Archived ${data.archived || 0} stock predictions for the day`, "scheduler");
+          } else {
+            log("Failed to archive stock predictions", "scheduler");
+          }
+        } catch (error) {
+          log(`Error archiving stock predictions: ${error}`, "scheduler");
+        }
       }
     }
 
@@ -308,7 +327,7 @@ function startPredictionScheduler() {
   
   // Check every minute
   setInterval(checkAndTriggerPredictions, 60 * 1000);
-  log("Prediction scheduler started - stocks: 9:00 AM/4:15 PM ET, crypto: 8:00 AM/11:59 PM ET", "scheduler");
+  log("Prediction scheduler started - stocks: 9:00 AM/4:15 PM/11:59 PM ET, crypto: 8:00 AM/11:59 PM ET", "scheduler");
 }
 
 (async () => {
