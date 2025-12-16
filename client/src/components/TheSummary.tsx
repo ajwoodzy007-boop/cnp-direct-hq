@@ -6,6 +6,7 @@ import {
   ArrowUpRightIcon, ArrowDownRightIcon, ClockIcon, BoltIcon, TrophyIcon,
   ChevronRightIcon, ArrowPathIcon, ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import logoImage from '@/assets/logo.jpg';
 
 interface MarketMover {
   ticker: string;
@@ -59,8 +60,18 @@ export default function TheSummary({ onNavigate, user }: Props) {
   const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 relative">
+      <div 
+        className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.03]"
+        style={{ zIndex: 0 }}
+      >
+        <img 
+          src={logoImage} 
+          alt="" 
+          className="w-[500px] h-[500px] object-contain"
+        />
+      </div>
+      <div className="flex items-center justify-between relative" style={{ zIndex: 1 }}>
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-white" data-testid="text-greeting">
             {greeting}, Operative
@@ -73,7 +84,7 @@ export default function TheSummary({ onNavigate, user }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 relative" style={{ zIndex: 1 }}>
         <div 
           className="bg-gradient-to-br from-cyan-900/30 to-slate-900 border border-cyan-500/20 rounded-xl p-5 cursor-pointer hover:border-cyan-500/40 transition-all group"
           onClick={() => onNavigate('radar')}
@@ -226,7 +237,7 @@ export default function TheSummary({ onNavigate, user }: Props) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 relative" style={{ zIndex: 1 }}>
         <div 
           className="bg-slate-900 border border-slate-800 rounded-xl p-5 cursor-pointer hover:border-slate-700 transition-all group"
           onClick={() => onNavigate('strategist')}

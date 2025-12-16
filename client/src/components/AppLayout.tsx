@@ -6,11 +6,11 @@ import {
   BookOpenIcon, 
   Squares2X2Icon, 
   Bars3Icon,
-  ShieldCheckIcon,
   ArrowLeftOnRectangleIcon,
   HomeIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline';
+import logoImage from '@/assets/logo.jpg';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -54,7 +54,7 @@ export default function AppLayout({
       >
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <ShieldCheckIcon className="text-cyan-500 h-8 w-8" />
+            <img src={logoImage} alt="CNP Direct" className="h-10 w-10 rounded-lg object-cover" />
             <div>
               <h1 className="font-bold text-white tracking-wide">CNP DIRECT</h1>
               <p className="text-[10px] text-cyan-500 font-mono tracking-widest">SENTINEL OS v2.0</p>
@@ -133,7 +133,7 @@ export default function AppLayout({
         
         <header className="md:hidden h-16 bg-slate-900 border-b border-slate-800 flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <ShieldCheckIcon className="text-cyan-500 h-6 w-6" />
+            <img src={logoImage} alt="CNP Direct" className="h-8 w-8 rounded-lg object-cover" />
             <span className="font-bold text-white">CNP DIRECT</span>
             <button 
               onClick={onAboutClick}
