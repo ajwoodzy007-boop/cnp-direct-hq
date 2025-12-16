@@ -3,7 +3,7 @@ import { runMarketScan } from '../lib/sentinel';
 import { runCryptoScan } from '../lib/cryptoScanner';
 import { requirePremium } from '../middleware/premium';
 import { db } from '../db';
-import { predictions, userPortfolio } from '@shared/schema';
+import { predictions, userPortfolio, dailyPredictionEntries, dailyPredictionRuns } from '@shared/schema';
 import { desc, eq, sql, and } from 'drizzle-orm';
 import * as YahooFinanceModule from 'yahoo-finance2';
 import { analyzePredictionPerformance, applyLearningToScore, getLearningStats, type LearningFactors } from '../lib/learningEngine';
@@ -152,17 +152,32 @@ router.post('/update-open-prices', async (req, res) => {
     
     const updates: { ticker: string; oldPrice: number; newPrice: number }[] = [];
     
+    // Get today's daily prediction run for syncing dailyPredictionEntries
+    const dailyRun = await db.select().from(dailyPredictionRuns)
+      .where(eq(dailyPredictionRuns.runDate, today));
+    const runId = dailyRun[0]?.id;
+    
     for (const pred of todayPredictions) {
       const actualOpen = await getActualOpenPrice(pred.ticker);
       
       if (actualOpen && actualOpen > 0) {
-        // Update both entryPrice and openPrice to the actual 9:30 AM open
+        // Update both entryPrice and openPrice to the actual 9:30 AM open in predictions table
         await db.update(predictions)
           .set({ 
             entryPrice: actualOpen,
             openPrice: actualOpen 
           })
           .where(eq(predictions.id, pred.id));
+        
+        // CRITICAL: Also update dailyPredictionEntries table (UI reads from this)
+        if (runId) {
+          await db.update(dailyPredictionEntries)
+            .set({
+              entryPrice: actualOpen,
+              openPrice: actualOpen
+            })
+            .where(sql`${dailyPredictionEntries.runId} = ${runId} AND ${dailyPredictionEntries.ticker} = ${pred.ticker}`);
+        }
         
         updates.push({
           ticker: pred.ticker,
@@ -172,7 +187,7 @@ router.post('/update-open-prices', async (req, res) => {
       }
     }
     
-    console.log(`[Oracle] Updated ${updates.length} predictions with actual open prices`);
+    console.log(`[Oracle] Updated ${updates.length} predictions with actual open prices (both tables synced)`);
     
     res.json({ 
       success: true, 
@@ -501,6 +516,76 @@ router.post('/fix-all-historical-prices', async (req, res) => {
   } catch (error) {
     console.error("Fix Historical Prices Error:", error);
     res.status(500).json({ success: false, error: "Failed to fix historical prices" });
+  }
+});
+
+// POST /sync-daily-entries: Sync dailyPredictionEntries with corrected open prices from predictions table
+router.post('/sync-daily-entries', async (req, res) => {
+  try {
+    // Get all daily prediction runs
+    const allRuns = await db.select().from(dailyPredictionRuns);
+    
+    console.log(`[Oracle] Syncing ${allRuns.length} daily runs with corrected prices...`);
+    
+    let syncedCount = 0;
+    let errorCount = 0;
+    const updates: any[] = [];
+    
+    for (const run of allRuns) {
+      const runDate = run.runDate;
+      
+      // Get all entries for this run
+      const entries = await db.select().from(dailyPredictionEntries)
+        .where(eq(dailyPredictionEntries.runId, run.id));
+      
+      for (const entry of entries) {
+        try {
+          // Find matching prediction from predictions table for this date and ticker
+          const matchingPrediction = await db.select().from(predictions)
+            .where(sql`DATE(${predictions.predictionDate}) = ${runDate} AND ${predictions.ticker} = ${entry.ticker}`)
+            .limit(1);
+          
+          if (matchingPrediction.length > 0 && matchingPrediction[0].openPrice) {
+            const correctOpen = matchingPrediction[0].openPrice;
+            
+            // Only update if different
+            if (Math.abs((entry.openPrice || 0) - correctOpen) > 0.01) {
+              await db.update(dailyPredictionEntries)
+                .set({
+                  entryPrice: correctOpen,
+                  openPrice: correctOpen
+                })
+                .where(eq(dailyPredictionEntries.id, entry.id));
+              
+              syncedCount++;
+              updates.push({
+                date: runDate,
+                ticker: entry.ticker,
+                oldPrice: entry.openPrice || entry.entryPrice,
+                newPrice: correctOpen
+              });
+            }
+          }
+        } catch (err: any) {
+          errorCount++;
+          console.error(`[Oracle] Error syncing ${entry.ticker} for ${runDate}:`, err.message);
+        }
+      }
+    }
+    
+    console.log(`[Oracle] Synced ${syncedCount} daily entries, ${errorCount} errors`);
+    
+    res.json({
+      success: true,
+      message: `Synced ${syncedCount} daily prediction entries with corrected open prices`,
+      synced: syncedCount,
+      errors: errorCount,
+      updates: updates.slice(0, 50)
+    });
+    
+  } catch (error) {
+    console.error("Sync Daily Entries Error:", error);
+    res.status(500).json({ success: false, error: "Failed to sync daily entries" });
   }
 });
 
