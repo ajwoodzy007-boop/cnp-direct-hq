@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { 
-  ShieldCheckIcon, EnvelopeIcon, LockClosedIcon, ChevronRightIcon, UserPlusIcon, ArrowLeftOnRectangleIcon, ExclamationTriangleIcon,
+  EnvelopeIcon, LockClosedIcon, ChevronRightIcon, UserPlusIcon, ArrowLeftOnRectangleIcon, ExclamationTriangleIcon,
   ViewfinderCircleIcon, SignalIcon, CpuChipIcon, CheckCircleIcon, StarIcon, ArrowTrendingUpIcon, BoltIcon,
   ClockIcon, ChartBarIcon, SparklesIcon, GiftIcon, ArrowRightIcon
 } from '@heroicons/react/24/outline';
+import logoImage from '@/assets/cnp-eagle-logo.jpg';
 
 interface AuthProps {
   onLogin: (user: any) => void;
@@ -75,8 +76,8 @@ export default function AuthPage({ onLogin }: AuthProps) {
         <div className="relative z-10 flex flex-col justify-center p-12 xl:p-16 max-w-2xl mx-auto">
           
           <div className="flex items-center gap-3 mb-8">
-            <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/30">
-              <ShieldCheckIcon className="h-8 w-8 text-white" />
+            <div className="h-14 w-14 rounded-xl overflow-hidden shadow-lg shadow-cyan-500/30">
+              <img src={logoImage} alt="CNP Direct" className="h-full w-full object-cover" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white tracking-wide">CNP DIRECT</h1>
@@ -150,8 +151,8 @@ export default function AuthPage({ onLogin }: AuthProps) {
         <div className="w-full max-w-md">
           
           <div className="lg:hidden text-center mb-6">
-            <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/30 mb-3">
-              <ShieldCheckIcon className="h-7 w-7 text-white" />
+            <div className="inline-flex items-center justify-center h-14 w-14 rounded-xl overflow-hidden shadow-lg shadow-cyan-500/30 mb-3">
+              <img src={logoImage} alt="CNP Direct" className="h-full w-full object-cover" />
             </div>
             <h1 className="text-xl font-bold text-white tracking-wide">CNP DIRECT</h1>
             <p className="text-xs text-cyan-400 tracking-widest mt-1">AI TRADING INTELLIGENCE</p>
