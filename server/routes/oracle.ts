@@ -1245,9 +1245,8 @@ router.post('/admin/insert-historical', async (req, res) => {
   }
 });
 
-// POST /finalize: Record closing prices and outcomes for today's stock predictions
-// Use ?force=true to re-finalize already finalized predictions
-router.post('/finalize', async (req, res) => {
+// Finalize handler (shared between GET and POST)
+async function handleFinalize(req: any, res: any) {
   try {
     const today = getTodayDate();
     const force = req.query.force === 'true';
@@ -1342,7 +1341,13 @@ router.post('/finalize', async (req, res) => {
     console.error("Finalize Error:", error);
     res.status(500).json({ success: false, error: "Finalization Failed" });
   }
-});
+}
+
+// GET and POST /finalize: Record closing prices and outcomes for today's stock predictions
+// Use ?force=true to re-finalize already finalized predictions
+// GET supported so you can trigger from browser
+router.get('/finalize', handleFinalize);
+router.post('/finalize', handleFinalize);
 
 // GET /signals: Live trading signals (Premium)
 router.get('/signals', requirePremium, async (req, res) => {
