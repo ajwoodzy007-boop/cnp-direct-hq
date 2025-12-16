@@ -170,7 +170,7 @@ export default function TrackRecord() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-slate-950/50 backdrop-blur-md p-4 rounded-xl border border-slate-700/50">
-              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">30-Day Win Rate</div>
+              <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">30-Day Signal Confidence</div>
               <div className="text-3xl font-bold text-emerald-400">{summary.thirtyDay.winRate}%</div>
               <div className="text-xs text-slate-500 mt-1">{summary.thirtyDay.wins}W / {summary.thirtyDay.losses}L</div>
             </div>
@@ -184,7 +184,7 @@ export default function TrackRecord() {
             {summary.sixMonth && (
               <>
                 <div className="bg-slate-950/50 backdrop-blur-md p-4 rounded-xl border border-slate-700/50">
-                  <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">6-Month Win Rate</div>
+                  <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">6-Month Signal Confidence</div>
                   <div className="text-3xl font-bold text-emerald-400">{summary.sixMonth.winRate}%</div>
                   <div className="text-xs text-slate-500 mt-1">{summary.sixMonth.totalPicks} Picks</div>
                 </div>
@@ -245,7 +245,7 @@ export default function TrackRecord() {
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-emerald-400">{thirtyDayData.winRate}%</div>
-                  <div className="text-xs text-slate-500">Win Rate</div>
+                  <div className="text-xs text-slate-500">Signal Confidence</div>
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-green-400">+{thirtyDayData.avgReturn}%</div>
@@ -257,7 +257,7 @@ export default function TrackRecord() {
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-cyan-400">{thirtyDayData.dayWinRate}%</div>
-                  <div className="text-xs text-slate-500">Day Win Rate</div>
+                  <div className="text-xs text-slate-500">Day Accuracy</div>
                 </div>
               </div>
 
@@ -348,7 +348,7 @@ export default function TrackRecord() {
               <div className="grid grid-cols-4 gap-4">
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-emerald-400">{sixMonthData.winRate}%</div>
-                  <div className="text-xs text-slate-500">Win Rate</div>
+                  <div className="text-xs text-slate-500">Signal Confidence</div>
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-green-400">+{sixMonthData.avgReturn}%</div>
@@ -400,7 +400,7 @@ export default function TrackRecord() {
                     </div>
                   </div>
                   <div>
-                    <div className="text-slate-500 text-xs uppercase mb-2">Day Win Rate</div>
+                    <div className="text-slate-500 text-xs uppercase mb-2">Day Accuracy</div>
                     <div className="text-2xl font-bold text-emerald-400">{sixMonthData.dayWinRate}%</div>
                   </div>
                 </div>

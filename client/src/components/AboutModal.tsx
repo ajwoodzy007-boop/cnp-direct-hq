@@ -103,7 +103,7 @@ export default function AboutModal({ onClose, onSignUp, isLoggedIn }: Props) {
   const faqs = [
     {
       question: "How accurate are The Oracle's predictions?",
-      answer: "Our AI tracks and publishes all prediction results transparently. You can view historical accuracy in The Oracle section, including win rates, average returns, and performance streaks. We believe in full transparency—no cherry-picking results."
+      answer: "Our AI tracks and publishes all prediction results transparently. You can view historical accuracy in The Oracle section, including signal confidence metrics, average returns, and performance streaks. We believe in full transparency—no cherry-picking results."
     },
     {
       question: "When are predictions generated?",

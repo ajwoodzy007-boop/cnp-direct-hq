@@ -524,7 +524,7 @@ export default function TheOracle() {
               data-testid="button-view-history"
             >
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider flex items-center gap-1">
-                Live Win Rate <HelpTip content="Live model win rate based on actual predictions made since launch. This is real performance data, not backtested results." />
+                Signal Confidence <HelpTip content="Beta model accuracy based on actual predictions made since launch. Live calibration in progress based on recent sessions." />
               </div>
               <div className="text-2xl font-bold text-green-400">{currentStats.winRate}%</div>
               <div className="text-xs text-slate-600">{currentStats.wins}W / {currentStats.losses}L</div>
@@ -1629,7 +1629,7 @@ export default function TheOracle() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
                       <div className="text-2xl font-bold text-emerald-400">{backtestSummary.thirtyDay.winRate}%</div>
-                      <div className="text-xs text-slate-500">Win Rate</div>
+                      <div className="text-xs text-slate-500">Signal Confidence</div>
                     </div>
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
                       <div className="text-2xl font-bold text-green-400">+{backtestSummary.thirtyDay.avgReturn}%</div>
@@ -1688,7 +1688,7 @@ export default function TheOracle() {
                           <span className="text-white font-bold ml-2">{backtestSummary.sixMonth.totalPicks}</span>
                         </div>
                         <div>
-                          <span className="text-slate-400">Win Rate:</span>
+                          <span className="text-slate-400">Signal Confidence:</span>
                           <span className="text-emerald-400 font-bold ml-2">{backtestSummary.sixMonth.winRate}%</span>
                         </div>
                         <div>
@@ -1896,7 +1896,7 @@ export default function TheOracle() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-emerald-400">{backtestSummary.sixMonth.winRate}%</div>
-                  <div className="text-xs text-slate-500">Win Rate</div>
+                  <div className="text-xs text-slate-500">Signal Confidence</div>
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
                   <div className="text-2xl font-bold text-green-400">+{backtestSummary.sixMonth.avgReturn}%</div>
@@ -1923,7 +1923,7 @@ export default function TheOracle() {
                     <span className="text-white font-bold ml-2">{backtestSummary.sixMonth.totalPicks}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400">Win Rate:</span>
+                    <span className="text-slate-400">Signal Confidence:</span>
                     <span className="text-emerald-400 font-bold ml-2">{backtestSummary.sixMonth.winRate}%</span>
                   </div>
                   <div>

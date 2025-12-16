@@ -81,7 +81,7 @@ function MainDashboard() {
         if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Strategist" />;
         return <TheStrategist />;
       case 'vault': 
-        if (!user) return <AuthLock featureName="The Vault" description="is your secure trading journal. You must be logged in to save your trade history, track your P&L, and analyze your win rate." onLoginClick={() => setShowAuthModal(true)} />;
+        if (!user) return <AuthLock featureName="The Vault" description="is your secure trading journal. You must be logged in to save your trade history, track your P&L, and analyze your signal performance." onLoginClick={() => setShowAuthModal(true)} />;
         return <TheVault />;
       default: return <TheSummary onNavigate={setTab} user={user} />;
     }

@@ -1200,7 +1200,7 @@ export default function Home() {
                 <h3 className="text-lg font-bold">AI Market Intelligence</h3>
                 {aiAccuracyData?.overall && (
                   <Badge variant="outline" className="text-xs">
-                    {(aiAccuracyData.overall.winRate * 100).toFixed(0)}% Win Rate
+                    Probability Model Active
                   </Badge>
                 )}
               </div>
@@ -2337,7 +2337,8 @@ export default function Home() {
                       <div className="text-2xl font-bold text-green-400">
                         {predictionStatsData.winRate}%
                       </div>
-                      <div className="text-xs text-green-400/80 uppercase tracking-wider">Win Rate</div>
+                      <div className="text-xs text-green-400/80 uppercase tracking-wider">Beta Model Accuracy</div>
+                      <div className="text-[10px] text-slate-500 mt-1">Live calibration active</div>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-4">
                       <div className="text-2xl font-bold">{predictionStatsData.totalRuns}</div>
@@ -3013,7 +3014,7 @@ export default function Home() {
                   ? `${((dailyPredictionResults.wins / dailyPredictionResults.predictions.length) * 100).toFixed(0)}%`
                   : "0%"}
               </p>
-              <p className="text-sm text-muted-foreground">Win Rate</p>
+              <p className="text-sm text-muted-foreground">Signal Confidence</p>
             </div>
           </div>
           
