@@ -43,8 +43,16 @@ export default function TheSummary({ onNavigate, user }: Props) {
     refetchInterval: 60000,
   });
 
+  const cacheBuster = new Date().toISOString().split('T')[0];
   const { data: predictionsData, isLoading: predictionsLoading } = useQuery<{ success?: boolean; data?: Prediction[] }>({
-    queryKey: ['/api/oracle/daily'],
+    queryKey: ['/api/oracle/daily', cacheBuster],
+    queryFn: async () => {
+      const res = await fetch(`/api/oracle/daily?_cb=${cacheBuster}_${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      return res.json();
+    },
     refetchInterval: 60000,
   });
 
