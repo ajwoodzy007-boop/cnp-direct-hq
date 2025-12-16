@@ -31,6 +31,7 @@ export interface IStorage {
   getDailyPredictionStats(): Promise<{ totalRuns: number; totalPicks: number; wins: number; losses: number; pending: number; winRate: number; avgPnl: number; winStreak: number }>;
   // AI Playbook Premium Features
   getUserProfile(userId: string): Promise<UserProfile | undefined>;
+  getAllUserProfiles(): Promise<UserProfile[]>;
   createOrUpdateUserProfile(profile: InsertUserProfile): Promise<UserProfile>;
   checkPremiumStatus(userId: string): Promise<boolean>;
   updateSubscriptionStatus(userId: string, status: string, subscriptionId?: string, periodEnd?: Date): Promise<void>;
@@ -428,6 +429,11 @@ export class MemStorage implements IStorage {
   async getUserProfile(userId: string): Promise<UserProfile | undefined> {
     const result = await db.select().from(userProfiles).where(eq(userProfiles.userId, userId));
     return result[0];
+  }
+
+  async getAllUserProfiles(): Promise<UserProfile[]> {
+    const result = await db.select().from(userProfiles).orderBy(desc(userProfiles.createdAt));
+    return result;
   }
 
   async createOrUpdateUserProfile(profile: InsertUserProfile): Promise<UserProfile> {
