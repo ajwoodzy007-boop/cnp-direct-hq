@@ -68,7 +68,7 @@ export default function TheSummary({ onNavigate, user }: Props) {
         <img 
           src={logoImage} 
           alt="" 
-          className="w-[500px] h-[500px] object-contain"
+          className="w-[1000px] h-[1000px] object-contain"
         />
       </div>
       <div className="flex items-center justify-between relative" style={{ zIndex: 1 }}>
