@@ -1,5 +1,6 @@
 import React from 'react';
-import { ShieldCheckIcon, UserPlusIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/outline';
+import { UserPlusIcon, ArrowLeftOnRectangleIcon } from '@heroicons/react/24/outline';
+import logoImage from '@/assets/cnp-eagle-logo.jpg';
 
 interface Props {
   featureName: string;
@@ -15,8 +16,8 @@ export default function AuthLock({ featureName, description, onLoginClick }: Pro
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none"></div>
 
         <div className="relative z-10">
-          <div className="h-16 w-16 bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6 border border-slate-700">
-            <ShieldCheckIcon className="h-8 w-8 text-cyan-400" />
+          <div className="h-20 w-20 rounded-2xl flex items-center justify-center mx-auto mb-6 overflow-hidden">
+            <img src={logoImage} alt="CNP Direct" className="h-full w-full object-cover rounded-2xl" />
           </div>
 
           <h2 className="text-3xl font-bold text-white mb-3">
