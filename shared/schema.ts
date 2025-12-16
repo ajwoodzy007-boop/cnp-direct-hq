@@ -147,14 +147,21 @@ export type DailyPredictionEntry = typeof dailyPredictionEntries.$inferSelect;
 // AI PLAYBOOK PREMIUM FEATURE TABLES
 // ============================================
 
-// User profiles with subscription status and trading preferences
+// User profiles with personal info and subscription status
 export const userProfiles = pgTable("user_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
+  // Personal Information
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  email: text("email"),
+  phone: text("phone"),
+  // Stripe & Subscription
   stripeCustomerId: text("stripe_customer_id"),
   subscriptionId: text("subscription_id"),
   subscriptionStatus: text("subscription_status").default("free"), // 'free' | 'active' | 'cancelled' | 'past_due'
   subscriptionPeriodEnd: timestamp("subscription_period_end"),
+  // Trading Preferences
   tradingStyle: text("trading_style").default("swing"), // 'day' | 'swing' | 'position' | 'scalping'
   riskTolerance: text("risk_tolerance").default("moderate"), // 'conservative' | 'moderate' | 'aggressive'
   experienceLevel: text("experience_level").default("intermediate"), // 'beginner' | 'intermediate' | 'advanced'
