@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import TickerInfo from './TickerInfo';
 import { 
   ArrowTrendingUpIcon, ArrowTrendingDownIcon, ViewfinderCircleIcon, CpuChipIcon, 
   ArrowUpRightIcon, ArrowDownRightIcon, ClockIcon, BoltIcon, TrophyIcon,
-  ChevronRightIcon, ArrowPathIcon, ExclamationTriangleIcon, ShieldCheckIcon, FireIcon
+  ChevronRightIcon, ArrowPathIcon, ExclamationTriangleIcon, ShieldCheckIcon, FireIcon,
+  XMarkIcon, InformationCircleIcon
 } from '@heroicons/react/24/outline';
 
 interface MarketMover {
@@ -34,6 +35,9 @@ interface Props {
 }
 
 export default function TheSummary({ onNavigate, user }: Props) {
+  const [showAccuracyModal, setShowAccuracyModal] = useState(false);
+  const [showHeatModal, setShowHeatModal] = useState(false);
+
   const { data: sentinelData, isLoading: sentinelLoading } = useQuery<{ data?: MarketMover[] }>({
     queryKey: ['/api/market/sentinel'],
     refetchInterval: 60000,
@@ -73,20 +77,34 @@ export default function TheSummary({ onNavigate, user }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="bg-slate-900/80 border border-green-500/30 rounded-lg p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <ShieldCheckIcon className="h-4 w-4 text-green-400" />
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Signal Accuracy</span>
+        <div 
+          className="bg-slate-900/80 border border-green-500/30 rounded-lg p-3 cursor-pointer hover:border-green-500/60 hover:bg-slate-900 transition-all group"
+          onClick={() => setShowAccuracyModal(true)}
+          data-testid="card-signal-accuracy"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <ShieldCheckIcon className="h-4 w-4 text-green-400" />
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Signal Accuracy</span>
+            </div>
+            <InformationCircleIcon className="h-3.5 w-3.5 text-slate-600 group-hover:text-green-400 transition-colors" />
           </div>
           <div className="font-mono text-2xl font-bold text-green-400">
             {signalAccuracy !== null ? `${signalAccuracy}%` : '—'}
           </div>
           <div className="text-[10px] text-slate-600">Beta Model • Live</div>
         </div>
-        <div className="bg-slate-900/80 border border-red-500/30 rounded-lg p-3">
-          <div className="flex items-center gap-2 mb-1">
-            <FireIcon className="h-4 w-4" style={{ color: '#FF3B30' }} />
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">System Heat</span>
+        <div 
+          className="bg-slate-900/80 border border-red-500/30 rounded-lg p-3 cursor-pointer hover:border-red-500/60 hover:bg-slate-900 transition-all group"
+          onClick={() => setShowHeatModal(true)}
+          data-testid="card-system-heat"
+        >
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <FireIcon className="h-4 w-4" style={{ color: '#FF3B30' }} />
+              <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">System Heat</span>
+            </div>
+            <InformationCircleIcon className="h-3.5 w-3.5 text-slate-600 group-hover:text-red-400 transition-colors" />
           </div>
           <div className="font-mono text-2xl font-bold" style={{ color: '#FF3B30' }}>{systemHeat}%</div>
           <div className="text-[10px] text-slate-600">Max Drawdown</div>
@@ -221,6 +239,91 @@ export default function TheSummary({ onNavigate, user }: Props) {
           </div>
         </div>
       </div>
+
+      {showAccuracyModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-green-500/40 w-full max-w-sm rounded-xl shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-800/50">
+              <div className="flex items-center gap-2">
+                <ShieldCheckIcon className="h-5 w-5 text-green-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Intel: Signal Accuracy</h3>
+              </div>
+              <button 
+                onClick={() => setShowAccuracyModal(false)} 
+                className="text-slate-400 hover:text-white transition-colors"
+                data-testid="button-close-accuracy-modal"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-slate-300 text-sm leading-relaxed">
+                This represents the percentage of signals that have successfully reached their primary targets during the current beta cycle. Data is updated every 24 hours to reflect live market performance.
+              </p>
+            </div>
+            <div className="p-4 border-t border-slate-800 bg-slate-800/30">
+              <button
+                onClick={() => setShowAccuracyModal(false)}
+                className="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-lg text-sm font-bold uppercase tracking-wider transition-colors"
+                data-testid="button-accuracy-close"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHeatModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border-2 w-full max-w-sm rounded-xl shadow-2xl overflow-hidden" style={{ borderColor: '#FF3B30' }}>
+            <div className="p-4 border-b border-slate-800 flex justify-between items-center" style={{ backgroundColor: 'rgba(255, 59, 48, 0.1)' }}>
+              <div className="flex items-center gap-2">
+                <FireIcon className="h-5 w-5" style={{ color: '#FF3B30' }} />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Intel: System Heat</h3>
+              </div>
+              <button 
+                onClick={() => setShowHeatModal(false)} 
+                className="text-slate-400 hover:text-white transition-colors"
+                data-testid="button-close-heat-modal"
+              >
+                <XMarkIcon className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-slate-300 text-sm leading-relaxed mb-4">
+                Heat indicates current "Drawdown"—the temporary decline from the model's highest performance peak.
+              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center gap-3">
+                  <span className="w-16 font-mono text-green-400">0-5%</span>
+                  <span className="text-slate-400">Nominal Risk</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-16 font-mono text-amber-400">5-10%</span>
+                  <span className="text-slate-400">Moderate Volatility</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="w-16 font-mono" style={{ color: '#FF3B30' }}>10%+</span>
+                  <span className="text-slate-400">High Stress Environment</span>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-800 bg-slate-800/30">
+              <button
+                onClick={() => setShowHeatModal(false)}
+                className="w-full py-2.5 text-white rounded-lg text-sm font-bold uppercase tracking-wider transition-colors"
+                style={{ backgroundColor: '#FF3B30' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E5342B'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF3B30'}
+                data-testid="button-heat-close"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
