@@ -47,9 +47,13 @@ export default function TheSummary({ onNavigate, user }: Props) {
   const { data: predictionsData, isLoading: predictionsLoading } = useQuery<{ success?: boolean; data?: Prediction[] }>({
     queryKey: ['/api/oracle/daily', cacheBuster],
     queryFn: async () => {
-      const res = await fetch(`/api/oracle/daily?_cb=${cacheBuster}_${Date.now()}`, {
+      const ts = Date.now();
+      const res = await fetch(`/api/oracle/daily?v=2&_t=${ts}`, {
         cache: 'no-store',
-        headers: { 'Cache-Control': 'no-cache' }
+        headers: { 
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
       });
       return res.json();
     },

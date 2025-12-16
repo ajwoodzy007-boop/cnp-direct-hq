@@ -330,11 +330,14 @@ export default function TheOracle() {
   useEffect(() => {
     async function fetchDailyPicks() {
       try {
-        // Add cache-busting query param to bypass CDN cache
-        const cacheBuster = `${new Date().toISOString().split('T')[0]}_${Date.now()}`;
-        const res = await fetch(`/api/oracle/daily?_cb=${cacheBuster}`, {
+        // Force CDN cache bypass with unique URL path + timestamp
+        const ts = Date.now();
+        const res = await fetch(`/api/oracle/daily?v=2&_t=${ts}`, {
           cache: 'no-store',
-          headers: { 'Cache-Control': 'no-cache' }
+          headers: { 
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
         });
         const json = await res.json();
         if (json.success) setPicks(json.data);
