@@ -15,6 +15,9 @@ interface PickData {
   name?: string;
   entryPrice: number;
   openPrice?: number;
+  openPriceLockedAt?: string;
+  openPriceSource?: 'regularMarketOpen' | 'prevClose' | 'stale' | null;
+  prevClose?: number;
   predictedPrice: number;
   currentPrice?: number;
   outcome: string;
@@ -804,13 +807,37 @@ export default function TheOracle() {
                         <PopoverTrigger asChild>
                           <span className="text-slate-500 cursor-help flex items-center gap-1">
                             Open Price <InformationCircleIcon className="h-3 w-3 text-slate-600" />
+                            {pick.openPriceSource === 'prevClose' && (
+                              <span className="text-yellow-500 text-[10px] ml-1 font-semibold">(PREV CLOSE)</span>
+                            )}
+                            {pick.openPriceSource === 'stale' && (
+                              <span className="text-red-500 text-[10px] ml-1 font-semibold">(STALE)</span>
+                            )}
                           </span>
                         </PopoverTrigger>
-                        <PopoverContent className="w-56 bg-slate-900 border-slate-700 text-xs text-slate-300">
-                          Market open price for the trading day (9:30 AM ET). This is used for calculating P/L.
+                        <PopoverContent className="w-64 bg-slate-900 border-slate-700 text-xs text-slate-300">
+                          <div className="mb-2">Market open price for the trading day (9:30 AM ET). This is used for calculating P/L.</div>
+                          {pick.openPriceLockedAt && (
+                            <div className="text-slate-400 text-[10px] border-t border-slate-700 pt-2 mt-2">
+                              <span className="flex items-center gap-1">
+                                <LockClosedIcon className="h-3 w-3" />
+                                Locked at {new Date(pick.openPriceLockedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })} ET
+                              </span>
+                            </div>
+                          )}
+                          {pick.openPriceSource === 'prevClose' && (
+                            <div className="text-yellow-400 text-[10px] mt-1">
+                              Using previous close as fallback. Open price was unavailable.
+                            </div>
+                          )}
+                          {pick.openPriceSource === 'stale' && (
+                            <div className="text-red-400 text-[10px] mt-1">
+                              Price data unavailable. P/L may be inaccurate.
+                            </div>
+                          )}
                         </PopoverContent>
                       </Popover>
-                      <span className="text-white font-mono">
+                      <span className={`font-mono ${pick.openPriceSource === 'stale' ? 'text-red-400' : pick.openPriceSource === 'prevClose' ? 'text-yellow-400' : 'text-white'}`}>
                         {isCrypto && (pick.openPrice || pick.entryPrice) >= 1000 
                           ? `$${(pick.openPrice || pick.entryPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                           : `$${(pick.openPrice || pick.entryPrice).toFixed(2)}`}
