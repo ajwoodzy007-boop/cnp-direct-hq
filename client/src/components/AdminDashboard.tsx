@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ShieldCheckIcon, UsersIcon, ArrowTrendingUpIcon, TrophyIcon, ArrowLeftIcon, SparklesIcon, ArrowPathIcon, BoltIcon, ChartBarIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import { ShieldCheckIcon, UsersIcon, ArrowTrendingUpIcon, TrophyIcon, ArrowLeftIcon, SparklesIcon, ArrowPathIcon, BoltIcon, ChartBarIcon, ArrowDownTrayIcon, UserCircleIcon, PencilIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
-type AdminTab = 'overview' | 'predictions';
+type AdminTab = 'overview' | 'predictions' | 'profiles';
 
 interface WinRateByDate {
   run_date: string;
@@ -33,6 +33,21 @@ interface UserRow {
   tier: string;
 }
 
+interface UserProfile {
+  id: string;
+  userId: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  subscriptionStatus: string;
+  tradingStyle: string;
+  riskTolerance: string;
+  experienceLevel: string;
+  tier: string;
+  createdAt: string;
+}
+
 interface BusinessMetrics {
   mrr: string;
   arr: string;
@@ -48,6 +63,7 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [activeTab, setActiveTab] = useState<AdminTab>('overview');
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<UserRow[]>([]);
+  const [profiles, setProfiles] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUsers, setShowUsers] = useState(false);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -59,6 +75,9 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [winRateByDate, setWinRateByDate] = useState<WinRateByDate[]>([]);
   const [loadingWinRates, setLoadingWinRates] = useState(false);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ firstName: '', lastName: '', email: '', phone: '' });
 
   const adminFetch = async (url: string, options: RequestInit = {}) => {
     const headers: Record<string, string> = {
@@ -111,6 +130,19 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const fetchProfiles = async () => {
+    setLoadingProfiles(true);
+    try {
+      const res = await adminFetch('/api/admin/profiles');
+      const json = await res.json();
+      if (json.success) setProfiles(json.profiles);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingProfiles(false);
+    }
+  };
+
   const fetchBusinessMetrics = async () => {
     setLoadingMetrics(true);
     try {
@@ -159,6 +191,39 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const startEditProfile = (profile: UserProfile) => {
+    setEditingProfile(profile.id);
+    setEditForm({
+      firstName: profile.firstName || '',
+      lastName: profile.lastName || '',
+      email: profile.email || '',
+      phone: profile.phone || ''
+    });
+  };
+
+  const saveProfile = async (profileId: string) => {
+    try {
+      const res = await adminFetch(`/api/admin/profiles/${profileId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      const json = await res.json();
+      if (json.success) {
+        setProfiles(profiles.map(p => 
+          p.id === profileId 
+            ? { ...p, ...editForm } 
+            : p
+        ));
+        setEditingProfile(null);
+      } else {
+        console.error('Failed to save profile:', json.error);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const exportToCsv = (filename: string, data: object[]) => {
     if (!data.length) return;
     const headers = Object.keys(data[0]);
@@ -183,6 +248,8 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (activeTab === 'predictions' && winRateByDate.length === 0) {
       fetchWinRates();
+    } else if (activeTab === 'profiles' && profiles.length === 0) {
+      fetchProfiles();
     }
   }, [activeTab]);
 
@@ -292,6 +359,18 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           >
             <ShieldCheckIcon className="h-4 w-4" />
             Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('profiles')}
+            className={`px-4 py-2 rounded-t-lg flex items-center gap-2 text-sm font-medium transition-colors ${
+              activeTab === 'profiles' 
+                ? 'bg-slate-800 text-purple-400 border-b-2 border-purple-400' 
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+            }`}
+            data-testid="tab-profiles"
+          >
+            <UserCircleIcon className="h-4 w-4" />
+            User Profiles
           </button>
           <button
             onClick={() => setActiveTab('predictions')}
@@ -486,6 +565,162 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
               </div>
             )}
           </>
+        )}
+
+        {/* USER PROFILES TAB */}
+        {activeTab === 'profiles' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-white">User Profiles</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => exportToCsv(`profiles_${new Date().toISOString().split('T')[0]}.csv`, profiles)}
+                  disabled={loadingProfiles || profiles.length === 0}
+                  className="px-3 py-1.5 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded text-xs flex items-center gap-2 border border-purple-500/30 disabled:opacity-50"
+                  data-testid="btn-download-profiles"
+                >
+                  <ArrowDownTrayIcon className="h-3 w-3" />
+                  CSV
+                </button>
+                <button
+                  onClick={fetchProfiles}
+                  disabled={loadingProfiles}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-purple-400 rounded text-xs flex items-center gap-2"
+                  data-testid="btn-refresh-profiles"
+                >
+                  <ArrowPathIcon className={`h-3 w-3 ${loadingProfiles ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {loadingProfiles ? (
+              <div className="text-center py-8 text-purple-400 animate-pulse text-sm">Loading profiles...</div>
+            ) : profiles.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 text-sm">No user profiles yet</div>
+            ) : (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-slate-900">
+                      <tr className="border-b border-slate-800">
+                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Name</th>
+                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Email</th>
+                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Phone</th>
+                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Status</th>
+                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Trading</th>
+                        <th className="text-right py-2 px-3 text-slate-400 text-xs font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {profiles.map(profile => (
+                        <tr key={profile.id} className="border-b border-slate-800/50">
+                          {editingProfile === profile.id ? (
+                            <>
+                              <td className="py-2 px-3">
+                                <div className="flex gap-1">
+                                  <input
+                                    value={editForm.firstName}
+                                    onChange={e => setEditForm({...editForm, firstName: e.target.value})}
+                                    placeholder="First"
+                                    className="w-20 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-xs"
+                                    data-testid={`input-firstname-${profile.id}`}
+                                  />
+                                  <input
+                                    value={editForm.lastName}
+                                    onChange={e => setEditForm({...editForm, lastName: e.target.value})}
+                                    placeholder="Last"
+                                    className="w-20 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-xs"
+                                    data-testid={`input-lastname-${profile.id}`}
+                                  />
+                                </div>
+                              </td>
+                              <td className="py-2 px-3">
+                                <input
+                                  value={editForm.email}
+                                  onChange={e => setEditForm({...editForm, email: e.target.value})}
+                                  placeholder="Email"
+                                  className="w-40 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-xs"
+                                  data-testid={`input-email-${profile.id}`}
+                                />
+                              </td>
+                              <td className="py-2 px-3">
+                                <input
+                                  value={editForm.phone}
+                                  onChange={e => setEditForm({...editForm, phone: e.target.value})}
+                                  placeholder="Phone"
+                                  className="w-28 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-xs"
+                                  data-testid={`input-phone-${profile.id}`}
+                                />
+                              </td>
+                              <td className="py-2 px-3">
+                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                  profile.subscriptionStatus === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-slate-700 text-slate-400'
+                                }`}>
+                                  {profile.subscriptionStatus}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-slate-400 text-xs">
+                                {profile.tradingStyle} / {profile.riskTolerance}
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                <div className="flex gap-1 justify-end">
+                                  <button
+                                    onClick={() => saveProfile(profile.id)}
+                                    className="p-1 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded"
+                                    data-testid={`btn-save-${profile.id}`}
+                                  >
+                                    <CheckIcon className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingProfile(null)}
+                                    className="p-1 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded"
+                                    data-testid={`btn-cancel-${profile.id}`}
+                                  >
+                                    <XMarkIcon className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="py-2 px-3 text-white">
+                                {profile.firstName || profile.lastName 
+                                  ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim()
+                                  : <span className="text-slate-500">—</span>
+                                }
+                              </td>
+                              <td className="py-2 px-3 text-white">{profile.email || <span className="text-slate-500">—</span>}</td>
+                              <td className="py-2 px-3 text-white">{profile.phone || <span className="text-slate-500">—</span>}</td>
+                              <td className="py-2 px-3">
+                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                  profile.subscriptionStatus === 'active' ? 'bg-green-600/20 text-green-400' : 'bg-slate-700 text-slate-400'
+                                }`}>
+                                  {profile.subscriptionStatus}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-slate-400 text-xs">
+                                {profile.tradingStyle} / {profile.riskTolerance}
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                <button
+                                  onClick={() => startEditProfile(profile)}
+                                  className="p-1 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded"
+                                  data-testid={`btn-edit-${profile.id}`}
+                                >
+                                  <PencilIcon className="h-3 w-3" />
+                                </button>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {/* PREDICTIONS TAB */}
