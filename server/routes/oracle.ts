@@ -1233,11 +1233,11 @@ router.get('/crypto-signals', requirePremium, async (req, res) => {
 // GET /history: The "Proof Log" with graded stock predictions
 router.get('/history', async (req, res) => {
   try {
-    // 1. Get all past stock predictions (last 50) - filter by assetType='stock' or NULL (legacy)
+    // 1. Get all past stock predictions (last 100) - filter by assetType='stock' or NULL (legacy)
     const allPredictions = await db.select().from(predictions)
       .where(sql`(${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`)
       .orderBy(desc(predictions.predictionDate))
-      .limit(50);
+      .limit(100);
 
     if (allPredictions.length === 0) {
       return res.json({
@@ -1247,8 +1247,18 @@ router.get('/history', async (req, res) => {
       });
     }
 
-    // 2. Get unique tickers and batch fetch current prices
-    const uniqueTickers = Array.from(new Set(allPredictions.map(p => p.ticker)));
+    // 2. Deduplicate: Keep only the most recent prediction for each ticker
+    const deduplicatedPredictions: typeof allPredictions = [];
+    const seenTickers = new Set<string>();
+    for (const p of allPredictions) {
+      if (!seenTickers.has(p.ticker)) {
+        seenTickers.add(p.ticker);
+        deduplicatedPredictions.push(p);
+      }
+    }
+
+    // 3. Get unique tickers and batch fetch current prices
+    const uniqueTickers = Array.from(new Set(deduplicatedPredictions.map(p => p.ticker)));
     const quotes: Record<string, number> = {};
 
     // Batch fetch quotes (more efficient)
@@ -1263,13 +1273,13 @@ router.get('/history', async (req, res) => {
       })
     );
 
-    // 3. Grade predictions and calculate stats
+    // 4. Grade predictions and calculate stats
     let wins = 0;
     let losses = 0;
     let totalReturn = 0;
     let returnCount = 0;
 
-    const gradedHistory = allPredictions.map((p, idx) => {
+    const gradedHistory = deduplicatedPredictions.map((p, idx) => {
       // Use stored outcome if available, otherwise calculate from live price
       const hasStoredOutcome = p.outcome && ['win', 'loss', 'neutral'].includes(p.outcome.toLowerCase());
       
@@ -1514,11 +1524,11 @@ router.post('/crypto-finalize', async (req, res) => {
 // GET /crypto-history: Crypto prediction history
 router.get('/crypto-history', async (req, res) => {
   try {
-    // Get all past crypto predictions (last 50)
+    // Get all past crypto predictions (last 100)
     const allPredictions = await db.select().from(predictions)
       .where(eq(predictions.assetType, 'crypto'))
       .orderBy(desc(predictions.predictionDate))
-      .limit(50);
+      .limit(100);
 
     if (allPredictions.length === 0) {
       return res.json({
@@ -1528,8 +1538,18 @@ router.get('/crypto-history', async (req, res) => {
       });
     }
 
+    // Deduplicate: Keep only the most recent prediction for each ticker
+    const deduplicatedPredictions: typeof allPredictions = [];
+    const seenTickers = new Set<string>();
+    for (const p of allPredictions) {
+      if (!seenTickers.has(p.ticker)) {
+        seenTickers.add(p.ticker);
+        deduplicatedPredictions.push(p);
+      }
+    }
+
     // Batch fetch current prices
-    const uniqueTickers = Array.from(new Set(allPredictions.map(p => p.ticker)));
+    const uniqueTickers = Array.from(new Set(deduplicatedPredictions.map(p => p.ticker)));
     const quotes: Record<string, number> = {};
 
     await Promise.all(
@@ -1549,7 +1569,7 @@ router.get('/crypto-history', async (req, res) => {
     let totalReturn = 0;
     let returnCount = 0;
 
-    const gradedHistory = allPredictions.map((p, idx) => {
+    const gradedHistory = deduplicatedPredictions.map((p, idx) => {
       const hasStoredOutcome = p.outcome && ['win', 'loss', 'neutral'].includes(p.outcome.toLowerCase());
       
       // Use open price as the base for P/L calculations
