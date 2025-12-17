@@ -13,7 +13,12 @@ import {
   CalendarIcon,
   TrophyIcon,
   CheckCircleIcon,
-  StarIcon
+  StarIcon,
+  SignalIcon,
+  ServerIcon,
+  ArrowDownTrayIcon,
+  ClockIcon,
+  ArrowTrendingUpIcon
 } from '@heroicons/react/24/outline';
 
 interface HQIntelData {
@@ -37,6 +42,22 @@ interface HQIntelData {
     signalEngagementToday: number;
     heatModalClicks: number;
     accuracyModalClicks: number;
+  };
+  oracleBenchmarks: {
+    avgWinPercent: string;
+    avgLossPercent: string;
+    signalVolume30d: number;
+  };
+  infrastructure: {
+    dbLatencyMs: number;
+    lastSchedulerRun: string | null;
+  };
+  financial: {
+    estimatedMRR: number;
+    estimatedMRRFormatted: string;
+    trialCount: number;
+    paidCount: number;
+    trialToPaidRatio: string;
   };
 }
 
@@ -193,14 +214,25 @@ export default function HQIntelDashboard() {
               <p className="text-slate-500 text-xs">CLASSIFIED • EXECUTIVE OVERVIEW</p>
             </div>
           </div>
-          <button
-            onClick={fetchData}
-            className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-500 text-sm flex items-center gap-2"
-            data-testid="button-refresh"
-          >
-            <BoltIcon className="h-4 w-4" />
-            REFRESH
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="/api/admin/export/briefing"
+              download
+              className="px-4 py-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 text-sm flex items-center gap-2"
+              data-testid="button-download-briefing"
+            >
+              <ArrowDownTrayIcon className="h-4 w-4" />
+              DOWNLOAD BRIEFING
+            </a>
+            <button
+              onClick={fetchData}
+              className="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-lg text-amber-500 text-sm flex items-center gap-2"
+              data-testid="button-refresh"
+            >
+              <BoltIcon className="h-4 w-4" />
+              REFRESH
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -323,6 +355,103 @@ export default function HQIntelDashboard() {
                   );
                 })
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Oracle Benchmarks */}
+        <div className="bg-slate-900/80 border border-cyan-500/30 rounded-xl p-5" data-testid="oracle-benchmarks">
+          <div className="flex items-center gap-2 mb-4">
+            <SignalIcon className="h-5 w-5 text-cyan-500" />
+            <h2 className="text-lg font-semibold text-cyan-400">ORACLE BENCHMARKS</h2>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-slate-800/50 p-4 rounded-lg text-center border border-slate-700">
+              <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Avg Win %</div>
+              <div className="text-2xl font-bold text-green-400" data-testid="value-avg-win">
+                +{data?.oracleBenchmarks?.avgWinPercent || '0.00'}%
+              </div>
+            </div>
+            <div className="bg-slate-800/50 p-4 rounded-lg text-center border border-slate-700">
+              <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Avg Loss %</div>
+              <div className="text-2xl font-bold text-red-400" data-testid="value-avg-loss">
+                -{data?.oracleBenchmarks?.avgLossPercent || '0.00'}%
+              </div>
+            </div>
+            <div className="bg-slate-800/50 p-4 rounded-lg text-center border border-slate-700">
+              <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Signal Volume</div>
+              <div className="text-2xl font-bold text-cyan-400" data-testid="value-signal-volume">
+                {data?.oracleBenchmarks?.signalVolume30d || 0}
+              </div>
+              <div className="text-xs text-slate-600 mt-1">Last 30 Days</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Infrastructure Health + Financial Overview */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Infrastructure Health */}
+          <div className="bg-slate-900/80 border border-purple-500/30 rounded-xl p-5" data-testid="infrastructure-health">
+            <div className="flex items-center gap-2 mb-4">
+              <ServerIcon className="h-5 w-5 text-purple-500" />
+              <h2 className="text-lg font-semibold text-purple-400">SYSTEM STATUS</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">DB Latency</div>
+                <div className={`text-2xl font-bold ${
+                  (data?.infrastructure?.dbLatencyMs || 0) < 50 ? 'text-green-400' : 
+                  (data?.infrastructure?.dbLatencyMs || 0) < 100 ? 'text-amber-400' : 'text-red-400'
+                }`} data-testid="value-db-latency">
+                  {data?.infrastructure?.dbLatencyMs || 0}ms
+                </div>
+                <div className="text-xs text-slate-600 mt-1">Neon DB Response</div>
+              </div>
+              <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Scheduler</div>
+                <div className="flex items-center gap-2" data-testid="value-scheduler-status">
+                  <ClockIcon className="h-5 w-5 text-purple-400" />
+                  <span className="text-sm text-slate-300">
+                    {data?.infrastructure?.lastSchedulerRun 
+                      ? new Date(data.infrastructure.lastSchedulerRun).toLocaleDateString()
+                      : 'No runs yet'}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-600 mt-1">Last 16:15 Finalization</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Financial Overview */}
+          <div className="bg-slate-900/80 border border-green-500/30 rounded-xl p-5" data-testid="financial-overview">
+            <div className="flex items-center gap-2 mb-4">
+              <CurrencyDollarIcon className="h-5 w-5 text-green-500" />
+              <h2 className="text-lg font-semibold text-green-400">BUSINESS HEALTH</h2>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 text-center">
+                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Est. MRR</div>
+                <div className="text-2xl font-bold text-green-400" data-testid="value-est-mrr">
+                  {data?.financial?.estimatedMRRFormatted || '$0'}
+                </div>
+              </div>
+              <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 text-center">
+                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Trial</div>
+                <div className="text-2xl font-bold text-slate-300" data-testid="value-trial-count">
+                  {data?.financial?.trialCount || 0}
+                </div>
+                <div className="text-xs text-slate-600 mt-1">Free Users</div>
+              </div>
+              <div className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 text-center">
+                <div className="text-xs text-slate-500 uppercase tracking-wider mb-2">Paid</div>
+                <div className="text-2xl font-bold text-green-400" data-testid="value-paid-count">
+                  {data?.financial?.paidCount || 0}
+                </div>
+                <div className="text-xs text-slate-600 mt-1">Premium</div>
+              </div>
+            </div>
+            <div className="mt-4 text-center text-xs text-slate-500">
+              Trial:Paid Ratio — <span className="text-amber-400 font-bold">{data?.financial?.trialToPaidRatio || 'N/A'}</span>
             </div>
           </div>
         </div>

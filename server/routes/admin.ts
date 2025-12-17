@@ -1053,6 +1053,79 @@ router.get('/hq-intel', requireHQIntelAccess, async (req, res) => {
     }
     
     // ============================================
+    // ORACLE BENCHMARKS
+    // ============================================
+    
+    let avgWinPercent = 0;
+    let avgLossPercent = 0;
+    let signalVolume30d = 0;
+    try {
+      // Get 30-day prediction stats
+      const benchmarkResult = await query(`
+        SELECT 
+          COUNT(*) as total,
+          AVG(CASE WHEN outcome = 'WIN' THEN 
+            CASE WHEN open_price > 0 THEN ((outcome_price - open_price) / open_price) * 100 ELSE 0 END
+          ELSE NULL END) as avg_win,
+          AVG(CASE WHEN outcome = 'LOSS' THEN 
+            CASE WHEN open_price > 0 THEN ((outcome_price - open_price) / open_price) * 100 ELSE 0 END
+          ELSE NULL END) as avg_loss
+        FROM predictions 
+        WHERE prediction_date >= NOW() - INTERVAL '30 days'
+        AND outcome IN ('WIN', 'LOSS')
+      `);
+      avgWinPercent = parseFloat(benchmarkResult.rows[0]?.avg_win || '0');
+      avgLossPercent = Math.abs(parseFloat(benchmarkResult.rows[0]?.avg_loss || '0'));
+      
+      const volumeResult = await query(`
+        SELECT COUNT(*) as volume FROM predictions 
+        WHERE prediction_date >= NOW() - INTERVAL '30 days'
+      `);
+      signalVolume30d = parseInt(volumeResult.rows[0]?.volume || '0');
+    } catch (e) {
+      console.error('Oracle benchmarks failed:', e);
+    }
+
+    // ============================================
+    // INFRASTRUCTURE HEALTH
+    // ============================================
+    
+    let dbLatencyMs = 0;
+    let lastSchedulerRun = null as string | null;
+    try {
+      // Test DB latency
+      const startTime = Date.now();
+      await query('SELECT 1');
+      dbLatencyMs = Date.now() - startTime;
+      
+      // Get last 16:15 EST finalization run (check for recent predictions with outcomes)
+      const schedulerResult = await query(`
+        SELECT MAX(outcome_date) as last_run 
+        FROM predictions 
+        WHERE outcome IS NOT NULL
+      `);
+      lastSchedulerRun = schedulerResult.rows[0]?.last_run || null;
+    } catch (e) {
+      console.error('Infrastructure health check failed:', e);
+    }
+
+    // ============================================
+    // FINANCIAL OVERVIEW
+    // ============================================
+    
+    // Trial users (FREE tier)
+    let trialCount = 0;
+    let paidCount = premiumCount;
+    try {
+      const trialResult = await query(`
+        SELECT COUNT(*) as count FROM users WHERE tier = 'FREE' OR tier IS NULL
+      `);
+      trialCount = parseInt(trialResult.rows[0]?.count || '0');
+    } catch (e) {
+      console.error('Trial count failed:', e);
+    }
+
+    // ============================================
     // RETENTION & ENGAGEMENT
     // ============================================
     
@@ -1141,6 +1214,22 @@ router.get('/hq-intel', requireHQIntelAccess, async (req, res) => {
           signalEngagementToday,
           heatModalClicks,
           accuracyModalClicks
+        },
+        oracleBenchmarks: {
+          avgWinPercent: avgWinPercent.toFixed(2),
+          avgLossPercent: avgLossPercent.toFixed(2),
+          signalVolume30d
+        },
+        infrastructure: {
+          dbLatencyMs,
+          lastSchedulerRun
+        },
+        financial: {
+          estimatedMRR: mrr,
+          estimatedMRRFormatted: `$${mrr.toLocaleString()}`,
+          trialCount,
+          paidCount,
+          trialToPaidRatio: paidCount > 0 ? (trialCount / paidCount).toFixed(1) : 'N/A'
         }
       }
     });
@@ -1259,6 +1348,80 @@ router.post('/testimonials/:id/approve', requireHQIntelAccess, async (req, res) 
     res.json({ success: true });
   } catch (e: any) {
     console.error('Testimonial approval error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ============================================
+// CSV EXPORT - EXIT GOLD
+// ============================================
+
+// Download user briefing as CSV (admin only)
+router.get('/export/briefing', requireHQIntelAccess, async (req, res) => {
+  try {
+    // Get all users with their profile data
+    const result = await query(`
+      SELECT 
+        u.email,
+        u.tier,
+        up.first_name,
+        up.last_name,
+        up.phone,
+        up.experience_level,
+        up.trading_goals,
+        up.marketing_source,
+        up.created_at,
+        up.subscription_status
+      FROM users u
+      LEFT JOIN user_profiles up ON u.id = up.user_id
+      ORDER BY up.created_at DESC NULLS LAST
+    `);
+    
+    // Build CSV content
+    const headers = [
+      'Email',
+      'Tier',
+      'First Name',
+      'Last Name',
+      'Phone',
+      'Experience Level',
+      'Trading Goals',
+      'Marketing Source',
+      'Signup Date',
+      'Subscription Status'
+    ];
+    
+    const escapeCSV = (val: any) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+    
+    const rows = result.rows.map(row => [
+      escapeCSV(row.email),
+      escapeCSV(row.tier || 'FREE'),
+      escapeCSV(row.first_name),
+      escapeCSV(row.last_name),
+      escapeCSV(row.phone),
+      escapeCSV(row.experience_level),
+      escapeCSV(row.trading_goals),
+      escapeCSV(row.marketing_source),
+      escapeCSV(row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : ''),
+      escapeCSV(row.subscription_status)
+    ].join(','));
+    
+    const csv = [headers.join(','), ...rows].join('\n');
+    
+    const filename = `cnpdirect_briefing_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (e: any) {
+    console.error('CSV export error:', e);
     res.status(500).json({ success: false, error: e.message });
   }
 });
