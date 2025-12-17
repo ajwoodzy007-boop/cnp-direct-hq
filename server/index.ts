@@ -69,9 +69,13 @@ async function initStripe() {
     );
     console.log(`Webhook configured: ${webhook.url}`);
 
+    // Sync Stripe data in background - don't crash on errors
     stripeSync.syncBackfill()
       .then(() => console.log("Stripe data synced"))
-      .catch((err: any) => console.error("Error syncing Stripe data:", err));
+      .catch((err: any) => {
+        // Log error but don't crash - missing customers are okay
+        console.warn("Stripe sync warning (non-fatal):", err.message || err);
+      });
     
     stripeInitialized = true;
   } catch (error: any) {
@@ -82,6 +86,11 @@ async function initStripe() {
 
 // Run Stripe init in background - don't block server startup
 setTimeout(() => initStripe().catch(console.error), 2000);
+
+// Health check endpoint for deployment
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 app.post(
   "/api/stripe/webhook/:uuid",
