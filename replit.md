@@ -201,25 +201,6 @@ Top 10 unique picks are selected by highest score.
 - Open prices updated at 9:35 AM ET with actual market open prices
 - `/api/oracle/fix-all-historical-prices` endpoint corrects historical data
 
-### Open Price Synchronization (December 2025)
-The system ensures accurate 9:30 AM ET open prices with full metadata:
-
-**Database Fields**:
-- `openPriceLockedAt` - Timestamp when open price was locked
-- `openPriceSource` - Source of price: 'regularMarketOpen', 'prevClose', or 'stale'
-- `prevClose` - Previous day's closing price for fallback reference
-
-**Fallback Chain**:
-1. Primary: Yahoo Finance `regularMarketOpen` (actual auction price)
-2. Fallback: Previous day's close (`prevClose`) with yellow warning label
-3. Stale: No price data available, red warning displayed
-
-**UI Indicators**:
-- Normal: White price text, no label
-- Prev Close Fallback: Yellow "(PREV CLOSE)" label, yellow price text
-- Stale Data: Red "(STALE)" label, red price text
-- Timestamp shown in popover: "Locked at 9:35 AM ET"
-
 ### Scheduler Flow
 1. **9:00 AM ET**: Generate 10 picks via `/api/oracle/daily?refresh=true`
 2. **9:35 AM ET**: Update with actual 9:30 AM open prices

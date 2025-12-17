@@ -15,9 +15,6 @@ interface PickData {
   name?: string;
   entryPrice: number;
   openPrice?: number;
-  openPriceLockedAt?: string;
-  openPriceSource?: 'regularMarketOpen' | 'prevClose' | 'stale' | null;
-  prevClose?: number;
   predictedPrice: number;
   currentPrice?: number;
   outcome: string;
@@ -333,14 +330,11 @@ export default function TheOracle() {
   useEffect(() => {
     async function fetchDailyPicks() {
       try {
-        // Force CDN cache bypass with unique URL path + timestamp
-        const ts = Date.now();
-        const res = await fetch(`/api/oracle/daily?v=2&_t=${ts}`, {
+        // Add cache-busting query param to bypass CDN cache
+        const cacheBuster = `${new Date().toISOString().split('T')[0]}_${Date.now()}`;
+        const res = await fetch(`/api/oracle/daily?_cb=${cacheBuster}`, {
           cache: 'no-store',
-          headers: { 
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache'
-          }
+          headers: { 'Cache-Control': 'no-cache' }
         });
         const json = await res.json();
         if (json.success) setPicks(json.data);
@@ -753,7 +747,7 @@ export default function TheOracle() {
               const basePrice = pick.openPrice || pick.entryPrice;
               const potentialReturn = ((pick.predictedPrice - basePrice) / basePrice * 100).toFixed(1);
               const riskLevel = pick.riskLevel || 'Medium';
-              const stopLoss = pick.stopLoss || (basePrice * 0.95);
+              const stopLoss = pick.stopLoss || (pick.entryPrice * 0.95);
               const rr = pick.riskRewardRatio || 2.5;
 
               const isCrypto = activeTab === 'crypto';
@@ -807,37 +801,13 @@ export default function TheOracle() {
                         <PopoverTrigger asChild>
                           <span className="text-slate-500 cursor-help flex items-center gap-1">
                             Open Price <InformationCircleIcon className="h-3 w-3 text-slate-600" />
-                            {pick.openPriceSource === 'prevClose' && (
-                              <span className="text-yellow-500 text-[10px] ml-1 font-semibold">(PREV CLOSE)</span>
-                            )}
-                            {pick.openPriceSource === 'stale' && (
-                              <span className="text-red-500 text-[10px] ml-1 font-semibold">(STALE)</span>
-                            )}
                           </span>
                         </PopoverTrigger>
-                        <PopoverContent className="w-64 bg-slate-900 border-slate-700 text-xs text-slate-300">
-                          <div className="mb-2">Market open price for the trading day (9:30 AM ET). This is used for calculating P/L.</div>
-                          {pick.openPriceLockedAt && (
-                            <div className="text-slate-400 text-[10px] border-t border-slate-700 pt-2 mt-2">
-                              <span className="flex items-center gap-1">
-                                <LockClosedIcon className="h-3 w-3" />
-                                Locked at {new Date(pick.openPriceLockedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })} ET
-                              </span>
-                            </div>
-                          )}
-                          {pick.openPriceSource === 'prevClose' && (
-                            <div className="text-yellow-400 text-[10px] mt-1">
-                              Using previous close as fallback. Open price was unavailable.
-                            </div>
-                          )}
-                          {pick.openPriceSource === 'stale' && (
-                            <div className="text-red-400 text-[10px] mt-1">
-                              Price data unavailable. P/L may be inaccurate.
-                            </div>
-                          )}
+                        <PopoverContent className="w-56 bg-slate-900 border-slate-700 text-xs text-slate-300">
+                          Market open price for the trading day (9:30 AM ET). This is used for calculating P/L.
                         </PopoverContent>
                       </Popover>
-                      <span className={`font-mono ${pick.openPriceSource === 'stale' ? 'text-red-400' : pick.openPriceSource === 'prevClose' ? 'text-yellow-400' : 'text-white'}`}>
+                      <span className="text-white font-mono">
                         {isCrypto && (pick.openPrice || pick.entryPrice) >= 1000 
                           ? `$${(pick.openPrice || pick.entryPrice).toLocaleString(undefined, { maximumFractionDigits: 0 })}`
                           : `$${(pick.openPrice || pick.entryPrice).toFixed(2)}`}

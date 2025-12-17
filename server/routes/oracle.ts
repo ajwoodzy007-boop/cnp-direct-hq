@@ -122,46 +122,23 @@ function calculateDynamicTarget(
 }
 
 // Helper to fetch the official market open price using Yahoo Finance quote API
-// Returns { openPrice, prevClose, source } for full context
-interface OpenPriceResult {
-  openPrice: number | null;
-  prevClose: number | null;
-  source: 'regularMarketOpen' | 'prevClose' | 'stale' | null;
-}
-
-async function getActualOpenPrice(ticker: string): Promise<OpenPriceResult> {
+async function getActualOpenPrice(ticker: string): Promise<number | null> {
   try {
     const yf = typeof yahooFinance === 'function' ? new yahooFinance() : yahooFinance;
     
     // Use the quote API which provides the official regularMarketOpen
     // This is the actual opening auction price, not the first trade
-    const quote = await yf.quote(ticker) as any;
-    
-    const prevClose = quote?.regularMarketPreviousClose || null;
+    const quote = await yf.quote(ticker);
     
     if (quote && quote.regularMarketOpen && quote.regularMarketOpen > 0) {
       console.log(`[Oracle] Official open for ${ticker}: $${quote.regularMarketOpen}`);
-      return { 
-        openPrice: quote.regularMarketOpen, 
-        prevClose,
-        source: 'regularMarketOpen' 
-      };
+      return quote.regularMarketOpen;
     }
     
-    // Fallback to previous close if open price is not available
-    if (prevClose && prevClose > 0) {
-      console.log(`[Oracle] Using prevClose for ${ticker}: $${prevClose} (open unavailable)`);
-      return {
-        openPrice: prevClose,
-        prevClose,
-        source: 'prevClose'
-      };
-    }
-    
-    return { openPrice: null, prevClose: null, source: null };
+    return null;
   } catch (error) {
     console.error(`[Oracle] Error fetching open price for ${ticker}:`, error);
-    return { openPrice: null, prevClose: null, source: null };
+    return null;
   }
 }
 
@@ -169,7 +146,6 @@ async function getActualOpenPrice(ticker: string): Promise<OpenPriceResult> {
 router.post('/update-open-prices', async (req, res) => {
   try {
     const today = getTodayDate();
-    const lockTime = new Date();
     
     // Get today's stock predictions
     const todayPredictions = await db.select().from(predictions)
@@ -179,8 +155,7 @@ router.post('/update-open-prices', async (req, res) => {
       return res.json({ success: false, error: 'No predictions found for today' });
     }
     
-    const updates: { ticker: string; oldPrice: number; newPrice: number; source: string }[] = [];
-    const staleWarnings: string[] = [];
+    const updates: { ticker: string; oldPrice: number; newPrice: number }[] = [];
     
     // Get today's daily prediction run for syncing dailyPredictionEntries
     const dailyRun = await db.select().from(dailyPredictionRuns)
@@ -188,26 +163,23 @@ router.post('/update-open-prices', async (req, res) => {
     const runId = dailyRun[0]?.id;
     
     for (const pred of todayPredictions) {
-      const priceResult = await getActualOpenPrice(pred.ticker);
+      const actualOpen = await getActualOpenPrice(pred.ticker);
       
-      if (priceResult.openPrice && priceResult.openPrice > 0) {
-        // Update predictions table with actual 9:30 AM open + metadata
+      if (actualOpen && actualOpen > 0) {
+        // Update both entryPrice and openPrice to the actual 9:30 AM open in predictions table
         await db.update(predictions)
           .set({ 
-            entryPrice: priceResult.openPrice,
-            openPrice: priceResult.openPrice,
-            openPriceLockedAt: lockTime,
-            openPriceSource: priceResult.source,
-            prevClose: priceResult.prevClose
+            entryPrice: actualOpen,
+            openPrice: actualOpen 
           })
           .where(eq(predictions.id, pred.id));
         
-        // Also update dailyPredictionEntries table (UI reads from this)
+        // CRITICAL: Also update dailyPredictionEntries table (UI reads from this)
         if (runId) {
           await db.update(dailyPredictionEntries)
             .set({
-              entryPrice: priceResult.openPrice,
-              openPrice: priceResult.openPrice
+              entryPrice: actualOpen,
+              openPrice: actualOpen
             })
             .where(sql`${dailyPredictionEntries.runId} = ${runId} AND ${dailyPredictionEntries.ticker} = ${pred.ticker}`);
         }
@@ -215,37 +187,17 @@ router.post('/update-open-prices', async (req, res) => {
         updates.push({
           ticker: pred.ticker,
           oldPrice: pred.entryPrice,
-          newPrice: priceResult.openPrice,
-          source: priceResult.source || 'unknown'
+          newPrice: actualOpen
         });
-        
-        // Track stale data warnings
-        if (priceResult.source === 'prevClose') {
-          staleWarnings.push(pred.ticker);
-        }
-      } else {
-        // No price available at all - mark as stale
-        await db.update(predictions)
-          .set({ 
-            openPriceSource: 'stale',
-            openPriceLockedAt: lockTime
-          })
-          .where(eq(predictions.id, pred.id));
-        staleWarnings.push(pred.ticker);
       }
-      
-      // Rate limit API calls
-      await new Promise(resolve => setTimeout(resolve, 100));
     }
     
-    console.log(`[Oracle] Updated ${updates.length} predictions with actual open prices (${staleWarnings.length} stale warnings)`);
+    console.log(`[Oracle] Updated ${updates.length} predictions with actual open prices (both tables synced)`);
     
     res.json({ 
       success: true, 
       message: `Updated ${updates.length} predictions with actual 9:30 AM open prices`,
-      lockTime: lockTime.toISOString(),
-      updates,
-      staleWarnings
+      updates 
     });
     
   } catch (error) {
@@ -798,9 +750,6 @@ router.get('/daily', async (req, res) => {
             ticker: row.ticker,
             entryPrice: row.entryPrice,
             openPrice: row.openPrice || row.entryPrice,
-            openPriceLockedAt: row.openPriceLockedAt?.toISOString() || null,
-            openPriceSource: row.openPriceSource || null,
-            prevClose: row.prevClose || null,
             closePrice: row.outcomePrice || null,
             outcomePrice: row.outcomePrice || null,
             predictedPrice: row.predictedPrice || calculateDynamicTarget(row.entryPrice, row.signalType || 'VALUE BUY', undefined, undefined, undefined, 'stock'),
