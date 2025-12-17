@@ -3,9 +3,6 @@ import session from "express-session";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-// NOTE: stripe-replit-sync is loaded dynamically to prevent backfill on import
-import { getStripeSync } from "./stripeClient";
-import { WebhookHandlers } from "./webhookHandlers";
 import authRouter from "./routes/auth";
 import adminRouter from "./routes/admin";
 import { initDb } from "./db";
@@ -20,111 +17,21 @@ declare module "http" {
   }
 }
 
-let stripeInitialized = false;
-
-async function checkStripeSchemaExists(): Promise<boolean> {
-  try {
-    const { db } = await import("./db");
-    const { sql } = await import("drizzle-orm");
-    const result = await db.execute(
-      sql`SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'stripe')`
-    );
-    return result.rows[0]?.exists === true;
-  } catch {
-    return false;
-  }
-}
-
-async function initStripe() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.log("DATABASE_URL not set, skipping Stripe initialization");
-    return;
-  }
-
-  // Check if we should skip StripeSync entirely
-  // CRITICAL: This must happen BEFORE importing/instantiating StripeSync
-  // because StripeSync runs a backfill on construction that fails with stale customer data
-  const skipSync = process.env.STRIPE_SYNC_ENABLED === 'false' || 
-                   process.env.REPLIT_DEPLOYMENT === '1' ||
-                   process.env.NODE_ENV === 'production';
-  
-  if (skipSync) {
-    console.log("Stripe sync disabled in production - direct API payments still work");
-    stripeInitialized = true;
-    return;
-  }
-
-  try {
-    const schemaExists = await checkStripeSchemaExists();
-    
-    if (!schemaExists) {
-      console.log("Initializing Stripe schema...");
-      try {
-        // Dynamic import to prevent loading stripe-replit-sync at startup
-        const { runMigrations } = await import("stripe-replit-sync");
-        await runMigrations({ databaseUrl });
-        console.log("Stripe schema created");
-      } catch (migrationError: any) {
-        console.error("Stripe migration error:", migrationError.message);
-        console.log("Continuing without Stripe schema - payments may not work");
-        return;
-      }
-    } else {
-      console.log("Stripe schema already exists, skipping migrations");
-    }
-
-    const stripeSync = await getStripeSync();
-    
-    // Double-check: if stripeSync is null (shouldn't happen due to early return), skip
-    if (!stripeSync) {
-      console.log("Stripe sync not available - skipping webhook setup");
-      stripeInitialized = true;
-      return;
-    }
-
-    console.log("Setting up managed webhook...");
-    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
-    const { webhook } = await stripeSync.findOrCreateManagedWebhook(
-      `${webhookBaseUrl}/api/stripe/webhook`,
-      { enabled_events: ["*"], description: "Pro Trader Dashboard webhook" }
-    );
-    console.log(`Webhook configured: ${webhook.url}`);
-
-    console.log("Stripe initialized - syncing via webhooks");
-    stripeInitialized = true;
-  } catch (error: any) {
-    console.error("Failed to initialize Stripe:", error.message);
-    console.log("Payments will be unavailable until Stripe is configured");
-  }
-}
-
-// Initialize Stripe with a delay to allow server to start
-setTimeout(() => initStripe().catch(console.error), 2000);
+// Stripe sync disabled - payments work via direct Stripe API
+console.log("Stripe sync disabled - direct API payments available");
 
 // Health check endpoint for deployment
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Stripe webhook endpoint - acknowledges webhooks without syncing
 app.post(
   "/api/stripe/webhook/:uuid",
   express.raw({ type: "application/json" }),
   async (req, res) => {
-    const signature = req.headers["stripe-signature"];
-    if (!signature) {
-      return res.status(400).json({ error: "Missing stripe-signature" });
-    }
-
-    try {
-      const sig = Array.isArray(signature) ? signature[0] : signature;
-      const { uuid } = req.params;
-      await WebhookHandlers.processWebhook(req.body as Buffer, sig, uuid);
-      res.status(200).json({ received: true });
-    } catch (error: any) {
-      console.error("Webhook error:", error.message);
-      res.status(400).json({ error: "Webhook processing error" });
-    }
+    console.log("Stripe webhook received - sync disabled, acknowledging only");
+    res.status(200).json({ received: true });
   }
 );
 
