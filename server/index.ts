@@ -80,8 +80,10 @@ async function initStripe() {
   }
 }
 
-// Run Stripe init in background - don't block server startup
-setTimeout(() => initStripe().catch(console.error), 2000);
+// Stripe init disabled temporarily to fix deployment
+// TODO: Re-enable after cleaning up stripe.customers table
+// setTimeout(() => initStripe().catch(console.error), 2000);
+console.log("Stripe initialization skipped - see TODO in server/index.ts");
 
 // Health check endpoint for deployment
 app.get('/health', (_req, res) => {
