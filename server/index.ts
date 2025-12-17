@@ -3,7 +3,7 @@ import session from "express-session";
 import { registerRoutes } from "./routes";
 import { serveStatic } from "./static";
 import { createServer } from "http";
-import { runMigrations } from "stripe-replit-sync";
+// NOTE: stripe-replit-sync is loaded dynamically to prevent backfill on import
 import { getStripeSync } from "./stripeClient";
 import { WebhookHandlers } from "./webhookHandlers";
 import authRouter from "./routes/auth";
@@ -61,6 +61,8 @@ async function initStripe() {
     if (!schemaExists) {
       console.log("Initializing Stripe schema...");
       try {
+        // Dynamic import to prevent loading stripe-replit-sync at startup
+        const { runMigrations } = await import("stripe-replit-sync");
         await runMigrations({ databaseUrl });
         console.log("Stripe schema created");
       } catch (migrationError: any) {
