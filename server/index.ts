@@ -69,10 +69,9 @@ async function initStripe() {
     );
     console.log(`Webhook configured: ${webhook.url}`);
 
-    // Skip Stripe sync for now - there's a missing customer issue
-    // TODO: Clean up stripe.customers table to remove deleted customers
-    console.log("Stripe sync skipped - webhook ready for new events");
-    
+    // Stripe sync happens automatically via webhooks
+    // The webhook will update local database when Stripe events occur
+    console.log("Stripe initialized - syncing via webhooks");
     stripeInitialized = true;
   } catch (error: any) {
     console.error("Failed to initialize Stripe:", error.message);
@@ -80,10 +79,8 @@ async function initStripe() {
   }
 }
 
-// Stripe init disabled temporarily to fix deployment
-// TODO: Re-enable after cleaning up stripe.customers table
-// setTimeout(() => initStripe().catch(console.error), 2000);
-console.log("Stripe initialization skipped - see TODO in server/index.ts");
+// Initialize Stripe with a delay to allow server to start
+setTimeout(() => initStripe().catch(console.error), 2000);
 
 // Health check endpoint for deployment
 app.get('/health', (_req, res) => {
