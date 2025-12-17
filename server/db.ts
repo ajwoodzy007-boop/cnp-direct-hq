@@ -78,6 +78,15 @@ export async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Add user profile personal info columns
+    await client.query(`
+      ALTER TABLE user_profiles 
+      ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS last_name VARCHAR(100),
+      ADD COLUMN IF NOT EXISTS email VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+    `).catch(() => {});
     
     console.log("🗄️  Database Ready: Options Support Active.");
   } catch (err) {

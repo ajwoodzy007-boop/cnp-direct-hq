@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   EnvelopeIcon, LockClosedIcon, ChevronRightIcon, UserPlusIcon, ArrowLeftOnRectangleIcon, ExclamationTriangleIcon,
   ViewfinderCircleIcon, SignalIcon, CpuChipIcon, CheckCircleIcon, StarIcon, ArrowTrendingUpIcon, BoltIcon,
-  ClockIcon, ChartBarIcon, SparklesIcon, GiftIcon, ArrowRightIcon
+  ClockIcon, ChartBarIcon, SparklesIcon, GiftIcon, ArrowRightIcon, UserIcon, PhoneIcon
 } from '@heroicons/react/24/outline';
 import logoImage from '@/assets/cnp-eagle-logo.jpg';
 
@@ -14,6 +14,9 @@ export default function AuthPage({ onLogin }: AuthProps) {
   const [mode, setMode] = useState<'LOGIN' | 'SIGNUP'>('SIGNUP');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -23,12 +26,15 @@ export default function AuthPage({ onLogin }: AuthProps) {
     setError('');
 
     const endpoint = mode === 'LOGIN' ? '/api/auth/login' : '/api/auth/signup';
+    const payload = mode === 'LOGIN' 
+      ? { email, password }
+      : { email, password, firstName, lastName, phone };
 
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify(payload)
       });
       
       const json = await res.json();
@@ -241,6 +247,41 @@ export default function AuthPage({ onLogin }: AuthProps) {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               
+              {mode === 'SIGNUP' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-500 font-medium uppercase ml-1">First Name</label>
+                    <div className="relative group">
+                      <UserIcon className="absolute left-3 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-white transition-colors" />
+                      <input 
+                        type="text"
+                        required
+                        className="w-full bg-slate-950 border border-slate-800 text-white pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder:text-slate-600"
+                        placeholder="John"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        data-testid="input-firstname"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-500 font-medium uppercase ml-1">Last Name</label>
+                    <div className="relative group">
+                      <UserIcon className="absolute left-3 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-white transition-colors" />
+                      <input 
+                        type="text"
+                        required
+                        className="w-full bg-slate-950 border border-slate-800 text-white pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder:text-slate-600"
+                        placeholder="Doe"
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        data-testid="input-lastname"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="text-xs text-slate-500 font-medium uppercase ml-1">Email</label>
                 <div className="relative group">
@@ -256,6 +297,23 @@ export default function AuthPage({ onLogin }: AuthProps) {
                   />
                 </div>
               </div>
+
+              {mode === 'SIGNUP' && (
+                <div className="space-y-1">
+                  <label className="text-xs text-slate-500 font-medium uppercase ml-1">Phone <span className="text-slate-600">(Optional)</span></label>
+                  <div className="relative group">
+                    <PhoneIcon className="absolute left-3 top-3.5 h-5 w-5 text-slate-500 group-focus-within:text-white transition-colors" />
+                    <input 
+                      type="tel"
+                      className="w-full bg-slate-950 border border-slate-800 text-white pl-10 pr-4 py-3 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all placeholder:text-slate-600"
+                      placeholder="(555) 123-4567"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      data-testid="input-phone"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-1">
                 <label className="text-xs text-slate-500 font-medium uppercase ml-1">Password</label>
