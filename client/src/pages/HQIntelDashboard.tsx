@@ -51,6 +51,7 @@ interface HQIntelData {
   infrastructure: {
     dbLatencyMs: number;
     lastSchedulerRun: string | null;
+    liveOperatives: number;
   };
   financial: {
     estimatedMRR: number;
@@ -232,6 +233,23 @@ export default function HQIntelDashboard() {
               <BoltIcon className="h-4 w-4" />
               REFRESH
             </button>
+          </div>
+        </div>
+
+        {/* Live Operatives Counter */}
+        <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/50 rounded-xl p-4 flex items-center justify-between" data-testid="live-operatives">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="h-3 w-3 bg-green-500 rounded-full animate-pulse"></div>
+              <div className="absolute inset-0 h-3 w-3 bg-green-500 rounded-full animate-ping"></div>
+            </div>
+            <span className="text-green-400 font-semibold text-sm uppercase tracking-wider">LIVE OPERATIVES</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-3xl font-bold text-green-400" data-testid="value-live-operatives">
+              {data?.infrastructure?.liveOperatives || 0}
+            </span>
+            <span className="text-xs text-slate-500">active now</span>
           </div>
         </div>
 

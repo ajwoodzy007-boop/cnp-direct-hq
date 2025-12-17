@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password_hash: text("password_hash").notNull(),
   tier: text("tier").notNull().default("FREE"),
+  lastActive: timestamp("last_active"),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({

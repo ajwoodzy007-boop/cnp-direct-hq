@@ -1110,6 +1110,21 @@ router.get('/hq-intel', requireHQIntelAccess, async (req, res) => {
     }
 
     // ============================================
+    // LIVE OPERATIVES (active in last 5 min)
+    // ============================================
+    
+    let liveOperatives = 0;
+    try {
+      const liveResult = await query(`
+        SELECT COUNT(*) as count FROM users 
+        WHERE last_active >= NOW() - INTERVAL '5 minutes'
+      `);
+      liveOperatives = parseInt(liveResult.rows[0]?.count || '0');
+    } catch (e) {
+      console.error('Live operatives query failed:', e);
+    }
+
+    // ============================================
     // FINANCIAL OVERVIEW
     // ============================================
     
@@ -1222,7 +1237,8 @@ router.get('/hq-intel', requireHQIntelAccess, async (req, res) => {
         },
         infrastructure: {
           dbLatencyMs,
-          lastSchedulerRun
+          lastSchedulerRun,
+          liveOperatives
         },
         financial: {
           estimatedMRR: mrr,

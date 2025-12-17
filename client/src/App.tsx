@@ -27,11 +27,13 @@ import AdminDashboard from './components/AdminDashboard';
 import HQIntelDashboard from './pages/HQIntelDashboard';
 import { useGoHomeOnExhaust } from '../hooks/useGoHomeOnExhaust';
 import { NavigationStackProvider, useTabBack } from '../hooks/useNavigationStack';
+import { useActivityTracker } from './hooks/useActivityTracker';
 
 function MainDashboard() {
   const [currentTab, setTab] = useState('summary');
   
   useTabBack(currentTab, setTab);
+  useActivityTracker();
   
   const [user, setUser] = useState<{ email: string; tier: string } | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);

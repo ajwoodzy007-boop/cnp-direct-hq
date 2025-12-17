@@ -107,6 +107,21 @@ router.post('/logout', (req, res) => {
   req.session.destroy(() => res.json({ success: true }));
 });
 
+router.post('/ping', async (req, res) => {
+  const user = (req.session as any).user;
+  if (!user) {
+    return res.json({ success: false });
+  }
+  
+  try {
+    await query('UPDATE users SET last_active = NOW() WHERE id = $1', [user.id]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Activity ping error:', e);
+    res.json({ success: false });
+  }
+});
+
 router.post('/redeem-beta', async (req, res) => {
   const user = (req.session as any).user;
   
