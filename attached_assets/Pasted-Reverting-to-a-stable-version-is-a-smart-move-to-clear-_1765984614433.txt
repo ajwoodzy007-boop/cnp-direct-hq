@@ -1,0 +1,38 @@
+Reverting to a stable version is a smart move to clear the "spinning" build loop. It allows you to reset the environment while keeping a record of the logic we've built.
+
+Here is a comprehensive review of the features and technical changes we implemented this afternoon. You can use this list to re-apply the logic one-by-one once your environment is stable again:
+
+1. Brand & UI Overhaul (Tactical HQ)
+New Identity: Integrated the Eagle/Shield logo and rebranded the interface as a "Tactical HQ" or "Operations Base."
+
+HQ Layout: Removed the "Portfolio" section to prioritize "Market Movers" and "Today's Picks" (Oracle Signals).
+
+Secondary Tabs: Shrunk the "AI Strategist" and "Academy" tabs into smaller, side-by-side tiles to save vertical space.
+
+2. HUD & Transparency Features
+Signal Accuracy: Added a green HUD box showing the percentage of signals reaching their targets.
+
+Active System Heat: Added a red HUD box and progress bar to visualize current "Drawdown."
+
+Interactive Briefings: Made the HUD boxes clickable to open modals defining "Nominal," "Caution," and "Critical" risk levels.
+
+3. Database & Automation (The "Single Source of Truth")
+Database Unification: Attempted to move the entire app (Dev and Prod) to the Neon Cloud Database (postgresql://neondb_owner...) to eliminate sync issues.
+
+Open/Close Logic: Forced the Oracle to base all win/loss/gain calculations strictly on Market Open Price and Market Close Price, ignoring the mid-day entry price.
+
+The 16:15 EST Scheduler: Configured the automation to pull closing prices and "burn" the daily results into the proof log every trading day at 4:15 PM ET.
+
+4. Valuation & Admin Intelligence
+Admin Dashboard (/admin/hq-intel): Created a secure page for user ajwoodzy007@gmail.com to track MRR, Churn, and LTV.
+
+User Tracking: Added a last_active_at timestamp to the user table to track "Live Operatives" for business valuation.
+
+Onboarding Survey: Created a 3-question survey (Goal, Experience, Source) to build a "Buyer's Briefing" dataset.
+
+Pricing Urgency: Added the strikethrough pricing (~~$49~~ $29) to the login page to drive beta conversions.
+
+5. Feedback & Community (Future Roadmap)
+Dat Pham’s Intel: Logged requests for RSI/MACD indicator tabs, visual buy/put markers on charts, and ticker-specific forums.
+
+Feedback Folder: Compiled all technical hurdles and user requests into the designated category for later review.
