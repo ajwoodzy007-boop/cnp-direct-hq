@@ -56,6 +56,9 @@ Preferred communication style: Simple, everyday language.
 - Displays KPIs (MRR, Total Operatives, Churn Rate, Avg LTV), Onboarding Intel (experience levels, marketing sources), and Retention & Engagement metrics (DAU, WAU, MAU, Signal Engagement).
 - Features a distinct gold/amber theme.
 - Includes "Success Wall" section for managing user testimonials.
+- **User Browser**: Searchable list of all users with tier filtering. Clicking a user opens a detailed "User Dossier" modal showing profile data (email, name, phone, experience level, trading style, risk tolerance, marketing source), activity stats (join date, last active, login count), signal engagement summary, recent login history with IP addresses, and admin controls to upgrade/downgrade user tier.
+- **Live Operatives**: Real-time counter showing users active in the last 5 minutes with animated pulse indicator.
+- API endpoints: GET `/api/admin/users` (list with search/filter), GET `/api/admin/users/:id` (detailed user data), POST `/api/admin/users/:id/tier` (change tier).
 
 ### Testimonial/Feedback System
 - Users can submit feedback on winning signals via the Oracle trade recap modal.
