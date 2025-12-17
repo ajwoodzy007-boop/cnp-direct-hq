@@ -8,10 +8,13 @@ import { query } from "./db";
 import { insertPredictionSchema, insertWatchlistSchema } from "@shared/schema";
 import OpenAI from "openai";
 import { z } from "zod";
+import { stripeService } from "./stripeService";
+import { getStripePublishableKey } from "./stripeClient";
 import oracleRouter from "./routes/oracle";
 import strategistRouter from "./routes/strategist";
 import vaultRouter from "./routes/vault";
 import chartRouter from "./routes/chart";
+import stripeRouter from "./routes/stripe";
 import aiRouter from "./routes/ai";
 import academyRouter from "./routes/academy";
 import backtestRouter from "./routes/backtest";
@@ -109,6 +112,8 @@ export async function registerRoutes(
   // Chart routes
   app.use("/api/chart", chartRouter);
   
+  // Stripe checkout routes
+  app.use("/api/stripe", stripeRouter);
   app.use("/api/ai", aiRouter);
   
   // Academy routes

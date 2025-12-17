@@ -100,44 +100,6 @@ export default function TheOracle() {
   const [deepAnalysisLoading, setDeepAnalysisLoading] = useState(false);
   const [deepAnalysisError, setDeepAnalysisError] = useState<string | null>(null);
 
-  // Feedback/Testimonial state
-  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [feedbackTicker, setFeedbackTicker] = useState('');
-  const [feedbackDate, setFeedbackDate] = useState('');
-  const [feedbackText, setFeedbackText] = useState('');
-  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false);
-  const [feedbackSuccess, setFeedbackSuccess] = useState(false);
-
-  const submitFeedback = async (helpful: boolean) => {
-    if (!feedbackText.trim() && helpful) return;
-    setFeedbackSubmitting(true);
-    try {
-      const res = await fetch('/api/admin/testimonial', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ticker: feedbackTicker,
-          feedback: feedbackText,
-          helpful,
-          predictionDate: feedbackDate
-        })
-      });
-      const json = await res.json();
-      if (json.success) {
-        setFeedbackSuccess(true);
-        setTimeout(() => {
-          setShowFeedbackModal(false);
-          setFeedbackText('');
-          setFeedbackSuccess(false);
-        }, 2000);
-      }
-    } catch (err) {
-      console.error('Feedback submission error:', err);
-    } finally {
-      setFeedbackSubmitting(false);
-    }
-  };
-
   const runDeepAnalysis = async (ticker: string, assetType: string) => {
     setShowDeepAnalysis(true);
     setDeepAnalysisLoading(true);
@@ -1249,90 +1211,6 @@ export default function TheOracle() {
               </div>
             </div>
 
-            {/* Feedback Button for WIN signals */}
-            {(selectedHistoryItem.outcome === 'WIN' || selectedHistoryItem.profitPercent > 0) && (
-              <div className="mt-4 pt-4 border-t border-green-500/20">
-                <button
-                  onClick={() => {
-                    setFeedbackTicker(selectedHistoryItem.ticker);
-                    setFeedbackDate(selectedHistoryItem.date || '');
-                    setShowFeedbackModal(true);
-                  }}
-                  className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2"
-                  data-testid="button-share-feedback"
-                >
-                  <TrophyIcon className="h-5 w-5" />
-                  Was This Signal Helpful?
-                </button>
-                <p className="text-center text-[10px] text-slate-600 mt-2">
-                  Share your experience to help improve The Oracle
-                </p>
-              </div>
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* Feedback Testimonial Modal */}
-      {showFeedbackModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in zoom-in-95 duration-200">
-          <div className="bg-slate-900 border border-green-500/30 w-full max-w-md rounded-2xl shadow-2xl p-6 relative">
-            <button 
-              onClick={() => setShowFeedbackModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white"
-              data-testid="button-close-feedback"
-            >
-              <XMarkIcon className="h-6 w-6" />
-            </button>
-
-            {feedbackSuccess ? (
-              <div className="text-center py-8">
-                <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-500/20 border border-green-500/30 mb-4">
-                  <CheckCircleIcon className="h-8 w-8 text-green-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Thank You!</h3>
-                <p className="text-slate-400">Your feedback helps us improve The Oracle.</p>
-              </div>
-            ) : (
-              <>
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-green-500/20 border border-green-500/30 mb-4">
-                    <TrophyIcon className="h-8 w-8 text-green-400" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">Share Your Success</h3>
-                  <p className="text-sm text-slate-400 mt-2">
-                    Tell us about your experience with <span className="text-green-400 font-bold">{feedbackTicker}</span>
-                  </p>
-                </div>
-
-                <textarea
-                  value={feedbackText}
-                  onChange={(e) => setFeedbackText(e.target.value)}
-                  placeholder="How did this signal help you? What was your experience?"
-                  className="w-full h-32 bg-slate-800 border border-slate-700 rounded-lg p-3 text-white placeholder-slate-500 resize-none focus:outline-none focus:border-green-500/50"
-                  data-testid="input-feedback-text"
-                />
-
-                <div className="mt-4 flex gap-3">
-                  <button
-                    onClick={() => submitFeedback(true)}
-                    disabled={feedbackSubmitting || !feedbackText.trim()}
-                    className="flex-1 py-3 bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                    data-testid="button-submit-feedback"
-                  >
-                    {feedbackSubmitting ? (
-                      <ArrowPathIcon className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <>
-                        <CheckCircleIcon className="h-5 w-5" />
-                        Submit Feedback
-                      </>
-                    )}
-                  </button>
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}

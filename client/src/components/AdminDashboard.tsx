@@ -122,16 +122,11 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('/api/admin/users', { credentials: 'include' });
+      const res = await adminFetch('/api/admin/users');
       const json = await res.json();
-      console.log('Fetch users response:', json);
-      if (json.success) {
-        setUsers(json.users || []);
-      } else {
-        console.error('Users fetch failed:', json.error);
-      }
+      if (json.success) setUsers(json.users);
     } catch (e) {
-      console.error('Users fetch error:', e);
+      console.error(e);
     }
   };
 
@@ -319,6 +314,38 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           </button>
         </div>
 
+        {/* Admin Auth */}
+        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <input
+                type="password"
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                placeholder="Admin password for production"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 text-sm"
+                data-testid="input-admin-key"
+              />
+            </div>
+            <button
+              onClick={async () => {
+                const success = await verifyAdminKey();
+                setFinalizeResult(success ? 'Authenticated!' : 'Invalid key');
+              }}
+              className="px-4 py-2 bg-cyan-600/30 hover:bg-cyan-600/40 text-cyan-300 rounded-lg border border-cyan-400/50 transition-all text-sm"
+              data-testid="button-verify-admin"
+            >
+              Verify
+            </button>
+            {isAuthenticated && (
+              <div className="flex items-center gap-2 text-green-400">
+                <ShieldCheckIcon className="h-4 w-4" />
+                <span className="text-xs">OK</span>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Tab Navigation */}
         <div className="flex gap-2 border-b border-slate-800 pb-2">
           <button
@@ -476,74 +503,64 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
             {/* Users Modal */}
             {showUsers && (
-              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowUsers(false)}>
-                <div 
-                  className="bg-slate-900 border border-cyan-500/30 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-hidden"
-                  onClick={(e) => e.stopPropagation()}
-                  data-testid="users-modal"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                      <UsersIcon className="h-5 w-5 text-cyan-400" />
-                      All Users ({users.length})
-                    </h3>
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => exportToCsv(`users_${new Date().toISOString().split('T')[0]}.csv`, users)}
-                        className="px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded text-xs flex items-center gap-2 border border-cyan-500/30"
-                        data-testid="btn-download-users"
-                      >
-                        <ArrowDownTrayIcon className="h-3 w-3" />
-                        CSV
-                      </button>
-                      <button 
-                        onClick={() => setShowUsers(false)}
-                        className="text-slate-400 hover:text-white text-xl px-2"
-                        data-testid="button-close-users-modal"
-                      >
-                        ×
-                      </button>
-                    </div>
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-semibold text-white">All Users</h3>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => exportToCsv(`users_${new Date().toISOString().split('T')[0]}.csv`, users)}
+                      className="px-3 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 rounded text-xs flex items-center gap-2 border border-cyan-500/30"
+                      data-testid="btn-download-users"
+                    >
+                      <ArrowDownTrayIcon className="h-3 w-3" />
+                      CSV
+                    </button>
+                    <button 
+                      onClick={() => setShowUsers(false)}
+                      className="text-xs text-slate-400 hover:text-white px-2"
+                    >
+                      Close
+                    </button>
                   </div>
-                  <div className="overflow-y-auto max-h-[60vh]">
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-slate-900">
-                        <tr className="border-b border-slate-800">
-                          <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Email</th>
-                          <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Tier</th>
-                          <th className="text-right py-2 px-3 text-slate-400 text-xs font-medium">Actions</th>
+                </div>
+                <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800">
+                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Email</th>
+                        <th className="text-left py-2 px-3 text-slate-400 text-xs font-medium">Tier</th>
+                        <th className="text-right py-2 px-3 text-slate-400 text-xs font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map(user => (
+                        <tr key={user.id} className="border-b border-slate-800/50">
+                          <td className="py-2 px-3 text-white">{user.email}</td>
+                          <td className="py-2 px-3">
+                            <span className={`px-2 py-0.5 rounded text-xs ${
+                              user.tier === 'PREMIUM' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400'
+                            }`}>
+                              {user.tier}
+                            </span>
+                          </td>
+                          <td className="py-2 px-3 text-right">
+                            <button
+                              onClick={() => handleToggleTier(user.id, user.tier)}
+                              disabled={updating === user.id}
+                              className={`text-xs px-2 py-1 rounded ${
+                                user.tier === 'PREMIUM' 
+                                  ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' 
+                                  : 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400'
+                              } disabled:opacity-50`}
+                              data-testid={`button-toggle-tier-${user.id}`}
+                            >
+                              {updating === user.id ? '...' : user.tier === 'PREMIUM' ? 'Downgrade' : 'Upgrade'}
+                            </button>
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {users.map(user => (
-                          <tr key={user.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                            <td className="py-2 px-3 text-white">{user.email}</td>
-                            <td className="py-2 px-3">
-                              <span className={`px-2 py-0.5 rounded text-xs ${
-                                user.tier === 'PREMIUM' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400'
-                              }`}>
-                                {user.tier}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-right">
-                              <button
-                                onClick={() => handleToggleTier(user.id, user.tier)}
-                                disabled={updating === user.id}
-                                className={`text-xs px-2 py-1 rounded ${
-                                  user.tier === 'PREMIUM' 
-                                    ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' 
-                                    : 'bg-amber-600/20 hover:bg-amber-600/30 text-amber-400'
-                                } disabled:opacity-50`}
-                                data-testid={`button-toggle-tier-${user.id}`}
-                              >
-                                {updating === user.id ? '...' : user.tier === 'PREMIUM' ? 'Downgrade' : 'Upgrade'}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}

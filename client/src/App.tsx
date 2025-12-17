@@ -24,16 +24,13 @@ import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
 import AiAssistant from './components/AiAssistant';
 import AdminDashboard from './components/AdminDashboard';
-import HQIntelDashboard from './pages/HQIntelDashboard';
 import { useGoHomeOnExhaust } from '../hooks/useGoHomeOnExhaust';
 import { NavigationStackProvider, useTabBack } from '../hooks/useNavigationStack';
-import { useActivityTracker } from './hooks/useActivityTracker';
 
 function MainDashboard() {
   const [currentTab, setTab] = useState('summary');
   
   useTabBack(currentTab, setTab);
-  useActivityTracker();
   
   const [user, setUser] = useState<{ email: string; tier: string } | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
@@ -181,7 +178,6 @@ export default function App() {
               <SonnerToaster position="top-right" richColors />
               <Switch>
                 <Route path="/" component={MainDashboard} />
-                <Route path="/admin/hq-intel" component={HQIntelDashboard} />
                 <Route path="/pricing" component={Pricing} />
                 <Route path="/checkout/success" component={CheckoutSuccess} />
                 <Route path="/checkout/cancel" component={CheckoutCancel} />

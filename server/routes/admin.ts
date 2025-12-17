@@ -42,7 +42,7 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
 router.get('/check', (req, res) => {
   const user = (req.session as any).user;
   const isAdmin = user && user.email && isAdminEmail(user.email);
-  res.json({ isAdmin: !!isAdmin });
+  res.json({ isAdmin });
 });
 
 // Diagnostic endpoint to check database state
@@ -179,16 +179,12 @@ router.get('/stats', requireAdmin, async (req, res) => {
   }
 });
 
-// Get all users for admin dashboard
 router.get('/users', requireAdmin, async (req, res) => {
-  console.log('[Admin] Fetching users list...');
   try {
     const result = await query(`
-      SELECT id, email, COALESCE(tier, 'FREE') as tier 
+      SELECT id, email, tier 
       FROM users
-      ORDER BY id
     `);
-    console.log('[Admin] Found', result.rows.length, 'users');
     res.json({ success: true, users: result.rows });
   } catch (e) {
     console.error('Admin users error:', e);
@@ -196,7 +192,6 @@ router.get('/users', requireAdmin, async (req, res) => {
   }
 });
 
-// Update user tier
 router.post('/users/:id/tier', requireAdmin, async (req, res) => {
   const { id } = req.params;
   const { tier } = req.body;
@@ -931,8 +926,8 @@ router.post('/profiles/:id', requireAdmin, async (req, res) => {
 // HQ INTEL DASHBOARD (Admin-Only Business Intelligence)
 // ============================================
 
-// Hardcoded admin user ID for HQ Intel access (secure lockdown)
-const HQ_INTEL_ADMIN_ID = '36384794-2a53-498a-88b2-edd0e4b18a5c';
+// Special admin user ID for HQ Intel access (set via environment)
+const HQ_INTEL_ADMIN_ID = process.env.HQ_INTEL_ADMIN_ID || '';
 
 function requireHQIntelAccess(req: Request, res: Response, next: NextFunction) {
   // First check API key
@@ -1058,94 +1053,6 @@ router.get('/hq-intel', requireHQIntelAccess, async (req, res) => {
     }
     
     // ============================================
-    // ORACLE BENCHMARKS
-    // ============================================
-    
-    let avgWinPercent = 0;
-    let avgLossPercent = 0;
-    let signalVolume30d = 0;
-    try {
-      // Get 30-day prediction stats
-      const benchmarkResult = await query(`
-        SELECT 
-          COUNT(*) as total,
-          AVG(CASE WHEN LOWER(outcome) = 'win' THEN 
-            CASE WHEN open_price > 0 THEN ((outcome_price - open_price) / open_price) * 100 ELSE 0 END
-          ELSE NULL END) as avg_win,
-          AVG(CASE WHEN LOWER(outcome) = 'loss' THEN 
-            CASE WHEN open_price > 0 THEN ((outcome_price - open_price) / open_price) * 100 ELSE 0 END
-          ELSE NULL END) as avg_loss
-        FROM predictions 
-        WHERE prediction_date >= NOW() - INTERVAL '30 days'
-        AND LOWER(outcome) IN ('win', 'loss')
-      `);
-      avgWinPercent = parseFloat(benchmarkResult.rows[0]?.avg_win || '0');
-      avgLossPercent = Math.abs(parseFloat(benchmarkResult.rows[0]?.avg_loss || '0'));
-      
-      const volumeResult = await query(`
-        SELECT COUNT(*) as volume FROM predictions 
-        WHERE prediction_date >= NOW() - INTERVAL '30 days'
-      `);
-      signalVolume30d = parseInt(volumeResult.rows[0]?.volume || '0');
-    } catch (e) {
-      console.error('Oracle benchmarks failed:', e);
-    }
-
-    // ============================================
-    // INFRASTRUCTURE HEALTH
-    // ============================================
-    
-    let dbLatencyMs = 0;
-    let lastSchedulerRun = null as string | null;
-    try {
-      // Test DB latency
-      const startTime = Date.now();
-      await query('SELECT 1');
-      dbLatencyMs = Date.now() - startTime;
-      
-      // Get last 16:15 EST finalization run (check for recent predictions with outcomes)
-      const schedulerResult = await query(`
-        SELECT MAX(outcome_date) as last_run 
-        FROM predictions 
-        WHERE outcome IS NOT NULL
-      `);
-      lastSchedulerRun = schedulerResult.rows[0]?.last_run || null;
-    } catch (e) {
-      console.error('Infrastructure health check failed:', e);
-    }
-
-    // ============================================
-    // LIVE OPERATIVES (active in last 5 min)
-    // ============================================
-    
-    let liveOperatives = 0;
-    try {
-      const liveResult = await query(`
-        SELECT COUNT(*) as count FROM users 
-        WHERE last_active >= NOW() - INTERVAL '5 minutes'
-      `);
-      liveOperatives = parseInt(liveResult.rows[0]?.count || '0');
-    } catch (e) {
-      console.error('Live operatives query failed:', e);
-    }
-
-    // ============================================
-    // FINANCIAL OVERVIEW
-    // ============================================
-    
-    // Trial users (FREE tier)
-    let trialCount = 0;
-    let paidCount = premiumCount;
-    try {
-      const trialResult = await query(`
-        SELECT COUNT(*) as count FROM users WHERE tier = 'FREE' OR tier IS NULL
-      `);
-      trialCount = parseInt(trialResult.rows[0]?.count || '0');
-    } catch (e) {
-      console.error('Trial count failed:', e);
-    }
-
-    // ============================================
     // RETENTION & ENGAGEMENT
     // ============================================
     
@@ -1234,23 +1141,6 @@ router.get('/hq-intel', requireHQIntelAccess, async (req, res) => {
           signalEngagementToday,
           heatModalClicks,
           accuracyModalClicks
-        },
-        oracleBenchmarks: {
-          avgWinPercent: avgWinPercent.toFixed(2),
-          avgLossPercent: avgLossPercent.toFixed(2),
-          signalVolume30d
-        },
-        infrastructure: {
-          dbLatencyMs,
-          lastSchedulerRun,
-          liveOperatives
-        },
-        financial: {
-          estimatedMRR: mrr,
-          estimatedMRRFormatted: `$${mrr.toLocaleString()}`,
-          trialCount,
-          paidCount,
-          trialToPaidRatio: paidCount > 0 ? (trialCount / paidCount).toFixed(1) : 'N/A'
         }
       }
     });
@@ -1280,342 +1170,6 @@ router.post('/engagement/signal', async (req, res) => {
     res.json({ success: true });
   } catch (e: any) {
     console.error('Signal engagement tracking error:', e);
-    res.status(500).json({ success: false, error: e.message });
-  }
-});
-
-// ============================================
-// TESTIMONIALS API
-// ============================================
-
-// Submit testimonial (public, but requires login)
-router.post('/testimonial', async (req, res) => {
-  try {
-    const user = (req.session as any).user;
-    
-    if (!user) {
-      return res.status(401).json({ success: false, error: "Login required" });
-    }
-    
-    const { ticker, feedback, helpful, predictionDate } = req.body;
-    
-    if (!ticker || !feedback) {
-      return res.status(400).json({ success: false, error: "Ticker and feedback required" });
-    }
-    
-    await query(
-      `INSERT INTO user_testimonials (user_id, ticker, feedback, helpful, prediction_date)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [user.id, ticker, feedback, helpful !== false, predictionDate || null]
-    );
-    
-    res.json({ success: true, message: "Thank you for your feedback!" });
-  } catch (e: any) {
-    console.error('Testimonial submission error:', e);
-    res.status(500).json({ success: false, error: e.message });
-  }
-});
-
-// Get testimonials for HQ Intel (admin only)
-router.get('/testimonials', requireHQIntelAccess, async (req, res) => {
-  try {
-    const result = await query(`
-      SELECT 
-        t.id,
-        t.ticker,
-        t.feedback,
-        t.helpful,
-        t.prediction_date,
-        t.created_at,
-        t.approved,
-        u.email as user_email
-      FROM user_testimonials t
-      LEFT JOIN users u ON t.user_id = u.id
-      WHERE t.helpful = true
-      ORDER BY t.created_at DESC
-      LIMIT 50
-    `);
-    
-    res.json({ 
-      success: true, 
-      testimonials: result.rows.map(t => ({
-        id: t.id,
-        ticker: t.ticker,
-        feedback: t.feedback,
-        helpful: t.helpful,
-        predictionDate: t.prediction_date,
-        createdAt: t.created_at,
-        approved: t.approved,
-        userEmail: t.user_email
-      }))
-    });
-  } catch (e: any) {
-    console.error('Testimonials fetch error:', e);
-    res.status(500).json({ success: false, error: e.message });
-  }
-});
-
-// Approve/unapprove testimonial (admin only)
-router.post('/testimonials/:id/approve', requireHQIntelAccess, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { approved } = req.body;
-    
-    await query(
-      'UPDATE user_testimonials SET approved = $1 WHERE id = $2',
-      [approved !== false, id]
-    );
-    
-    res.json({ success: true });
-  } catch (e: any) {
-    console.error('Testimonial approval error:', e);
-    res.status(500).json({ success: false, error: e.message });
-  }
-});
-
-// ============================================
-// USER BROWSER
-// ============================================
-
-// List all users with profile data (admin only)
-router.get('/users', requireHQIntelAccess, async (req, res) => {
-  try {
-    const search = (req.query.search as string || '').toLowerCase();
-    const tier = req.query.tier as string || '';
-    
-    let sql = `
-      SELECT 
-        u.id,
-        u.email,
-        u.tier,
-        u.last_active,
-        up.first_name,
-        up.last_name,
-        up.phone,
-        up.experience_level,
-        up.marketing_source,
-        up.subscription_status,
-        up.created_at,
-        (SELECT COUNT(*) FROM login_events le WHERE le.user_id = u.id) as login_count,
-        (SELECT MAX(occurred_at) FROM login_events le WHERE le.user_id = u.id) as last_login
-      FROM users u
-      LEFT JOIN user_profiles up ON u.id = up.user_id
-      WHERE 1=1
-    `;
-    const params: any[] = [];
-    
-    if (search) {
-      params.push(`%${search}%`);
-      sql += ` AND (LOWER(u.email) LIKE $${params.length} OR LOWER(up.first_name) LIKE $${params.length} OR LOWER(up.last_name) LIKE $${params.length})`;
-    }
-    
-    if (tier && tier !== 'all') {
-      params.push(tier);
-      sql += ` AND u.tier = $${params.length}`;
-    }
-    
-    sql += ' ORDER BY up.created_at DESC NULLS LAST LIMIT 100';
-    
-    const result = await query(sql, params);
-    
-    res.json({
-      success: true,
-      users: result.rows.map(row => ({
-        id: row.id,
-        email: row.email,
-        tier: row.tier || 'FREE',
-        firstName: row.first_name,
-        lastName: row.last_name,
-        phone: row.phone,
-        experienceLevel: row.experience_level,
-        marketingSource: row.marketing_source,
-        subscriptionStatus: row.subscription_status,
-        createdAt: row.created_at,
-        lastActive: row.last_active,
-        lastLogin: row.last_login,
-        loginCount: parseInt(row.login_count || '0')
-      }))
-    });
-  } catch (e: any) {
-    console.error('Users fetch error:', e);
-    res.status(500).json({ success: false, error: e.message });
-  }
-});
-
-// Get individual user details (admin only)
-router.get('/users/:id', requireHQIntelAccess, async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const userResult = await query(`
-      SELECT 
-        u.id,
-        u.email,
-        u.tier,
-        u.last_active,
-        up.first_name,
-        up.last_name,
-        up.phone,
-        up.experience_level,
-        up.trading_style,
-        up.risk_tolerance,
-        up.marketing_source,
-        up.subscription_status,
-        up.subscription_period_end,
-        up.stripe_customer_id,
-        up.created_at
-      FROM users u
-      LEFT JOIN user_profiles up ON u.id = up.user_id
-      WHERE u.id = $1
-    `, [id]);
-    
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
-    
-    const user = userResult.rows[0];
-    
-    // Get login history
-    const loginsResult = await query(`
-      SELECT occurred_at, ip_address, user_agent 
-      FROM login_events 
-      WHERE user_id = $1 
-      ORDER BY occurred_at DESC 
-      LIMIT 10
-    `, [id]);
-    
-    // Get signal engagement
-    const engagementResult = await query(`
-      SELECT action_type, COUNT(*) as count
-      FROM signal_engagement_events
-      WHERE user_id = $1
-      GROUP BY action_type
-    `, [id]);
-    
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        tier: user.tier || 'FREE',
-        firstName: user.first_name,
-        lastName: user.last_name,
-        phone: user.phone,
-        experienceLevel: user.experience_level,
-        tradingStyle: user.trading_style,
-        riskTolerance: user.risk_tolerance,
-        marketingSource: user.marketing_source,
-        subscriptionStatus: user.subscription_status,
-        subscriptionPeriodEnd: user.subscription_period_end,
-        stripeCustomerId: user.stripe_customer_id,
-        createdAt: user.created_at,
-        lastActive: user.last_active
-      },
-      recentLogins: loginsResult.rows.map(l => ({
-        occurredAt: l.occurred_at,
-        ipAddress: l.ip_address,
-        userAgent: l.user_agent
-      })),
-      engagement: engagementResult.rows.map(e => ({
-        actionType: e.action_type,
-        count: parseInt(e.count)
-      }))
-    });
-  } catch (e: any) {
-    console.error('User detail fetch error:', e);
-    res.status(500).json({ success: false, error: e.message });
-  }
-});
-
-// Update user tier (admin only)
-router.post('/users/:id/tier', requireHQIntelAccess, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { tier } = req.body;
-    
-    if (!['FREE', 'PREMIUM'].includes(tier)) {
-      return res.status(400).json({ success: false, error: 'Invalid tier' });
-    }
-    
-    await query('UPDATE users SET tier = $1 WHERE id = $2', [tier, id]);
-    
-    res.json({ success: true, message: `User tier updated to ${tier}` });
-  } catch (e: any) {
-    console.error('User tier update error:', e);
-    res.status(500).json({ success: false, error: e.message });
-  }
-});
-
-// ============================================
-// CSV EXPORT - EXIT GOLD
-// ============================================
-
-// Download user briefing as CSV (admin only)
-router.get('/export/briefing', requireHQIntelAccess, async (req, res) => {
-  try {
-    // Get all users with their profile data
-    const result = await query(`
-      SELECT 
-        u.email,
-        u.tier,
-        up.first_name,
-        up.last_name,
-        up.phone,
-        up.experience_level,
-        up.trading_goals,
-        up.marketing_source,
-        up.created_at,
-        up.subscription_status
-      FROM users u
-      LEFT JOIN user_profiles up ON u.id = up.user_id
-      ORDER BY up.created_at DESC NULLS LAST
-    `);
-    
-    // Build CSV content
-    const headers = [
-      'Email',
-      'Tier',
-      'First Name',
-      'Last Name',
-      'Phone',
-      'Experience Level',
-      'Trading Goals',
-      'Marketing Source',
-      'Signup Date',
-      'Subscription Status'
-    ];
-    
-    const escapeCSV = (val: any) => {
-      if (val === null || val === undefined) return '';
-      const str = String(val);
-      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-        return `"${str.replace(/"/g, '""')}"`;
-      }
-      return str;
-    };
-    
-    const rows = result.rows.map(row => [
-      escapeCSV(row.email),
-      escapeCSV(row.tier || 'FREE'),
-      escapeCSV(row.first_name),
-      escapeCSV(row.last_name),
-      escapeCSV(row.phone),
-      escapeCSV(row.experience_level),
-      escapeCSV(row.trading_goals),
-      escapeCSV(row.marketing_source),
-      escapeCSV(row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : ''),
-      escapeCSV(row.subscription_status)
-    ].join(','));
-    
-    const csv = [headers.join(','), ...rows].join('\n');
-    
-    const filename = `cnpdirect_briefing_${new Date().toISOString().split('T')[0]}.csv`;
-    
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(csv);
-  } catch (e: any) {
-    console.error('CSV export error:', e);
     res.status(500).json({ success: false, error: e.message });
   }
 });

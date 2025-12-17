@@ -1,12 +1,37 @@
-import React from 'react';
-import { LockClosedIcon, CheckCircleIcon, ShieldCheckIcon, TicketIcon } from '@heroicons/react/24/outline';
-import { Link } from 'wouter';
+import React, { useState } from 'react';
+import { LockClosedIcon, StarIcon, CheckCircleIcon, ShieldCheckIcon, BoltIcon } from '@heroicons/react/24/outline';
 
 interface Props {
   featureName: string;
 }
 
 export default function PremiumLock({ featureName }: Props) {
+  const [loading, setLoading] = useState(false);
+
+  const MONTHLY_PRICE_ID = 'price_1SdDL90frj5koTyzcpbrRjjA'; 
+  const ANNUAL_PRICE_ID = 'price_1SdDM30frj5koTyzfzO5duSn';
+
+  const handleCheckout = async (priceId: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priceId })
+      });
+      const json = await res.json();
+      if (json.url) {
+        window.open(json.url, '_blank');
+      } else {
+        alert("Checkout failed to initialize.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="h-full w-full flex items-center justify-center p-8 animate-in fade-in duration-500">
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-8 max-w-4xl text-center relative overflow-hidden shadow-2xl">
@@ -39,34 +64,43 @@ export default function PremiumLock({ featureName }: Props) {
             </div>
             
             <div className="flex items-center gap-2 text-xs text-slate-500">
-              <ShieldCheckIcon className="h-4 w-4" /> Beta passes available for early access
+              <ShieldCheckIcon className="h-4 w-4" /> 7-Day Free Trial • Cancel Anytime
             </div>
           </div>
 
           <div className="space-y-4">
             
-            <div className="bg-gradient-to-br from-purple-900/30 to-slate-900 border border-purple-500/30 rounded-xl p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <TicketIcon className="h-8 w-8 text-purple-400" />
-                <div>
-                  <div className="text-lg font-bold text-white">Beta Access</div>
-                  <div className="text-sm text-slate-400">Get early access with a beta pass</div>
+            <div className="relative group cursor-pointer" onClick={() => handleCheckout(ANNUAL_PRICE_ID)} data-testid="button-checkout-annual">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl opacity-75 group-hover:opacity-100 transition duration-200 blur"></div>
+              <div className="relative bg-slate-900 rounded-xl p-6 border border-slate-800 flex justify-between items-center hover:bg-slate-800 transition-colors">
+                <div className="text-left">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg font-bold text-white">Annual Plan</span>
+                    <span className="bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">SAVE 20%</span>
+                  </div>
+                  <div className="text-sm text-slate-400">$249 / year</div>
+                  <div className="text-xs text-green-400 mt-1">7 Days Free, then billed yearly</div>
                 </div>
-              </div>
-              <p className="text-sm text-slate-400 mb-4">
-                Have a beta pass? Go to your profile settings to redeem it and unlock all Pro features.
-              </p>
-              <div className="text-center">
-                <Link href="/" className="inline-block bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold px-6 py-2 rounded-lg transition-colors">
-                  Go to Dashboard
-                </Link>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-white">$20<span className="text-sm text-slate-500 font-normal">/mo</span></div>
+                  <button disabled={loading} className="mt-2 bg-white text-black text-xs font-bold px-3 py-1.5 rounded-lg">
+                    {loading ? '...' : 'Start Trial'}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-4 text-center">
-              <LockClosedIcon className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-              <div className="text-sm text-slate-500">
-                Premium subscriptions coming soon
+            <div 
+              onClick={() => handleCheckout(MONTHLY_PRICE_ID)}
+              className="bg-slate-950/50 border border-slate-800 rounded-xl p-6 flex justify-between items-center hover:border-slate-600 cursor-pointer transition-colors"
+              data-testid="button-checkout-monthly"
+            >
+              <div className="text-left">
+                <div className="text-lg font-bold text-white">Monthly Plan</div>
+                <div className="text-sm text-slate-500">Flexible, cancel anytime</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xl font-bold text-white">$29<span className="text-sm text-slate-500 font-normal">/mo</span></div>
               </div>
             </div>
 

@@ -34,6 +34,7 @@ const allowlist = [
 // These packages must be external (not bundled) due to CommonJS export issues
 const forceExternal = [
   "stripe",
+  "stripe-replit-sync",
   "yahoo-finance2",
 ];
 

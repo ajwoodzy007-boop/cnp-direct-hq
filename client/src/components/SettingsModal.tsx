@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { XMarkIcon, UserCircleIcon, ArrowRightOnRectangleIcon, ShieldCheckIcon, TicketIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CreditCardIcon, UserCircleIcon, ArrowRightOnRectangleIcon, ShieldCheckIcon, TicketIcon } from '@heroicons/react/24/outline';
 
 interface Props {
   user: { email: string; tier: string };
@@ -10,9 +10,30 @@ interface Props {
 }
 
 export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdminClick }: Props) {
+  const [loading, setLoading] = useState(false);
   const [betaCode, setBetaCode] = useState('');
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemMessage, setRedeemMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleManageBilling = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/stripe/create-portal-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const json = await res.json();
+      if (json.url) {
+        window.location.href = json.url;
+      } else {
+        alert(json.error || "Billing portal unavailable.");
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleRedeemBeta = async () => {
     if (!betaCode.trim()) return;
@@ -70,6 +91,19 @@ export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdmi
           </div>
 
           <div className="space-y-3 pt-4 border-t border-slate-800">
+            
+            <button 
+              onClick={handleManageBilling}
+              disabled={loading}
+              className="w-full bg-slate-800 hover:bg-slate-700 text-white p-3 rounded-lg flex items-center justify-between group transition-all border border-slate-700 hover:border-cyan-500/30 disabled:opacity-50"
+              data-testid="button-manage-billing"
+            >
+              <div className="flex items-center gap-3">
+                <CreditCardIcon className="h-5 w-5 text-slate-400 group-hover:text-cyan-400" />
+                <div className="text-sm font-medium">{loading ? 'Loading...' : 'Manage Subscription'}</div>
+              </div>
+              <div className="text-xs text-slate-500 group-hover:text-white">Invoices & Cancel</div>
+            </button>
 
             {user.tier !== 'PREMIUM' && (
               <div className="bg-purple-900/20 border border-purple-500/30 rounded-lg p-4">
