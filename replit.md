@@ -31,7 +31,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Storage
 - **Database**: PostgreSQL via Drizzle ORM
 - **Schema**: Defined in `shared/schema.ts`, managed with Drizzle Kit.
-- **Key Tables**: `users`, `predictions` (unified for stocks/crypto with `assetType`), `user_profiles`, `user_portfolio`, `ai_playbook_runs`, `playbook_sections`, `cached_market_metrics`, `login_events`, `signal_engagement_events`.
+- **Key Tables**: `users`, `predictions` (unified for stocks/crypto with `assetType`), `user_profiles`, `user_portfolio`, `ai_playbook_runs`, `playbook_sections`, `cached_market_metrics`, `login_events`, `signal_engagement_events`, `user_testimonials`.
 
 ### Market Data Integration
 - **Primary API**: Finnhub API for real-time stock data.
@@ -55,6 +55,14 @@ Preferred communication style: Simple, everyday language.
 - Admin-only business intelligence dashboard at `/admin/hq-intel`.
 - Displays KPIs (MRR, Total Operatives, Churn Rate, Avg LTV), Onboarding Intel (experience levels, marketing sources), and Retention & Engagement metrics (DAU, WAU, MAU, Signal Engagement).
 - Features a distinct gold/amber theme.
+- Includes "Success Wall" section for managing user testimonials.
+
+### Testimonial/Feedback System
+- Users can submit feedback on winning signals via the Oracle trade recap modal.
+- Feedback is stored in `user_testimonials` table with ticker, feedback text, and date.
+- Admin can view all testimonials in the Success Wall section of HQ Intel dashboard.
+- Admin can "Feature" testimonials to mark them for marketing/exit pitch materials.
+- API endpoints: POST `/api/admin/testimonial` (submit), GET `/api/admin/testimonials` (list), POST `/api/admin/testimonials/:id/approve` (feature/unfeature).
 
 ## External Dependencies
 
