@@ -12,6 +12,14 @@ export class WebhookHandlers {
     }
 
     const sync = await getStripeSync();
+    
+    // In production, sync is disabled to avoid backfill errors
+    // Webhooks are acknowledged but not processed for local DB sync
+    if (!sync) {
+      console.log('Stripe webhook received but sync is disabled in production');
+      return;
+    }
+    
     await sync.processWebhook(payload, signature, uuid);
   }
 }

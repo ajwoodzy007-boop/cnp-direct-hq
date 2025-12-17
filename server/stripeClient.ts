@@ -64,7 +64,19 @@ export async function getStripeSecretKey() {
 
 let stripeSync: any = null;
 
-export async function getStripeSync() {
+// Check if StripeSync should be disabled (to avoid backfill with stale data)
+function shouldSkipStripeSync(): boolean {
+  return process.env.STRIPE_SYNC_ENABLED === 'false' || 
+         process.env.REPLIT_DEPLOYMENT === '1' ||
+         process.env.NODE_ENV === 'production';
+}
+
+export async function getStripeSync(): Promise<any | null> {
+  // Skip StripeSync in production to avoid backfill errors with stale customer data
+  if (shouldSkipStripeSync()) {
+    return null;
+  }
+  
   if (!stripeSync) {
     const { StripeSync } = await import('stripe-replit-sync');
     const secretKey = await getStripeSecretKey();

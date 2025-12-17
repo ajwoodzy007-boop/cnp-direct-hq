@@ -73,6 +73,13 @@ async function initStripe() {
     }
 
     const stripeSync = await getStripeSync();
+    
+    // Double-check: if stripeSync is null (shouldn't happen due to early return), skip
+    if (!stripeSync) {
+      console.log("Stripe sync not available - skipping webhook setup");
+      stripeInitialized = true;
+      return;
+    }
 
     console.log("Setting up managed webhook...");
     const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
