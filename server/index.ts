@@ -17,23 +17,10 @@ declare module "http" {
   }
 }
 
-// Stripe sync disabled - payments work via direct Stripe API
-console.log("Stripe sync disabled - direct API payments available");
-
 // Health check endpoint for deployment
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-// Stripe webhook endpoint - acknowledges webhooks without syncing
-app.post(
-  "/api/stripe/webhook/:uuid",
-  express.raw({ type: "application/json" }),
-  async (req, res) => {
-    console.log("Stripe webhook received - sync disabled, acknowledging only");
-    res.status(200).json({ received: true });
-  }
-);
 
 app.use(
   express.json({
