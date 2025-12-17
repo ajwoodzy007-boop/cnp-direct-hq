@@ -1,0 +1,65 @@
+2025-12-17 08:07:09.82
+e5b6e3b6
+User
+https://github.com/gadicc/yahoo-finance2/issues/new?labels=bug%2C+validation&template=validation.md&title=Failed%20validation%3A%20%23%2Fdefinitions%2FQuoteSummaryResult
+2025-12-17 08:07:09.82
+e5b6e3b6
+User
+This may happen intermittently and you should catch errors appropriately. However: 1) if this recently started happening on every request for a symbol that used to work, Yahoo may have changed their API. 2) If this happens on every request for a symbol you've never used before, but not for other symbols, you've found an edge-case (OR, we may just be protecting you from "bad" data sometimes stored for e.g. misspelt symbols on Yahoo's side).
+2025-12-17 08:07:09.82
+e5b6e3b6
+User
+The following result did not validate with schema: #/definitions/QuoteSummaryResult
+2025-12-17 08:07:09.82
+e5b6e3b6
+User
+At the end of the doc, there's also a section on how to "Help Fix Validation Errors" in case you'd like to contribute to the project. Most of the time, these fixes are very quick and easy; it's just hard for our small core team to keep up, so help is always appreciated!
+
+2025-12-17 08:07:09.82
+e5b6e3b6
+User
+or open a new issue (and mention the symbol): @gadicc/yahoo-finance2 v0.0.1
+2025-12-17 08:07:09.82
+e5b6e3b6
+User
+For information on how to turn off the above logging or skip these errors, see https://github.com/gadicc/yahoo-finance2/tree/devel/docs/validation.md.
+2025-12-17 08:07:09.82
+e5b6e3b6
+User
+https://github.com/gadicc/yahoo-finance2/issues?q=is%3Aissue+Failed%20validation%3A%20%23%2Fdefinitions%2FQuoteSummaryResult
+2025-12-17 08:07:09.82
+e5b6e3b6
+User
+Please see if anyone has reported this previously:
+2025-12-17 08:17:36.11
+e5b6e3b6
+User
+https://github.com/gadicc/yahoo-finance2/issues/new?labels=bug%2C+validation&template=validation.md&title=Failed%20validation%3A%20%23%2Fdefinitions%2FQuoteSummaryResult
+2025-12-17 08:17:36.11
+e5b6e3b6
+User
+The following result did not validate with schema: #/definitions/QuoteSummaryResult
+2025-12-17 08:17:36.11
+e5b6e3b6
+User
+or open a new issue (and mention the symbol): @gadicc/yahoo-finance2 v0.0.1
+2025-12-17 08:17:36.11
+e5b6e3b6
+User
+https://github.com/gadicc/yahoo-finance2/issues?q=is%3Aissue+Failed%20validation%3A%20%23%2Fdefinitions%2FQuoteSummaryResult
+2025-12-17 08:17:36.11
+e5b6e3b6
+User
+This may happen intermittently and you should catch errors appropriately. However: 1) if this recently started happening on every request for a symbol that used to work, Yahoo may have changed their API. 2) If this happens on every request for a symbol you've never used before, but not for other symbols, you've found an edge-case (OR, we may just be protecting you from "bad" data sometimes stored for e.g. misspelt symbols on Yahoo's side).
+2025-12-17 08:17:36.11
+e5b6e3b6
+User
+Please see if anyone has reported this previously:
+2025-12-17 08:17:36.11
+e5b6e3b6
+User
+For information on how to turn off the above logging or skip these errors, see https://github.com/gadicc/yahoo-finance2/tree/devel/docs/validation.md.
+2025-12-17 08:17:36.11
+e5b6e3b6
+User
+At the end of the doc, there's also a section on how to "Help Fix Validation Errors" in case you'd like to contribute to the project. Most of the time, these fixes are very quick and easy; it's just hard for our small core team to keep up, so help is always appreciated!

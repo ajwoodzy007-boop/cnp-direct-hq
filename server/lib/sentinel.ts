@@ -4,8 +4,15 @@ import { SentimentIntensityAnalyzer } from 'vader-sentiment';
 import { RSI } from 'technicalindicators';
 
 // Handle both ESM (dev) and CJS (production) module formats
+// Suppress validation warnings from yahoo-finance2
 const YahooFinance = (YahooFinanceDefault as any).default || YahooFinanceDefault;
-const yf = typeof YahooFinance === 'function' ? new YahooFinance() : YahooFinance;
+const yf = typeof YahooFinance === 'function' 
+  ? new YahooFinance({ suppressNotices: ['yahooSurvey', 'rippieBird'] }) 
+  : YahooFinance;
+// Suppress validation errors globally
+if (yf.setGlobalConfig) {
+  yf.setGlobalConfig({ validation: { logErrors: false } });
+}
 
 const getSentimentScore = (text: string): number => {
   const analyzer = SentimentIntensityAnalyzer;
