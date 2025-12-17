@@ -1174,4 +1174,93 @@ router.post('/engagement/signal', async (req, res) => {
   }
 });
 
+// ============================================
+// TESTIMONIALS API
+// ============================================
+
+// Submit testimonial (public, but requires login)
+router.post('/testimonial', async (req, res) => {
+  try {
+    const user = (req.session as any).user;
+    
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Login required" });
+    }
+    
+    const { ticker, feedback, helpful, predictionDate } = req.body;
+    
+    if (!ticker || !feedback) {
+      return res.status(400).json({ success: false, error: "Ticker and feedback required" });
+    }
+    
+    await query(
+      `INSERT INTO user_testimonials (user_id, ticker, feedback, helpful, prediction_date)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [user.id, ticker, feedback, helpful !== false, predictionDate || null]
+    );
+    
+    res.json({ success: true, message: "Thank you for your feedback!" });
+  } catch (e: any) {
+    console.error('Testimonial submission error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// Get testimonials for HQ Intel (admin only)
+router.get('/testimonials', requireHQIntelAccess, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT 
+        t.id,
+        t.ticker,
+        t.feedback,
+        t.helpful,
+        t.prediction_date,
+        t.created_at,
+        t.approved,
+        u.email as user_email
+      FROM user_testimonials t
+      LEFT JOIN users u ON t.user_id = u.id
+      WHERE t.helpful = true
+      ORDER BY t.created_at DESC
+      LIMIT 50
+    `);
+    
+    res.json({ 
+      success: true, 
+      testimonials: result.rows.map(t => ({
+        id: t.id,
+        ticker: t.ticker,
+        feedback: t.feedback,
+        helpful: t.helpful,
+        predictionDate: t.prediction_date,
+        createdAt: t.created_at,
+        approved: t.approved,
+        userEmail: t.user_email
+      }))
+    });
+  } catch (e: any) {
+    console.error('Testimonials fetch error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// Approve/unapprove testimonial (admin only)
+router.post('/testimonials/:id/approve', requireHQIntelAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { approved } = req.body;
+    
+    await query(
+      'UPDATE user_testimonials SET approved = $1 WHERE id = $2',
+      [approved !== false, id]
+    );
+    
+    res.json({ success: true });
+  } catch (e: any) {
+    console.error('Testimonial approval error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 export default router;
