@@ -1328,7 +1328,6 @@ async function handleFinalize(req: any, res: any) {
       
       await db.update(predictions)
         .set({
-          closePrice: closePrice,
           outcomePrice: closePrice,
           outcome: outcome,
           outcomeDate: new Date()

@@ -926,8 +926,8 @@ router.post('/profiles/:id', requireAdmin, async (req, res) => {
 // HQ INTEL DASHBOARD (Admin-Only Business Intelligence)
 // ============================================
 
-// Special admin user ID for HQ Intel access (set via environment)
-const HQ_INTEL_ADMIN_ID = process.env.HQ_INTEL_ADMIN_ID || '';
+// Hardcoded admin user ID for HQ Intel access (secure lockdown)
+const HQ_INTEL_ADMIN_ID = '36384794-2a53-498a-88b2-edd0e4b18a5c';
 
 function requireHQIntelAccess(req: Request, res: Response, next: NextFunction) {
   // First check API key
@@ -1064,15 +1064,15 @@ router.get('/hq-intel', requireHQIntelAccess, async (req, res) => {
       const benchmarkResult = await query(`
         SELECT 
           COUNT(*) as total,
-          AVG(CASE WHEN outcome = 'WIN' THEN 
+          AVG(CASE WHEN LOWER(outcome) = 'win' THEN 
             CASE WHEN open_price > 0 THEN ((outcome_price - open_price) / open_price) * 100 ELSE 0 END
           ELSE NULL END) as avg_win,
-          AVG(CASE WHEN outcome = 'LOSS' THEN 
+          AVG(CASE WHEN LOWER(outcome) = 'loss' THEN 
             CASE WHEN open_price > 0 THEN ((outcome_price - open_price) / open_price) * 100 ELSE 0 END
           ELSE NULL END) as avg_loss
         FROM predictions 
         WHERE prediction_date >= NOW() - INTERVAL '30 days'
-        AND outcome IN ('WIN', 'LOSS')
+        AND LOWER(outcome) IN ('win', 'loss')
       `);
       avgWinPercent = parseFloat(benchmarkResult.rows[0]?.avg_win || '0');
       avgLossPercent = Math.abs(parseFloat(benchmarkResult.rows[0]?.avg_loss || '0'));
