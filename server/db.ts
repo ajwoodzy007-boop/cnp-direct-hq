@@ -2,18 +2,8 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "@shared/schema";
 
-// FORCE production Neon database for all environments
-// NEON_DATABASE_URL takes priority over runtime-provided DATABASE_URL
-const connectionString = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
-
-if (process.env.NEON_DATABASE_URL) {
-  console.log("🔒 Using PRODUCTION Neon database (unified)");
-} else {
-  console.log("⚠️ NEON_DATABASE_URL not set, falling back to DATABASE_URL");
-}
-
 const pool = new pg.Pool({
-  connectionString,
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
   connectionTimeoutMillis: 30000,
   idleTimeoutMillis: 30000,
@@ -78,38 +68,6 @@ export async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-
-    // Add user profile personal info columns
-    await client.query(`
-      ALTER TABLE user_profiles 
-      ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS last_name VARCHAR(100),
-      ADD COLUMN IF NOT EXISTS email VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS phone VARCHAR(50),
-      ADD COLUMN IF NOT EXISTS marketing_source TEXT;
-    `).catch(() => {});
-
-    // Create login events table for DAU tracking
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS login_events (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id VARCHAR REFERENCES users(id),
-        occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        ip_address TEXT,
-        user_agent TEXT
-      );
-    `).catch(() => {});
-
-    // Create signal engagement events table
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS signal_engagement_events (
-        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id VARCHAR REFERENCES users(id),
-        action_type TEXT NOT NULL,
-        ticker TEXT,
-        occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `).catch(() => {});
     
     console.log("🗄️  Database Ready: Options Support Active.");
   } catch (err) {

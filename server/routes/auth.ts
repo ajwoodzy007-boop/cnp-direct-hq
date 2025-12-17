@@ -5,14 +5,10 @@ import { query } from '../db';
 const router = express.Router();
 
 router.post('/signup', async (req, res) => {
-  const { email, password, firstName, lastName, phone } = req.body;
+  const { email, password } = req.body;
   
   if (!email || !password) {
     return res.status(400).json({ success: false, error: "Email and password required" });
-  }
-
-  if (!firstName || !lastName) {
-    return res.status(400).json({ success: false, error: "First and last name required" });
   }
 
   try {
@@ -29,13 +25,6 @@ router.post('/signup', async (req, res) => {
     );
 
     const user = result.rows[0];
-
-    // Create user profile with personal info
-    await query(
-      `INSERT INTO user_profiles (user_id, first_name, last_name, email, phone, subscription_status, trading_style, risk_tolerance, experience_level)
-       VALUES ($1, $2, $3, $4, $5, 'inactive', 'day_trading', 'moderate', 'intermediate')`,
-      [user.id, firstName, lastName, email, phone || null]
-    );
 
     (req.session as any).user = user;
     res.json({ success: true, user });
@@ -61,14 +50,6 @@ router.post('/login', async (req, res) => {
     if (!match) {
       return res.status(401).json({ success: false, error: "Invalid credentials" });
     }
-
-    // Track login event for DAU metrics
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
-    const userAgent = req.headers['user-agent'] || '';
-    await query(
-      'INSERT INTO login_events (user_id, ip_address, user_agent) VALUES ($1, $2, $3)',
-      [user.id, ipAddress, userAgent]
-    ).catch(e => console.error('Login event tracking failed:', e));
 
     (req.session as any).user = { id: user.id, email: user.email, tier: user.tier };
     res.json({ success: true, user: (req.session as any).user });

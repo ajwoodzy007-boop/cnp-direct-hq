@@ -147,23 +147,14 @@ export type DailyPredictionEntry = typeof dailyPredictionEntries.$inferSelect;
 // AI PLAYBOOK PREMIUM FEATURE TABLES
 // ============================================
 
-// User profiles with personal info and subscription status
+// User profiles with subscription status and trading preferences
 export const userProfiles = pgTable("user_profiles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id),
-  // Personal Information
-  firstName: text("first_name"),
-  lastName: text("last_name"),
-  email: text("email"),
-  phone: text("phone"),
-  // Onboarding & Marketing
-  marketingSource: text("marketing_source"), // 'google' | 'twitter' | 'youtube' | 'friend' | 'reddit' | 'other'
-  // Stripe & Subscription
   stripeCustomerId: text("stripe_customer_id"),
   subscriptionId: text("subscription_id"),
   subscriptionStatus: text("subscription_status").default("free"), // 'free' | 'active' | 'cancelled' | 'past_due'
   subscriptionPeriodEnd: timestamp("subscription_period_end"),
-  // Trading Preferences
   tradingStyle: text("trading_style").default("swing"), // 'day' | 'swing' | 'position' | 'scalping'
   riskTolerance: text("risk_tolerance").default("moderate"), // 'conservative' | 'moderate' | 'aggressive'
   experienceLevel: text("experience_level").default("intermediate"), // 'beginner' | 'intermediate' | 'advanced'
@@ -362,44 +353,6 @@ export const insertBetaPassSchema = createInsertSchema(betaPasses).omit({
 
 export type InsertBetaPass = z.infer<typeof insertBetaPassSchema>;
 export type BetaPass = typeof betaPasses.$inferSelect;
-
-// ============================================
-// ADMIN HQ INTEL TRACKING TABLES
-// ============================================
-
-// Login events for DAU tracking
-export const loginEvents = pgTable("login_events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-});
-
-export const insertLoginEventSchema = createInsertSchema(loginEvents).omit({
-  id: true,
-  occurredAt: true,
-});
-
-export type InsertLoginEvent = z.infer<typeof insertLoginEventSchema>;
-export type LoginEvent = typeof loginEvents.$inferSelect;
-
-// Signal engagement tracking
-export const signalEngagementEvents = pgTable("signal_engagement_events", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  actionType: text("action_type").notNull(), // 'system_heat_modal' | 'signal_accuracy_modal' | 'prediction_click'
-  ticker: text("ticker"),
-  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
-});
-
-export const insertSignalEngagementSchema = createInsertSchema(signalEngagementEvents).omit({
-  id: true,
-  occurredAt: true,
-});
-
-export type InsertSignalEngagement = z.infer<typeof insertSignalEngagementSchema>;
-export type SignalEngagementEvent = typeof signalEngagementEvents.$inferSelect;
 
 // ============================================
 // BACKTEST CACHE TABLE

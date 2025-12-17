@@ -1245,23 +1245,16 @@ router.post('/admin/insert-historical', async (req, res) => {
   }
 });
 
-// Finalize handler (shared between GET and POST)
-async function handleFinalize(req: any, res: any) {
+// POST /finalize: Record closing prices and outcomes for today's stock predictions
+router.post('/finalize', async (req, res) => {
   try {
     const today = getTodayDate();
-    const force = req.query.force === 'true';
     
-    // 1. Get today's stock predictions (force mode gets all, normal mode only unfinalized)
-    let todaysPredictions;
-    if (force) {
-      todaysPredictions = await db.select().from(predictions)
-        .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
-      console.log(`[Finalize] FORCE MODE - Found ${todaysPredictions.length} predictions for ${today}`);
-    } else {
-      todaysPredictions = await db.select().from(predictions)
-        .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '' OR ${predictions.outcome} = 'pending')`);
-      console.log(`[Finalize] Found ${todaysPredictions.length} predictions to finalize for ${today}`);
-    }
+    // 1. Get today's unfinalized stock predictions (outcome is NULL or empty)
+    const todaysPredictions = await db.select().from(predictions)
+      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
+    
+    console.log(`[Finalize] Found ${todaysPredictions.length} predictions to finalize for ${today}`);
     
     if (todaysPredictions.length === 0) {
       return res.json({ success: true, message: 'No predictions to finalize', finalized: 0, date: today });
@@ -1303,39 +1296,28 @@ async function handleFinalize(req: any, res: any) {
     }
     
     // 3. Update each prediction with outcome
-    // CRITICAL: Use OPEN PRICE (market open at 9:30 AM) vs CLOSE PRICE (market close at 4:00 PM)
-    // Never use entryPrice for calculations - only openPrice matters
     let finalized = 0;
     let skipped = 0;
     for (const pred of todaysPredictions) {
       const closePrice = closingPrices[pred.ticker];
       if (closePrice <= 0) {
         skipped++;
-        console.log(`[Finalize] ${pred.ticker}: SKIPPED - no close price available`);
         continue;
       }
       
-      // ONLY use openPrice for calculations - this is the 9:30 AM market open price
-      const openPrice = pred.openPrice;
-      if (!openPrice || openPrice <= 0) {
-        skipped++;
-        console.log(`[Finalize] ${pred.ticker}: SKIPPED - no open price recorded`);
-        continue;
-      }
-      
-      const profitPercent = ((closePrice - openPrice) / openPrice) * 100;
+      const basePrice = pred.openPrice || pred.entryPrice;
+      const profitPercent = ((closePrice - basePrice) / basePrice) * 100;
       const outcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
       
       await db.update(predictions)
         .set({
-          closePrice: closePrice,
           outcomePrice: closePrice,
           outcome: outcome,
           outcomeDate: new Date()
         })
         .where(eq(predictions.id, pred.id));
       
-      console.log(`[Finalize] ${pred.ticker}: $${openPrice} (OPEN) -> $${closePrice} (CLOSE) = ${outcome} (${profitPercent.toFixed(2)}%)`);
+      console.log(`[Finalize] ${pred.ticker}: $${basePrice} (open) -> $${closePrice} = ${outcome} (${profitPercent.toFixed(2)}%)`);
       finalized++;
     }
     
@@ -1352,13 +1334,7 @@ async function handleFinalize(req: any, res: any) {
     console.error("Finalize Error:", error);
     res.status(500).json({ success: false, error: "Finalization Failed" });
   }
-}
-
-// GET and POST /finalize: Record closing prices and outcomes for today's stock predictions
-// Use ?force=true to re-finalize already finalized predictions
-// GET supported so you can trigger from browser
-router.get('/finalize', handleFinalize);
-router.post('/finalize', handleFinalize);
+});
 
 // GET /signals: Live trading signals (Premium)
 router.get('/signals', requirePremium, async (req, res) => {
@@ -1822,35 +1798,6 @@ router.get('/crypto-history', async (req, res) => {
   } catch (error) {
     console.error("Crypto History Error:", error);
     res.status(500).json({ success: false, error: "Could not fetch crypto audit log" });
-  }
-});
-
-// POST /archive-today: Archive/clear today's stock predictions at end of day (11:59 PM ET)
-// This ensures the UI shows "no predictions" until 9:00 AM the next day
-router.post('/archive-today', async (req, res) => {
-  try {
-    const today = getTodayDate();
-    
-    // Mark today's stock predictions as archived by setting a flag
-    // We keep the data for historical tracking but the UI won't show them as "today's" picks
-    const result = await db.update(predictions)
-      .set({ 
-        outcome: sql`CASE WHEN ${predictions.outcome} = 'pending' THEN 'archived' ELSE ${predictions.outcome} END`
-      })
-      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`);
-    
-    console.log(`[Oracle] Archived stock predictions for ${today}`);
-    
-    res.json({ 
-      success: true, 
-      message: `Archived stock predictions for ${today}`,
-      archived: 10, // Approximate count
-      date: today
-    });
-    
-  } catch (error) {
-    console.error("Archive Error:", error);
-    res.status(500).json({ success: false, error: "Failed to archive predictions" });
   }
 });
 

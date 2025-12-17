@@ -24,8 +24,6 @@ import CheckoutSuccess from "@/pages/CheckoutSuccess";
 import CheckoutCancel from "@/pages/CheckoutCancel";
 import AiAssistant from './components/AiAssistant';
 import AdminDashboard from './components/AdminDashboard';
-import HQIntelDashboard from './components/HQIntelDashboard';
-import HQIntel from './pages/HQIntel';
 import { useGoHomeOnExhaust } from '../hooks/useGoHomeOnExhaust';
 import { NavigationStackProvider, useTabBack } from '../hooks/useNavigationStack';
 
@@ -183,7 +181,6 @@ export default function App() {
                 <Route path="/pricing" component={Pricing} />
                 <Route path="/checkout/success" component={CheckoutSuccess} />
                 <Route path="/checkout/cancel" component={CheckoutCancel} />
-                <Route path="/admin/hq-intel" component={HQIntel} />
                 <Route component={MainDashboard} />
               </Switch>
               <AiAssistant />
