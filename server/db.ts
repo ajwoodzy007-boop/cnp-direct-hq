@@ -110,6 +110,20 @@ export async function initDb() {
         occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `).catch(() => {});
+
+    // Create user testimonials table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_testimonials (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id VARCHAR REFERENCES users(id),
+        ticker TEXT NOT NULL,
+        feedback TEXT NOT NULL,
+        helpful BOOLEAN DEFAULT true,
+        prediction_date TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        approved BOOLEAN DEFAULT false
+      );
+    `).catch(() => {});
     
     console.log("🗄️  Database Ready: Options Support Active.");
   } catch (err) {

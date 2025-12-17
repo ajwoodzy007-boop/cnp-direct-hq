@@ -402,6 +402,30 @@ export type InsertSignalEngagement = z.infer<typeof insertSignalEngagementSchema
 export type SignalEngagementEvent = typeof signalEngagementEvents.$inferSelect;
 
 // ============================================
+// USER TESTIMONIALS TABLE
+// ============================================
+
+export const userTestimonials = pgTable("user_testimonials", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  ticker: text("ticker").notNull(),
+  feedback: text("feedback").notNull(),
+  helpful: boolean("helpful").notNull().default(true),
+  predictionDate: text("prediction_date"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  approved: boolean("approved").default(false),
+});
+
+export const insertUserTestimonialSchema = createInsertSchema(userTestimonials).omit({
+  id: true,
+  createdAt: true,
+  approved: true,
+});
+
+export type InsertUserTestimonial = z.infer<typeof insertUserTestimonialSchema>;
+export type UserTestimonial = typeof userTestimonials.$inferSelect;
+
+// ============================================
 // BACKTEST CACHE TABLE
 // ============================================
 
