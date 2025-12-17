@@ -922,4 +922,256 @@ router.post('/profiles/:id', requireAdmin, async (req, res) => {
   }
 });
 
+// ============================================
+// HQ INTEL DASHBOARD (Admin-Only Business Intelligence)
+// ============================================
+
+// Special admin user ID for HQ Intel access (set via environment)
+const HQ_INTEL_ADMIN_ID = process.env.HQ_INTEL_ADMIN_ID || '';
+
+function requireHQIntelAccess(req: Request, res: Response, next: NextFunction) {
+  // First check API key
+  if (checkSecretKey(req)) {
+    return next();
+  }
+  
+  const user = (req.session as any).user;
+  
+  if (!user) {
+    return res.status(401).json({ success: false, error: "Not authenticated" });
+  }
+  
+  // Check if user ID matches HQ Intel admin OR if they're in the admin email list
+  const isHQAdmin = HQ_INTEL_ADMIN_ID && user.id === HQ_INTEL_ADMIN_ID;
+  const hasAdminEmailAccess = user.email && isAdminEmail(user.email);
+  
+  if (!isHQAdmin && !hasAdminEmailAccess) {
+    return res.status(403).json({ success: false, error: "HQ Intel access required" });
+  }
+  
+  next();
+}
+
+// Check HQ Intel access status
+router.get('/hq-intel/check', (req, res) => {
+  const user = (req.session as any).user;
+  
+  if (!user) {
+    return res.json({ hasAccess: false });
+  }
+  
+  const isHQAdmin = HQ_INTEL_ADMIN_ID && user.id === HQ_INTEL_ADMIN_ID;
+  const hasAdminEmail = user.email && isAdminEmail(user.email);
+  
+  res.json({ hasAccess: isHQAdmin || hasAdminEmail });
+});
+
+// HQ Intel main data endpoint
+router.get('/hq-intel', requireHQIntelAccess, async (req, res) => {
+  try {
+    const MONTHLY_PRICE = 29; // $29/month subscription price
+    
+    // ============================================
+    // KPI METRICS
+    // ============================================
+    
+    // Total registered users
+    const totalUsersResult = await query('SELECT COUNT(*) as count FROM users');
+    const totalUsers = parseInt(totalUsersResult.rows[0]?.count || '0');
+    
+    // Active premium subscribers
+    const premiumResult = await query(`
+      SELECT COUNT(*) as count FROM users WHERE tier = 'PREMIUM'
+    `);
+    const premiumCount = parseInt(premiumResult.rows[0]?.count || '0');
+    
+    // MRR calculation
+    const mrr = premiumCount * MONTHLY_PRICE;
+    
+    // Churn rate: users whose subscription ended in last 30 days
+    let churnRate = 0;
+    try {
+      const churnResult = await query(`
+        SELECT COUNT(*) as churned FROM user_profiles 
+        WHERE subscription_status = 'cancelled' 
+        AND updated_at >= NOW() - INTERVAL '30 days'
+      `);
+      const churned = parseInt(churnResult.rows[0]?.churned || '0');
+      // Churn rate = churned / (active at start of period)
+      // Approximate: churned / (current premium + churned)
+      const startingBase = premiumCount + churned;
+      churnRate = startingBase > 0 ? (churned / startingBase) * 100 : 0;
+    } catch (e) {
+      console.error('Churn calculation failed:', e);
+    }
+    
+    // Avg LTV = ARPU / Churn Rate (if churn > 0)
+    // ARPU = MRR / total users
+    const arpu = totalUsers > 0 ? mrr / totalUsers : 0;
+    const avgLtv = churnRate > 0 ? (arpu * 100 / churnRate) : (arpu * 24); // Default to 24 months if no churn
+    
+    // ============================================
+    // ONBOARDING INTEL
+    // ============================================
+    
+    // Experience level breakdown
+    let experienceBreakdown: { level: string; count: number }[] = [];
+    try {
+      const expResult = await query(`
+        SELECT 
+          COALESCE(experience_level, 'unknown') as level, 
+          COUNT(*) as count 
+        FROM user_profiles 
+        GROUP BY experience_level 
+        ORDER BY count DESC
+      `);
+      experienceBreakdown = expResult.rows.map(r => ({
+        level: r.level,
+        count: parseInt(r.count)
+      }));
+    } catch (e) {
+      console.error('Experience breakdown failed:', e);
+    }
+    
+    // Marketing source breakdown
+    let marketingBreakdown: { source: string; count: number }[] = [];
+    try {
+      const mktResult = await query(`
+        SELECT 
+          COALESCE(marketing_source, 'unknown') as source, 
+          COUNT(*) as count 
+        FROM user_profiles 
+        GROUP BY marketing_source 
+        ORDER BY count DESC
+      `);
+      marketingBreakdown = mktResult.rows.map(r => ({
+        source: r.source,
+        count: parseInt(r.count)
+      }));
+    } catch (e) {
+      console.error('Marketing breakdown failed:', e);
+    }
+    
+    // ============================================
+    // RETENTION & ENGAGEMENT
+    // ============================================
+    
+    // DAU: unique logins in last 24 hours
+    let dau = 0;
+    try {
+      const dauResult = await query(`
+        SELECT COUNT(DISTINCT user_id) as dau 
+        FROM login_events 
+        WHERE occurred_at >= NOW() - INTERVAL '24 hours'
+      `);
+      dau = parseInt(dauResult.rows[0]?.dau || '0');
+    } catch (e) {
+      console.error('DAU calculation failed:', e);
+    }
+    
+    // Signal engagement today
+    let signalEngagementToday = 0;
+    let heatModalClicks = 0;
+    let accuracyModalClicks = 0;
+    try {
+      const engResult = await query(`
+        SELECT 
+          action_type,
+          COUNT(*) as count
+        FROM signal_engagement_events 
+        WHERE occurred_at >= CURRENT_DATE
+        GROUP BY action_type
+      `);
+      for (const row of engResult.rows) {
+        const count = parseInt(row.count);
+        signalEngagementToday += count;
+        if (row.action_type === 'system_heat_modal') heatModalClicks = count;
+        if (row.action_type === 'signal_accuracy_modal') accuracyModalClicks = count;
+      }
+    } catch (e) {
+      console.error('Signal engagement calculation failed:', e);
+    }
+    
+    // Weekly active users (WAU)
+    let wau = 0;
+    try {
+      const wauResult = await query(`
+        SELECT COUNT(DISTINCT user_id) as wau 
+        FROM login_events 
+        WHERE occurred_at >= NOW() - INTERVAL '7 days'
+      `);
+      wau = parseInt(wauResult.rows[0]?.wau || '0');
+    } catch (e) {
+      console.error('WAU calculation failed:', e);
+    }
+    
+    // Monthly active users (MAU)
+    let mau = 0;
+    try {
+      const mauResult = await query(`
+        SELECT COUNT(DISTINCT user_id) as mau 
+        FROM login_events 
+        WHERE occurred_at >= NOW() - INTERVAL '30 days'
+      `);
+      mau = parseInt(mauResult.rows[0]?.mau || '0');
+    } catch (e) {
+      console.error('MAU calculation failed:', e);
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        kpis: {
+          mrr,
+          mrrFormatted: `$${mrr.toLocaleString()}`,
+          totalOperatives: totalUsers,
+          premiumOperatives: premiumCount,
+          churnRate: churnRate.toFixed(1),
+          avgLtv: avgLtv.toFixed(2),
+          avgLtvFormatted: `$${avgLtv.toFixed(0)}`
+        },
+        onboarding: {
+          experienceLevels: experienceBreakdown,
+          marketingSources: marketingBreakdown
+        },
+        retention: {
+          dau,
+          wau,
+          mau,
+          signalEngagementToday,
+          heatModalClicks,
+          accuracyModalClicks
+        }
+      }
+    });
+  } catch (e: any) {
+    console.error('HQ Intel error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// Track signal engagement events
+router.post('/engagement/signal', async (req, res) => {
+  try {
+    const user = (req.session as any).user;
+    const { actionType, ticker } = req.body;
+    
+    if (!actionType) {
+      return res.status(400).json({ success: false, error: "Action type required" });
+    }
+    
+    const userId = user?.id || null;
+    
+    await query(
+      'INSERT INTO signal_engagement_events (user_id, action_type, ticker) VALUES ($1, $2, $3)',
+      [userId, actionType, ticker || null]
+    );
+    
+    res.json({ success: true });
+  } catch (e: any) {
+    console.error('Signal engagement tracking error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 export default router;
