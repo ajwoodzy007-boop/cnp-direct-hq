@@ -314,38 +314,6 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
           </button>
         </div>
 
-        {/* Admin Auth */}
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-4">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <input
-                type="password"
-                value={adminKey}
-                onChange={(e) => setAdminKey(e.target.value)}
-                placeholder="Admin password for production"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 text-sm"
-                data-testid="input-admin-key"
-              />
-            </div>
-            <button
-              onClick={async () => {
-                const success = await verifyAdminKey();
-                setFinalizeResult(success ? 'Authenticated!' : 'Invalid key');
-              }}
-              className="px-4 py-2 bg-cyan-600/30 hover:bg-cyan-600/40 text-cyan-300 rounded-lg border border-cyan-400/50 transition-all text-sm"
-              data-testid="button-verify-admin"
-            >
-              Verify
-            </button>
-            {isAuthenticated && (
-              <div className="flex items-center gap-2 text-green-400">
-                <ShieldCheckIcon className="h-4 w-4" />
-                <span className="text-xs">OK</span>
-              </div>
-            )}
-          </div>
-        </div>
-
         {/* Tab Navigation */}
         <div className="flex gap-2 border-b border-slate-800 pb-2">
           <button
