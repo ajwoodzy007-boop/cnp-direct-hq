@@ -42,7 +42,7 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
 router.get('/check', (req, res) => {
   const user = (req.session as any).user;
   const isAdmin = user && user.email && isAdminEmail(user.email);
-  res.json({ isAdmin });
+  res.json({ isAdmin: !!isAdmin });
 });
 
 // Diagnostic endpoint to check database state
