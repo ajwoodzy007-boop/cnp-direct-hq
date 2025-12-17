@@ -122,11 +122,16 @@ export default function AdminDashboard({ onBack }: { onBack: () => void }) {
 
   const fetchUsers = async () => {
     try {
-      const res = await adminFetch('/api/admin/users');
+      const res = await fetch('/api/admin/users', { credentials: 'include' });
       const json = await res.json();
-      if (json.success) setUsers(json.users);
+      console.log('Fetch users response:', json);
+      if (json.success) {
+        setUsers(json.users || []);
+      } else {
+        console.error('Users fetch failed:', json.error);
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Users fetch error:', e);
     }
   };
 

@@ -184,9 +184,9 @@ router.get('/users', requireAdmin, async (req, res) => {
   console.log('[Admin] Fetching users list...');
   try {
     const result = await query(`
-      SELECT id, email, tier 
+      SELECT id, email, COALESCE(tier, 'FREE') as tier 
       FROM users
-      ORDER BY created_at DESC NULLS LAST
+      ORDER BY id
     `);
     console.log('[Admin] Found', result.rows.length, 'users');
     res.json({ success: true, users: result.rows });
