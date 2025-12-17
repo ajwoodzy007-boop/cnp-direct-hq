@@ -179,36 +179,6 @@ router.get('/stats', requireAdmin, async (req, res) => {
   }
 });
 
-router.get('/users', requireAdmin, async (req, res) => {
-  try {
-    const result = await query(`
-      SELECT id, email, tier 
-      FROM users
-    `);
-    res.json({ success: true, users: result.rows });
-  } catch (e) {
-    console.error('Admin users error:', e);
-    res.status(500).json({ success: false, error: "Failed to fetch users" });
-  }
-});
-
-router.post('/users/:id/tier', requireAdmin, async (req, res) => {
-  const { id } = req.params;
-  const { tier } = req.body;
-  
-  if (!['FREE', 'PREMIUM'].includes(tier)) {
-    return res.status(400).json({ success: false, error: "Invalid tier" });
-  }
-  
-  try {
-    await query('UPDATE users SET tier = $1 WHERE id = $2', [tier, id]);
-    res.json({ success: true });
-  } catch (e) {
-    console.error('Admin tier update error:', e);
-    res.status(500).json({ success: false, error: "Failed to update tier" });
-  }
-});
-
 function generatePassCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'BETA-';
@@ -1364,6 +1334,179 @@ router.post('/testimonials/:id/approve', requireHQIntelAccess, async (req, res) 
     res.json({ success: true });
   } catch (e: any) {
     console.error('Testimonial approval error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// ============================================
+// USER BROWSER
+// ============================================
+
+// List all users with profile data (admin only)
+router.get('/users', requireHQIntelAccess, async (req, res) => {
+  try {
+    const search = (req.query.search as string || '').toLowerCase();
+    const tier = req.query.tier as string || '';
+    
+    let sql = `
+      SELECT 
+        u.id,
+        u.email,
+        u.tier,
+        u.last_active,
+        up.first_name,
+        up.last_name,
+        up.phone,
+        up.experience_level,
+        up.marketing_source,
+        up.subscription_status,
+        up.created_at,
+        (SELECT COUNT(*) FROM login_events le WHERE le.user_id = u.id) as login_count,
+        (SELECT MAX(occurred_at) FROM login_events le WHERE le.user_id = u.id) as last_login
+      FROM users u
+      LEFT JOIN user_profiles up ON u.id = up.user_id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    
+    if (search) {
+      params.push(`%${search}%`);
+      sql += ` AND (LOWER(u.email) LIKE $${params.length} OR LOWER(up.first_name) LIKE $${params.length} OR LOWER(up.last_name) LIKE $${params.length})`;
+    }
+    
+    if (tier && tier !== 'all') {
+      params.push(tier);
+      sql += ` AND u.tier = $${params.length}`;
+    }
+    
+    sql += ' ORDER BY up.created_at DESC NULLS LAST LIMIT 100';
+    
+    const result = await query(sql, params);
+    
+    res.json({
+      success: true,
+      users: result.rows.map(row => ({
+        id: row.id,
+        email: row.email,
+        tier: row.tier || 'FREE',
+        firstName: row.first_name,
+        lastName: row.last_name,
+        phone: row.phone,
+        experienceLevel: row.experience_level,
+        marketingSource: row.marketing_source,
+        subscriptionStatus: row.subscription_status,
+        createdAt: row.created_at,
+        lastActive: row.last_active,
+        lastLogin: row.last_login,
+        loginCount: parseInt(row.login_count || '0')
+      }))
+    });
+  } catch (e: any) {
+    console.error('Users fetch error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// Get individual user details (admin only)
+router.get('/users/:id', requireHQIntelAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const userResult = await query(`
+      SELECT 
+        u.id,
+        u.email,
+        u.tier,
+        u.last_active,
+        up.first_name,
+        up.last_name,
+        up.phone,
+        up.experience_level,
+        up.trading_style,
+        up.risk_tolerance,
+        up.marketing_source,
+        up.subscription_status,
+        up.subscription_period_end,
+        up.stripe_customer_id,
+        up.created_at
+      FROM users u
+      LEFT JOIN user_profiles up ON u.id = up.user_id
+      WHERE u.id = $1
+    `, [id]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Get login history
+    const loginsResult = await query(`
+      SELECT occurred_at, ip_address, user_agent 
+      FROM login_events 
+      WHERE user_id = $1 
+      ORDER BY occurred_at DESC 
+      LIMIT 10
+    `, [id]);
+    
+    // Get signal engagement
+    const engagementResult = await query(`
+      SELECT action_type, COUNT(*) as count
+      FROM signal_engagement_events
+      WHERE user_id = $1
+      GROUP BY action_type
+    `, [id]);
+    
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        tier: user.tier || 'FREE',
+        firstName: user.first_name,
+        lastName: user.last_name,
+        phone: user.phone,
+        experienceLevel: user.experience_level,
+        tradingStyle: user.trading_style,
+        riskTolerance: user.risk_tolerance,
+        marketingSource: user.marketing_source,
+        subscriptionStatus: user.subscription_status,
+        subscriptionPeriodEnd: user.subscription_period_end,
+        stripeCustomerId: user.stripe_customer_id,
+        createdAt: user.created_at,
+        lastActive: user.last_active
+      },
+      recentLogins: loginsResult.rows.map(l => ({
+        occurredAt: l.occurred_at,
+        ipAddress: l.ip_address,
+        userAgent: l.user_agent
+      })),
+      engagement: engagementResult.rows.map(e => ({
+        actionType: e.action_type,
+        count: parseInt(e.count)
+      }))
+    });
+  } catch (e: any) {
+    console.error('User detail fetch error:', e);
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// Update user tier (admin only)
+router.post('/users/:id/tier', requireHQIntelAccess, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tier } = req.body;
+    
+    if (!['FREE', 'PREMIUM'].includes(tier)) {
+      return res.status(400).json({ success: false, error: 'Invalid tier' });
+    }
+    
+    await query('UPDATE users SET tier = $1 WHERE id = $2', [tier, id]);
+    
+    res.json({ success: true, message: `User tier updated to ${tier}` });
+  } catch (e: any) {
+    console.error('User tier update error:', e);
     res.status(500).json({ success: false, error: e.message });
   }
 });
