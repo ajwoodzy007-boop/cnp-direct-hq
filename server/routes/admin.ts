@@ -181,12 +181,14 @@ router.get('/stats', requireAdmin, async (req, res) => {
 
 // Get all users for admin dashboard
 router.get('/users', requireAdmin, async (req, res) => {
+  console.log('[Admin] Fetching users list...');
   try {
     const result = await query(`
       SELECT id, email, tier 
       FROM users
       ORDER BY created_at DESC NULLS LAST
     `);
+    console.log('[Admin] Found', result.rows.length, 'users');
     res.json({ success: true, users: result.rows });
   } catch (e) {
     console.error('Admin users error:', e);
