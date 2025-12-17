@@ -69,13 +69,9 @@ async function initStripe() {
     );
     console.log(`Webhook configured: ${webhook.url}`);
 
-    // Sync Stripe data in background - don't crash on errors
-    stripeSync.syncBackfill()
-      .then(() => console.log("Stripe data synced"))
-      .catch((err: any) => {
-        // Log error but don't crash - missing customers are okay
-        console.warn("Stripe sync warning (non-fatal):", err.message || err);
-      });
+    // Skip Stripe sync for now - there's a missing customer issue
+    // TODO: Clean up stripe.customers table to remove deleted customers
+    console.log("Stripe sync skipped - webhook ready for new events");
     
     stripeInitialized = true;
   } catch (error: any) {
