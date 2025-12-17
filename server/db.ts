@@ -85,7 +85,30 @@ export async function initDb() {
       ADD COLUMN IF NOT EXISTS first_name VARCHAR(100),
       ADD COLUMN IF NOT EXISTS last_name VARCHAR(100),
       ADD COLUMN IF NOT EXISTS email VARCHAR(255),
-      ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+      ADD COLUMN IF NOT EXISTS phone VARCHAR(50),
+      ADD COLUMN IF NOT EXISTS marketing_source TEXT;
+    `).catch(() => {});
+
+    // Create login events table for DAU tracking
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS login_events (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id VARCHAR REFERENCES users(id),
+        occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ip_address TEXT,
+        user_agent TEXT
+      );
+    `).catch(() => {});
+
+    // Create signal engagement events table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS signal_engagement_events (
+        id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id VARCHAR REFERENCES users(id),
+        action_type TEXT NOT NULL,
+        ticker TEXT,
+        occurred_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `).catch(() => {});
     
     console.log("🗄️  Database Ready: Options Support Active.");

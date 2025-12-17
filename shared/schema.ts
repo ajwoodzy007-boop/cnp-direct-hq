@@ -156,6 +156,8 @@ export const userProfiles = pgTable("user_profiles", {
   lastName: text("last_name"),
   email: text("email"),
   phone: text("phone"),
+  // Onboarding & Marketing
+  marketingSource: text("marketing_source"), // 'google' | 'twitter' | 'youtube' | 'friend' | 'reddit' | 'other'
   // Stripe & Subscription
   stripeCustomerId: text("stripe_customer_id"),
   subscriptionId: text("subscription_id"),
@@ -360,6 +362,44 @@ export const insertBetaPassSchema = createInsertSchema(betaPasses).omit({
 
 export type InsertBetaPass = z.infer<typeof insertBetaPassSchema>;
 export type BetaPass = typeof betaPasses.$inferSelect;
+
+// ============================================
+// ADMIN HQ INTEL TRACKING TABLES
+// ============================================
+
+// Login events for DAU tracking
+export const loginEvents = pgTable("login_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+});
+
+export const insertLoginEventSchema = createInsertSchema(loginEvents).omit({
+  id: true,
+  occurredAt: true,
+});
+
+export type InsertLoginEvent = z.infer<typeof insertLoginEventSchema>;
+export type LoginEvent = typeof loginEvents.$inferSelect;
+
+// Signal engagement tracking
+export const signalEngagementEvents = pgTable("signal_engagement_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id),
+  actionType: text("action_type").notNull(), // 'system_heat_modal' | 'signal_accuracy_modal' | 'prediction_click'
+  ticker: text("ticker"),
+  occurredAt: timestamp("occurred_at").notNull().defaultNow(),
+});
+
+export const insertSignalEngagementSchema = createInsertSchema(signalEngagementEvents).omit({
+  id: true,
+  occurredAt: true,
+});
+
+export type InsertSignalEngagement = z.infer<typeof insertSignalEngagementSchema>;
+export type SignalEngagementEvent = typeof signalEngagementEvents.$inferSelect;
 
 // ============================================
 // BACKTEST CACHE TABLE
