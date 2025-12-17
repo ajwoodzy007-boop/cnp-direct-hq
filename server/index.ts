@@ -42,6 +42,19 @@ async function initStripe() {
     return;
   }
 
+  // Check if we should skip StripeSync entirely
+  // CRITICAL: This must happen BEFORE importing/instantiating StripeSync
+  // because StripeSync runs a backfill on construction that fails with stale customer data
+  const skipSync = process.env.STRIPE_SYNC_ENABLED === 'false' || 
+                   process.env.REPLIT_DEPLOYMENT === '1' ||
+                   process.env.NODE_ENV === 'production';
+  
+  if (skipSync) {
+    console.log("Stripe sync disabled in production - direct API payments still work");
+    stripeInitialized = true;
+    return;
+  }
+
   try {
     const schemaExists = await checkStripeSchemaExists();
     
@@ -57,18 +70,6 @@ async function initStripe() {
       }
     } else {
       console.log("Stripe schema already exists, skipping migrations");
-    }
-
-    // Skip webhook sync in production - there's stale customer data that causes sync errors
-    // Payments still work via direct Stripe API calls, just without automatic data sync
-    // To fix: Delete the orphan customer from Stripe dashboard, then re-enable sync
-    const isProduction = process.env.REPLIT_DEPLOYMENT === '1' || process.env.NODE_ENV === 'production';
-    
-    if (isProduction) {
-      console.log("Stripe ready (webhook sync disabled - stale data cleanup needed)");
-      console.log("Payments work via Stripe API. To enable sync: remove orphan customers from Stripe dashboard.");
-      stripeInitialized = true;
-      return;
     }
 
     const stripeSync = await getStripeSync();
