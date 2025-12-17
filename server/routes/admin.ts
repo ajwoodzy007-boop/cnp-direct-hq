@@ -179,6 +179,39 @@ router.get('/stats', requireAdmin, async (req, res) => {
   }
 });
 
+// Get all users for admin dashboard
+router.get('/users', requireAdmin, async (req, res) => {
+  try {
+    const result = await query(`
+      SELECT id, email, tier 
+      FROM users
+      ORDER BY created_at DESC NULLS LAST
+    `);
+    res.json({ success: true, users: result.rows });
+  } catch (e) {
+    console.error('Admin users error:', e);
+    res.status(500).json({ success: false, error: "Failed to fetch users" });
+  }
+});
+
+// Update user tier
+router.post('/users/:id/tier', requireAdmin, async (req, res) => {
+  const { id } = req.params;
+  const { tier } = req.body;
+  
+  if (!['FREE', 'PREMIUM'].includes(tier)) {
+    return res.status(400).json({ success: false, error: "Invalid tier" });
+  }
+  
+  try {
+    await query('UPDATE users SET tier = $1 WHERE id = $2', [tier, id]);
+    res.json({ success: true });
+  } catch (e) {
+    console.error('Admin tier update error:', e);
+    res.status(500).json({ success: false, error: "Failed to update tier" });
+  }
+});
+
 function generatePassCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = 'BETA-';
