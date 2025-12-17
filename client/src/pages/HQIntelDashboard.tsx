@@ -10,7 +10,10 @@ import {
   ChartBarIcon,
   BoltIcon,
   FireIcon,
-  CalendarIcon
+  CalendarIcon,
+  TrophyIcon,
+  CheckCircleIcon,
+  StarIcon
 } from '@heroicons/react/24/outline';
 
 interface HQIntelData {
@@ -37,16 +40,53 @@ interface HQIntelData {
   };
 }
 
+interface Testimonial {
+  id: string;
+  ticker: string;
+  feedback: string;
+  helpful: boolean;
+  predictionDate: string;
+  createdAt: string;
+  approved: boolean;
+  userEmail: string;
+}
+
 export default function HQIntelDashboard() {
   const [, setLocation] = useLocation();
   const [data, setData] = useState<HQIntelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
 
   useEffect(() => {
     checkAccess();
   }, []);
+
+  const fetchTestimonials = async () => {
+    try {
+      const res = await fetch('/api/admin/testimonials');
+      const json = await res.json();
+      if (json.success) {
+        setTestimonials(json.testimonials);
+      }
+    } catch (e) {
+      console.error('Failed to fetch testimonials:', e);
+    }
+  };
+
+  const approveTestimonial = async (id: string, approved: boolean) => {
+    try {
+      await fetch(`/api/admin/testimonials/${id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved })
+      });
+      fetchTestimonials();
+    } catch (e) {
+      console.error('Failed to approve testimonial:', e);
+    }
+  };
 
   const checkAccess = async () => {
     try {
@@ -75,6 +115,7 @@ export default function HQIntelDashboard() {
       
       if (json.success) {
         setData(json.data);
+        fetchTestimonials();
       } else {
         setError(json.error || 'Failed to load data');
       }
@@ -322,6 +363,74 @@ export default function HQIntelDashboard() {
             <div className="text-2xl font-bold text-amber-400">{data?.retention.accuracyModalClicks || 0}</div>
             <div className="text-xs text-slate-500 mt-1">Clicks Today</div>
           </div>
+        </div>
+
+        {/* Success Wall - Testimonials */}
+        <div className="bg-slate-900/80 border border-amber-500/30 rounded-xl p-6" data-testid="success-wall">
+          <div className="flex items-center gap-3 mb-6">
+            <TrophyIcon className="h-5 w-5 text-amber-500" />
+            <h2 className="text-lg font-semibold text-amber-400">Success Wall</h2>
+            <span className="px-2 py-1 rounded text-xs bg-amber-500/20 text-amber-400">
+              {testimonials.length} Testimonials
+            </span>
+          </div>
+
+          {testimonials.length === 0 ? (
+            <div className="text-center py-8 text-slate-500">
+              <TrophyIcon className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p>No testimonials yet</p>
+              <p className="text-xs mt-1">User feedback from winning signals will appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {testimonials.map((t) => (
+                <div 
+                  key={t.id} 
+                  className={`p-4 rounded-lg border ${
+                    t.approved 
+                      ? 'bg-green-500/10 border-green-500/30' 
+                      : 'bg-slate-800/50 border-slate-700'
+                  }`}
+                  data-testid={`testimonial-${t.id}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="px-2 py-1 rounded text-xs font-bold bg-green-500/20 text-green-400">
+                          {t.ticker}
+                        </span>
+                        {t.approved && (
+                          <span className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-amber-500/20 text-amber-400">
+                            <StarIcon className="h-3 w-3" /> Featured
+                          </span>
+                        )}
+                        <span className="text-xs text-slate-500">
+                          {new Date(t.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm text-white mb-2">"{t.feedback}"</p>
+                      <p className="text-xs text-slate-500">
+                        — {t.userEmail?.split('@')[0] || 'Anonymous'}***
+                      </p>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => approveTestimonial(t.id, !t.approved)}
+                        className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                          t.approved
+                            ? 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                            : 'bg-amber-500/20 text-amber-400 hover:bg-amber-500/30'
+                        }`}
+                        data-testid={`button-approve-${t.id}`}
+                      >
+                        {t.approved ? 'Unfeature' : 'Feature'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="text-center py-4">
