@@ -1277,16 +1277,19 @@ router.post('/finalize', async (req, res) => {
     const closingPrices: Record<string, number> = {};
     const errors: string[] = [];
     
+    // Dynamic import to ensure it works in bundled code
+    const yf = (await import('yahoo-finance2')).default;
+    
     for (const ticker of uniqueTickers) {
       try {
-        // Try quote API first - use yahooFinance directly, not as constructor
-        const q = await yahooFinance.quote(ticker) as any;
+        // Try quote API first
+        const q = await yf.quote(ticker) as any;
         if (q?.regularMarketPrice && q.regularMarketPrice > 0) {
           closingPrices[ticker] = q.regularMarketPrice;
           console.log(`[Finalize] ${ticker}: $${q.regularMarketPrice} (quote)`);
         } else {
           // Fallback to chart API for latest close
-          const chart = await yahooFinance.chart(ticker, { period1: '1d', interval: '1d' });
+          const chart = await yf.chart(ticker, { period1: '1d', interval: '1d' });
           if (chart?.quotes?.length > 0) {
             const lastQuote = chart.quotes[chart.quotes.length - 1];
             closingPrices[ticker] = lastQuote.close || lastQuote.open || 0;
