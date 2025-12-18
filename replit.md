@@ -8,6 +8,14 @@ CNPdirect is a real-time stock trading dashboard application that provides marke
 
 Preferred communication style: Simple, everyday language.
 
+### Stabilized Deployment Protocol
+Whenever the user asks to "deploy" or "publish", follow this protocol:
+1. **Throttle Scanners**: Set Sentinel scanner interval to 1 hour in production (`server/index.ts`)
+2. **Clear Processes**: Run `pkill -f node` or similar to terminate ghost processes
+3. **Verify Target**: Confirm deployment target is Reserved VM (gce) on Port 80
+4. **Build & Suggest**: Run `npm run build` and use suggest_deploy tool
+5. **Post-Deploy Sync**: After user confirms deployment succeeded, trigger `/api/oracle/update-open-prices` on production to sync market data
+
 ## System Architecture
 
 ### Frontend Architecture
