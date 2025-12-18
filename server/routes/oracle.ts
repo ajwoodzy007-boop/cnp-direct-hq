@@ -5,9 +5,9 @@ import { requirePremium } from '../middleware/premium';
 import { db } from '../db';
 import { predictions, userPortfolio, dailyPredictionEntries, dailyPredictionRuns } from '@shared/schema';
 import { desc, eq, sql, and } from 'drizzle-orm';
-import * as YahooFinanceModule from 'yahoo-finance2';
+import YahooFinanceDefault from 'yahoo-finance2';
 import { analyzePredictionPerformance, applyLearningToScore, getLearningStats, type LearningFactors } from '../lib/learningEngine';
-const yahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
+const yahooFinance = YahooFinanceDefault;
 
 const router = express.Router();
 

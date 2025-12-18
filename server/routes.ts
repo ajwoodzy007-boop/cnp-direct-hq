@@ -364,9 +364,8 @@ export async function registerRoutes(
       }
       
       // Fetch current prices - match The Vault's approach exactly
-      const YahooFinanceModule = await import('yahoo-finance2');
-      const YahooFinance = (YahooFinanceModule as any).default || YahooFinanceModule;
-      const yf = typeof YahooFinance === 'function' ? new YahooFinance() : YahooFinance;
+      const YahooFinanceDefault = (await import('yahoo-finance2')).default;
+      const yf = YahooFinanceDefault;
       
       let totalValue = 0;
       let totalCost = 0;

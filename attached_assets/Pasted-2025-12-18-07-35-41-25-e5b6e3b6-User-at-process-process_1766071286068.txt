@@ -1,0 +1,121 @@
+2025-12-18 07:35:41.25
+e5b6e3b6
+User
+at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+2025-12-18 07:35:41.25
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:41.25
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:41.61
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:41.61
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:41.61
+e5b6e3b6
+User
+[Oracle] Error fetching open price for GEV: TypeError: yf8.quote is not a function
+2025-12-18 07:35:41.76
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:41.76
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:41.76
+e5b6e3b6
+User
+[Oracle] Error fetching open price for SM: TypeError: yf8.quote is not a function
+2025-12-18 07:35:41.90
+e5b6e3b6
+User
+[Oracle] Error fetching open price for LB: TypeError: yf8.quote is not a function
+2025-12-18 07:35:41.90
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:41.90
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:42.05
+e5b6e3b6
+User
+[Oracle] Error fetching open price for CMCSA: TypeError: yf8.quote is not a function
+2025-12-18 07:35:42.05
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:42.05
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:42.25
+e5b6e3b6
+User
+[Oracle] Error fetching open price for AVGO: TypeError: yf8.quote is not a function
+2025-12-18 07:35:42.25
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:42.25
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:42.50
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:42.50
+e5b6e3b6
+User
+[Oracle] Error fetching open price for HUBS: TypeError: yf8.quote is not a function
+2025-12-18 07:35:42.50
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:42.75
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:42.75
+e5b6e3b6
+User
+[Oracle] Error fetching open price for COP: TypeError: yf8.quote is not a function
+
+2025-12-18 07:35:42.75
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:42.90
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:42.90
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:42.90
+e5b6e3b6
+User
+[Oracle] Error fetching open price for DVN: TypeError: yf8.quote is not a function
+2025-12-18 07:35:43.05
+e5b6e3b6
+User
+at /home/runner/workspace/dist/index.cjs:53214:33
+2025-12-18 07:35:43.05
+e5b6e3b6
+User
+at getActualOpenPrice (/home/runner/workspace/dist/index.cjs:53177:29)
+2025-12-18 07:35:43.05
+e5b6e3b6
+User
+[Oracle] Error fetching open price for SYM: TypeError: yf8.quote is not a function
