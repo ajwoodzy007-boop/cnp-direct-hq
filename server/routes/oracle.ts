@@ -1277,8 +1277,9 @@ router.post('/finalize', async (req, res) => {
     const closingPrices: Record<string, number> = {};
     const errors: string[] = [];
     
-    // Dynamic import to ensure it works in bundled code
-    const yf = (await import('yahoo-finance2')).default;
+    // Dynamic import and instantiate for yahoo-finance2 v3+
+    const YahooFinance = (await import('yahoo-finance2')).default;
+    const yf = new (YahooFinance as any)();
     
     for (const ticker of uniqueTickers) {
       try {
