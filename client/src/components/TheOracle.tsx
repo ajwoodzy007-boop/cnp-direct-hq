@@ -89,6 +89,31 @@ export default function TheOracle() {
   const [loading6Month, setLoading6Month] = useState(false);
   const [expandedDay30, setExpandedDay30] = useState<number | null>(null);
   const [expandedDay6m, setExpandedDay6m] = useState<number | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  // Force refresh prices from market API and recalculate P/L
+  const syncPrices = async () => {
+    setSyncing(true);
+    try {
+      // First update open prices from Yahoo Finance
+      await fetch('/api/oracle/update-open-prices', { method: 'POST' });
+      
+      // Then refetch daily picks (which will now have correct open prices + fresh current prices)
+      const cacheBuster = Date.now();
+      const res = await fetch(`/api/oracle/daily?_cb=${cacheBuster}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      const json = await res.json();
+      if (json.success) setPicks(json.data);
+      
+      console.log('[Oracle] Price sync complete');
+    } catch (e) {
+      console.error('[Oracle] Price sync failed:', e);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   // Deep AI Analysis modal state
   const [showDeepAnalysis, setShowDeepAnalysis] = useState(false);
@@ -495,6 +520,16 @@ export default function TheOracle() {
               >
                 <CurrencyDollarIcon className="h-4 w-4" />
                 Crypto
+              </button>
+              <button
+                onClick={syncPrices}
+                disabled={syncing}
+                className="px-3 py-2 rounded-lg flex items-center gap-2 text-sm font-medium bg-slate-800 text-slate-400 border border-slate-700 hover:text-white hover:border-emerald-500/50 hover:bg-emerald-500/10 transition-all disabled:opacity-50"
+                data-testid="button-sync-prices"
+                title="Sync prices from market"
+              >
+                <ArrowPathIcon className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+                {syncing ? 'Syncing...' : 'Sync'}
               </button>
             </div>
           </div>
