@@ -883,8 +883,25 @@ export default function TheOracle() {
                   <div className="mb-4">
                     {(() => {
                       const openPrice = pick.openPrice || pick.entryPrice;
-                      const currentPrice = pick.currentPrice || openPrice;
-                      const gainPercent = ((currentPrice - openPrice) / openPrice) * 100;
+                      
+                      // Market state logic: 9:30 AM - 4:00 PM ET
+                      const now = new Date();
+                      const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+                      const hours = etTime.getHours();
+                      const minutes = etTime.getMinutes();
+                      const currentMinutes = hours * 60 + minutes;
+                      const marketOpenMinutes = 9 * 60 + 30; // 9:30 AM
+                      const marketCloseMinutes = 16 * 60; // 4:00 PM
+                      const isMarketOpen = currentMinutes >= marketOpenMinutes && currentMinutes < marketCloseMinutes && etTime.getDay() >= 1 && etTime.getDay() <= 5;
+                      
+                      // Use closePrice after market, currentPrice during market
+                      const closePrice = (pick as any).closePrice;
+                      const displayPrice = isMarketOpen 
+                        ? (pick.currentPrice || openPrice) 
+                        : (closePrice || pick.currentPrice || openPrice);
+                      const isLocked = !isMarketOpen && closePrice;
+                      
+                      const gainPercent = ((displayPrice - openPrice) / openPrice) * 100;
                       const isPositive = gainPercent >= 0;
                       const maxSwing = 5;
                       const barWidth = Math.min(Math.abs(gainPercent) / maxSwing * 50, 50);
@@ -892,21 +909,30 @@ export default function TheOracle() {
                       return (
                         <>
                           <div className="flex justify-between text-xs text-slate-500 mb-1">
-                            <span>Live P/L</span>
+                            <span className="flex items-center gap-1">
+                              {isLocked ? (
+                                <>
+                                  <LockClosedIcon className="h-3 w-3 text-slate-400" />
+                                  <span>Final P/L</span>
+                                </>
+                              ) : (
+                                <span>Live P/L</span>
+                              )}
+                            </span>
                             <span className={`font-mono ${isPositive ? 'text-green-400' : 'text-red-400'}`}>
-                              ${currentPrice.toFixed(2)}
+                              ${displayPrice.toFixed(2)} {isLocked && <span className="text-slate-500">(closed)</span>}
                             </span>
                           </div>
                           <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden">
                             <div className="absolute left-1/2 top-0 bottom-0 w-px bg-slate-600 z-10" />
                             {isPositive ? (
                               <div 
-                                className="absolute left-1/2 top-0 bottom-0 bg-green-500 rounded-r-full transition-all"
+                                className={`absolute left-1/2 top-0 bottom-0 ${isLocked ? 'bg-green-600' : 'bg-green-500'} rounded-r-full transition-all`}
                                 style={{ width: `${barWidth}%` }}
                               />
                             ) : (
                               <div 
-                                className="absolute right-1/2 top-0 bottom-0 bg-red-500 rounded-l-full transition-all"
+                                className={`absolute right-1/2 top-0 bottom-0 ${isLocked ? 'bg-red-600' : 'bg-red-500'} rounded-l-full transition-all`}
                                 style={{ width: `${barWidth}%` }}
                               />
                             )}

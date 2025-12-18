@@ -27,6 +27,53 @@ router.post('/clear-cache', async (req, res) => {
   }
 });
 
+// POST /override-prices: Admin endpoint to manually override open prices (Schwab reconciliation)
+router.post('/override-prices', async (req, res) => {
+  try {
+    const { overrides, date } = req.body;
+    // overrides: [{ ticker: "HUT", openPrice: 42.90 }, ...]
+    // date: optional, defaults to today
+    
+    if (!overrides || !Array.isArray(overrides) || overrides.length === 0) {
+      return res.status(400).json({ success: false, error: 'Missing overrides array' });
+    }
+    
+    const targetDate = date || getTodayDate();
+    const updates: string[] = [];
+    
+    for (const { ticker, openPrice } of overrides) {
+      if (!ticker || openPrice === undefined) continue;
+      
+      await db.update(predictions)
+        .set({ 
+          openPrice: openPrice.toString(),
+          entryPrice: openPrice.toString()
+        })
+        .where(
+          and(
+            sql`DATE(${predictions.predictionDate}) = ${targetDate}`,
+            eq(predictions.ticker, ticker),
+            sql`(${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL)`
+          )
+        );
+      updates.push(`${ticker}: $${openPrice}`);
+    }
+    
+    // Clear cache so changes take effect immediately
+    oracleDailyCache = null;
+    
+    console.log(`[Oracle] Override prices for ${targetDate}:`, updates);
+    res.json({ 
+      success: true, 
+      message: `Updated ${updates.length} prices for ${targetDate}`,
+      updates 
+    });
+  } catch (error) {
+    console.error("Override prices error:", error);
+    res.status(500).json({ success: false, error: "Override failed" });
+  }
+});
+
 // GET /cleanup-weekend: Remove invalid weekend predictions (one-time fix)
 router.get('/cleanup-weekend', async (req, res) => {
   try {
