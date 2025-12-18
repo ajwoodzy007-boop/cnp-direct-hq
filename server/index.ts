@@ -306,8 +306,8 @@ function startPredictionScheduler() {
     }
   };
   
-  // Check every 5 minutes in production (reduces CPU overhead), every minute in dev
-  const checkInterval = process.env.NODE_ENV === "production" ? 5 * 60 * 1000 : 60 * 1000;
+  // Check every 60 minutes in production (stable deployment), every minute in dev
+  const checkInterval = process.env.NODE_ENV === "production" ? 60 * 60 * 1000 : 60 * 1000;
   setInterval(checkAndTriggerPredictions, checkInterval);
   log(`Prediction scheduler started - interval: ${checkInterval / 60000} min, stocks: 9:00 AM/4:15 PM ET, crypto: 8:00 AM/11:59 PM ET`, "scheduler");
 }
