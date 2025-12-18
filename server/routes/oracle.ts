@@ -11,6 +11,22 @@ const yahooFinance = YahooFinanceDefault;
 
 const router = express.Router();
 
+// In-memory cache for oracle daily endpoint (cleared on demand)
+let oracleDailyCache: { data: any; timestamp: number } | null = null;
+const ORACLE_CACHE_TTL = 60 * 1000; // 1 minute
+
+// POST /clear-cache: Force clear all in-memory caches
+router.post('/clear-cache', async (req, res) => {
+  try {
+    oracleDailyCache = null;
+    console.log('[Oracle] Cache cleared');
+    res.json({ success: true, message: 'Oracle cache cleared. Next request will fetch fresh data.' });
+  } catch (error) {
+    console.error("Cache clear error:", error);
+    res.status(500).json({ success: false, error: "Cache clear failed" });
+  }
+});
+
 // GET /cleanup-weekend: Remove invalid weekend predictions (one-time fix)
 router.get('/cleanup-weekend', async (req, res) => {
   try {
