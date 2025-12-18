@@ -1261,10 +1261,11 @@ router.post('/admin/insert-historical', async (req, res) => {
 router.post('/finalize', async (req, res) => {
   try {
     const today = getTodayDate();
+    const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
     
-    // 1. Get today's unfinalized stock predictions (outcome is NULL or empty)
+    // 1. Get today's unfinalized stock predictions (outcome is NULL or empty or pending)
     const todaysPredictions = await db.select().from(predictions)
-      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '')`);
+      .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '' OR LOWER(${predictions.outcome}) = 'pending')`);
     
     console.log(`[Finalize] Found ${todaysPredictions.length} predictions to finalize for ${today}`);
     
@@ -1272,39 +1273,68 @@ router.post('/finalize', async (req, res) => {
       return res.json({ success: true, message: 'No predictions to finalize', finalized: 0, date: today });
     }
     
-    // 2. Fetch current (closing) prices for each ticker - try quote first, fallback to chart
+    // 2. Fetch current (closing) prices for each ticker with multi-layer fallback
     const uniqueTickers = Array.from(new Set(todaysPredictions.map(p => p.ticker)));
     const closingPrices: Record<string, number> = {};
     const errors: string[] = [];
+    const sources: Record<string, string> = {};
     
-    // Dynamic import and instantiate for yahoo-finance2 v3+
-    const YahooFinance = (await import('yahoo-finance2')).default;
-    const yf = new (YahooFinance as any)();
-    
-    for (const ticker of uniqueTickers) {
+    // Helper: Try Yahoo Finance
+    async function tryYahoo(ticker: string): Promise<number> {
       try {
-        // Try quote API first
+        const YahooFinance = (await import('yahoo-finance2')).default;
+        const yf = new (YahooFinance as any)();
         const q = await yf.quote(ticker) as any;
         if (q?.regularMarketPrice && q.regularMarketPrice > 0) {
-          closingPrices[ticker] = q.regularMarketPrice;
-          console.log(`[Finalize] ${ticker}: $${q.regularMarketPrice} (quote)`);
-        } else {
-          // Fallback to chart API for latest close
-          const chart = await yf.chart(ticker, { period1: '1d', interval: '1d' });
-          if (chart?.quotes?.length > 0) {
-            const lastQuote = chart.quotes[chart.quotes.length - 1];
-            closingPrices[ticker] = lastQuote.close || lastQuote.open || 0;
-            console.log(`[Finalize] ${ticker}: $${closingPrices[ticker]} (chart fallback)`);
-          } else {
-            errors.push(`${ticker}: no data`);
-            closingPrices[ticker] = 0;
-          }
+          return q.regularMarketPrice;
         }
       } catch (err: any) {
-        errors.push(`${ticker}: ${err.message}`);
-        closingPrices[ticker] = 0;
-        console.error(`[Finalize] Error fetching ${ticker}:`, err.message);
+        console.log(`[Finalize] Yahoo failed for ${ticker}: ${err.message}`);
       }
+      return 0;
+    }
+    
+    // Helper: Try Finnhub
+    async function tryFinnhub(ticker: string): Promise<number> {
+      if (!FINNHUB_API_KEY) return 0;
+      try {
+        const url = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_API_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data?.c && data.c > 0) {
+          return data.c;
+        }
+      } catch (err: any) {
+        console.log(`[Finalize] Finnhub failed for ${ticker}: ${err.message}`);
+      }
+      return 0;
+    }
+    
+    for (const ticker of uniqueTickers) {
+      let price = 0;
+      let source = 'none';
+      
+      // Try Yahoo first
+      price = await tryYahoo(ticker);
+      if (price > 0) {
+        source = 'yahoo';
+      } else {
+        // Fallback to Finnhub
+        price = await tryFinnhub(ticker);
+        if (price > 0) {
+          source = 'finnhub';
+        }
+      }
+      
+      if (price > 0) {
+        closingPrices[ticker] = price;
+        sources[ticker] = source;
+        console.log(`[Finalize] ${ticker}: $${price} (${source})`);
+      } else {
+        errors.push(`${ticker}: no price from any source`);
+        closingPrices[ticker] = 0;
+      }
+      
       // Small delay to avoid rate limiting
       await new Promise(resolve => setTimeout(resolve, 100));
     }
