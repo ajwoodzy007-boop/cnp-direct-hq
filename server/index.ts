@@ -306,9 +306,10 @@ function startPredictionScheduler() {
     }
   };
   
-  // Check every minute
-  setInterval(checkAndTriggerPredictions, 60 * 1000);
-  log("Prediction scheduler started - stocks: 9:00 AM/4:15 PM ET, crypto: 8:00 AM/11:59 PM ET", "scheduler");
+  // Check every 5 minutes in production (reduces CPU overhead), every minute in dev
+  const checkInterval = process.env.NODE_ENV === "production" ? 5 * 60 * 1000 : 60 * 1000;
+  setInterval(checkAndTriggerPredictions, checkInterval);
+  log(`Prediction scheduler started - interval: ${checkInterval / 60000} min, stocks: 9:00 AM/4:15 PM ET, crypto: 8:00 AM/11:59 PM ET`, "scheduler");
 }
 
 (async () => {
@@ -346,8 +347,9 @@ function startPredictionScheduler() {
     },
     () => {
       log(`serving on port ${port}`);
-      // Start the prediction scheduler after server is running
-      startPredictionScheduler();
+      // Delay scheduler start in production to allow health checks to pass first
+      const schedulerDelay = process.env.NODE_ENV === "production" ? 30000 : 0;
+      setTimeout(() => startPredictionScheduler(), schedulerDelay);
     },
   );
 })();
