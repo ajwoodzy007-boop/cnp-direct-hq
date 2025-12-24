@@ -1,90 +1,69 @@
 import express, { type Request, Response, NextFunction } from "express";
-import session from "express-session";
-import { registerRoutes } from "./routes";
-import { serveStatic } from "./static";
-import { createServer } from "http";
-import { runMigrations } from "stripe-replit-sync";
-import { getStripeSync } from "./stripeClient";
+import { setupRouting } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
 import { WebhookHandlers } from "./webhookHandlers";
-import authRouter from "./routes/auth";
-import adminRouter from "./routes/admin";
-import { initDb } from "./db";
-import { runStockFinalization, runCryptoFinalization } from "./lib/finalizationService";
+import { getStripePublishableKey } from "./stripeClient";
+import session from "express-session";
+import MemoryStore from "memorystore";
 
 const app = express();
-const httpServer = createServer(app);
+const SessionStore = MemoryStore(session);
 
-declare module "http" {
-  interface IncomingMessage {
-    rawBody: unknown;
+// Standard JSON parsing for all routes EXCEPT Stripe webhooks
+app.use((req, res, next) => {
+  if (req.originalUrl === "/api/stripe/webhook") {
+    next();
+  } else {
+    express.json()(req, res, next);
   }
-}
+});
 
-let stripeInitialized = false;
+app.use(express.urlencoded({ extended: false }));
 
-async function checkStripeSchemaExists(): Promise<boolean> {
-  try {
-    const { db } = await import("./db");
-    const { sql } = await import("drizzle-orm");
-    const result = await db.execute(
-      sql`SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'stripe')`
-    );
-    return result.rows[0]?.exists === true;
-  } catch {
-    return false;
-  }
-}
+// Logging middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let resBody: any = null;
 
-async function initStripe() {
-  const databaseUrl = process.env.DATABASE_URL;
-  if (!databaseUrl) {
-    console.log("DATABASE_URL not set, skipping Stripe initialization");
-    return;
-  }
+  const resJson = res.json;
+  res.json = function (body) {
+    resBody = body;
+    return resJson.apply(res, arguments as any);
+  };
 
-  try {
-    const schemaExists = await checkStripeSchemaExists();
-    
-    if (!schemaExists) {
-      console.log("Initializing Stripe schema...");
-      try {
-        await runMigrations({ databaseUrl });
-        console.log("Stripe schema created");
-      } catch (migrationError: any) {
-        console.error("Stripe migration error:", migrationError.message);
-        console.log("Continuing without Stripe schema - payments may not work");
-        return;
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (resBody) {
+        logLine += ` :: ${JSON.stringify(resBody)}`;
       }
-    } else {
-      console.log("Stripe schema already exists, skipping migrations");
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+      log(logLine);
     }
+  });
+  next();
+});
 
-    const stripeSync = await getStripeSync();
+// Session configuration
+app.use(
+  session({
+    cookie: { maxAge: 86400000 },
+    store: new SessionStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    }),
+    resave: false,
+    saveUninitialized: false,
+    secret: process.env.SESSION_SECRET || "pro-trader-default-secret",
+  })
+);
 
-    console.log("Setting up managed webhook...");
-    const webhookBaseUrl = `https://${process.env.REPLIT_DOMAINS?.split(",")[0]}`;
-    const { webhook } = await stripeSync.findOrCreateManagedWebhook(
-      `${webhookBaseUrl}/api/stripe/webhook`,
-      { enabled_events: ["*"], description: "Pro Trader Dashboard webhook" }
-    );
-    console.log(`Webhook configured: ${webhook.url}`);
-
-    stripeSync.syncBackfill()
-      .then(() => console.log("Stripe data synced"))
-      .catch((err: any) => console.error("Error syncing Stripe data:", err));
-    
-    stripeInitialized = true;
-  } catch (error: any) {
-    console.error("Failed to initialize Stripe:", error.message);
-    console.log("Payments will be unavailable until Stripe is configured");
-  }
-}
-
-// Run Stripe init in background - don't block server startup
-setTimeout(() => initStripe().catch(console.error), 2000);
-
+// Stripe Webhook Endpoint (Fixed for Railway)
 app.post(
-  "/api/stripe/webhook/:uuid",
+  "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
   async (req, res) => {
     const signature = req.headers["stripe-signature"];
@@ -94,262 +73,44 @@ app.post(
 
     try {
       const sig = Array.isArray(signature) ? signature[0] : signature;
-      const { uuid } = req.params;
-      await WebhookHandlers.processWebhook(req.body as Buffer, sig, uuid);
+      
+      // Standard signature verification using your Railway environment variable
+      await WebhookHandlers.processWebhook(
+        req.body as Buffer, 
+        sig, 
+        process.env.STRIPE_WEBHOOK_SECRET!
+      );
+      
       res.status(200).json({ received: true });
     } catch (error: any) {
       console.error("Webhook error:", error.message);
-      res.status(400).json({ error: "Webhook processing error" });
+      res.status(400).send(`Webhook Error: ${error.message}`);
     }
   }
 );
-
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
-app.use(express.urlencoded({ extended: false }));
-
-// Trust proxy for Replit HTTPS
-app.set('trust proxy', 1);
-
-// Session middleware - requires SESSION_SECRET environment variable
-const sessionSecret = process.env.SESSION_SECRET;
-if (!sessionSecret) {
-  console.warn('[SESSION] WARNING: SESSION_SECRET not set. Sessions will not work until configured.');
-}
-
-app.use(session({
-  secret: sessionSecret || 'temporary-dev-only-not-for-production',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: true,
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000
-  }
-}));
-
-// Auth routes
-app.use('/api/auth', authRouter);
-app.use('/api/admin', adminRouter);
-
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
-
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
-
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      log(logLine);
-    }
-  });
-
-  next();
-});
-
-// Scheduler for daily predictions at 9:00 AM Eastern time
-function startPredictionScheduler() {
-  const port = process.env.PORT || 5000;
-  
-  const getETDateString = () => {
-    const now = new Date();
-    const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-    return etTime.toISOString().split("T")[0];
-  };
-  
-  const checkAndTriggerPredictions = async () => {
-    const now = new Date();
-    const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-    const hour = etTime.getHours();
-    const minute = etTime.getMinutes();
-    const day = etTime.getDay();
-    
-    // Check if it's a weekday (Mon-Fri)
-    const isWeekday = day >= 1 && day <= 5;
-    
-    // 9:00 AM ET - Generate and save predictions (30 min before market open for best pre-market data)
-    // UNIFIED SYSTEM: Uses Oracle's /daily endpoint which saves directly to predictions table
-    if (isWeekday && hour === 9 && minute === 0) {
-      log("Triggering daily prediction generation at 9:00 AM ET", "scheduler");
-      try {
-        // Use Oracle's unified daily endpoint with force refresh
-        const response = await fetch(`http://localhost:${port}/api/oracle/daily?refresh=true`);
-        if (response.ok) {
-          const data = await response.json();
-          const picks = data.data || [];
-          log(`Daily predictions generated and saved - ${picks.length} picks`, "scheduler");
-        } else {
-          log("Failed to generate daily predictions", "scheduler");
-        }
-      } catch (error) {
-        log(`Error generating predictions: ${error}`, "scheduler");
-      }
-    }
-    
-    // 9:35 AM ET - Update predictions with actual 9:30 AM open prices
-    if (isWeekday && hour === 9 && minute === 35) {
-      log("Updating predictions with actual 9:30 AM open prices", "scheduler");
-      try {
-        const response = await fetch(`http://localhost:${port}/api/oracle/update-open-prices`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          log(`Updated ${data.updates?.length || 0} predictions with actual open prices`, "scheduler");
-        } else {
-          log("Failed to update open prices", "scheduler");
-        }
-      } catch (error) {
-        log(`Error updating open prices: ${error}`, "scheduler");
-      }
-    }
-    
-    // 8:00 AM ET - Generate crypto predictions daily (runs every day, crypto markets are 24/7)
-    if (hour === 8 && minute === 0) {
-      log("Triggering daily crypto prediction generation at 8:00 AM ET", "scheduler");
-      try {
-        const response = await fetch(`http://localhost:${port}/api/oracle/crypto-daily`);
-        if (response.ok) {
-          const data = await response.json();
-          const picks = data.data || [];
-          log(`Daily crypto predictions generated successfully - ${picks.length} picks`, "scheduler");
-        } else {
-          log("Failed to generate daily crypto predictions", "scheduler");
-        }
-      } catch (error) {
-        log(`Error generating crypto predictions: ${error}`, "scheduler");
-      }
-    }
-
-    // 4:15 PM ET - Finalize stock predictions with close prices
-    // UNIFIED SYSTEM: Uses Oracle's finalization which updates the predictions table directly
-    if (isWeekday && hour === 16 && minute === 15) {
-      log("Finalizing daily predictions at 4:15 PM ET", "scheduler");
-      try {
-        // Call finalization service directly (updates predictions table)
-        const result = await runStockFinalization();
-        
-        if (result.success) {
-          log(`Finalized ${result.finalized} Oracle predictions with closing prices`, "scheduler");
-        } else {
-          log("Failed to finalize Oracle predictions", "scheduler");
-        }
-      } catch (error) {
-        log(`Error finalizing predictions: ${error}`, "scheduler");
-      }
-    }
-
-    // 11:59 PM ET - Finalize crypto predictions daily (runs every day)
-    if (hour === 23 && minute === 59) {
-      log("Finalizing daily crypto predictions at 11:59 PM ET", "scheduler");
-      try {
-        // Call finalization service directly (works in production)
-        const result = await runCryptoFinalization();
-        
-        if (result.success) {
-          log(`Finalized ${result.finalized} crypto predictions`, "scheduler");
-        } else {
-          log("Failed to finalize crypto predictions", "scheduler");
-        }
-      } catch (error) {
-        log(`Error finalizing crypto predictions: ${error}`, "scheduler");
-      }
-    }
-
-    // 1:00 AM ET - Pre-compute backtest data for fast loading (runs daily)
-    if (hour === 1 && minute === 0) {
-      log("Starting daily backtest computation at 1:00 AM ET", "scheduler");
-      try {
-        const response = await fetch(`http://localhost:${port}/api/backtest/compute`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "all" }),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          log(`Backtest computation completed: ${data.computed?.join(", ") || "none"}`, "scheduler");
-        } else {
-          log("Failed to compute backtests", "scheduler");
-        }
-      } catch (error) {
-        log(`Error computing backtests: ${error}`, "scheduler");
-      }
-    }
-  };
-  
-  // Check every 60 minutes in production (stable deployment), every minute in dev
-  const checkInterval = process.env.NODE_ENV === "production" ? 60 * 60 * 1000 : 60 * 1000;
-  setInterval(checkAndTriggerPredictions, checkInterval);
-  log(`Prediction scheduler started - interval: ${checkInterval / 60000} min, stocks: 9:00 AM/4:15 PM ET, crypto: 8:00 AM/11:59 PM ET`, "scheduler");
-}
 
 (async () => {
-  await initDb();
-  await registerRoutes(httpServer, app);
+  // Setup standard routing
+  const server = setupRouting(app);
 
+  // Global Error Handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-
     res.status(status).json({ message });
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
+  // Setup Vite or static serving based on environment
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
   } else {
-    const { setupVite } = await import("./vite");
-    await setupVite(httpServer, app);
+    serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || "5000", 10);
-  httpServer.listen(
-    {
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    },
-    () => {
-      log(`serving on port ${port}`);
-      // Delay scheduler start in production to allow health checks to pass first
-      const schedulerDelay = process.env.NODE_ENV === "production" ? 30000 : 0;
-      setTimeout(() => startPredictionScheduler(), schedulerDelay);
-    },
-  );
+  // Use the port provided by Railway or fallback to 5000
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, "0.0.0.0", () => {
+    log(`serving on port ${PORT}`);
+  });
 })();
