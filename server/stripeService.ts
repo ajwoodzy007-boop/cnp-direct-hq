@@ -42,3 +42,5 @@ export class StripeService {
     return subscriptions.data[0];
   }
 }
+// Add this at the very end of the file
+export const stripeService = StripeService;
