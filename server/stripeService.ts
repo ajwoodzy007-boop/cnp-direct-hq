@@ -1,39 +1,44 @@
-import { getUncachableStripeClient } from './stripeClient';
+import { getStripeClient } from './stripeClient';
 
 export class StripeService {
-  async createCustomer(email: string, metadata?: Record<string, string>) {
-    const stripe = await getUncachableStripeClient();
-    return await stripe.customers.create({
-      email,
-      metadata,
+  /**
+   * Creates a Stripe Checkout Session for the Pro Trader subscription.
+   */
+  static async createCheckoutSession(userId: number, userEmail: string, priceId: string) {
+    const stripe = getStripeClient();
+    
+    // Use the Railway URL for redirects
+    const domain = `https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'cnp-direct-hq-production.up.railway.app'}`;
+
+    const session = await stripe.checkout.sessions.create({
+      customer_email: userEmail,
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: `${domain}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${domain}/pricing`,
+      metadata: {
+        userId: userId.toString(),
+      },
     });
+
+    return session;
   }
 
-  async createCheckoutSession(
-    customerId: string, 
-    priceId: string, 
-    successUrl: string, 
-    cancelUrl: string,
-    mode: 'subscription' | 'payment' = 'subscription'
-  ) {
-    const stripe = await getUncachableStripeClient();
-    return await stripe.checkout.sessions.create({
+  /**
+   * Retrieves a customer's subscription status.
+   */
+  static async getSubscriptionStatus(customerId: string) {
+    const stripe = getStripeClient();
+    const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
-      mode,
-      success_url: successUrl,
-      cancel_url: cancelUrl,
+      status: 'active',
+      limit: 1,
     });
-  }
-
-  async createCustomerPortalSession(customerId: string, returnUrl: string) {
-    const stripe = await getUncachableStripeClient();
-    return await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: returnUrl,
-    });
+    return subscriptions.data[0];
   }
 }
-
-export const stripeService = new StripeService();
