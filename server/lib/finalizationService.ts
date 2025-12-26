@@ -1,279 +1,61 @@
-import { db } from '../db';
-import { predictions } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
-import yahooFinance from 'yahoo-finance2';
+import { db } from "../db";
+import { sql } from "drizzle-orm";
+import { aiMarketService } from "./aiMarketService";
 
-const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || '';
+/**
+ * BUSINESS LOGIC: Finalizes pending predictions
+ * This is the "Engine" that proves the Win Rate to a buyer.
+ */
+export async function runStockFinalization() {
+  console.log("[Finalizer] Starting automated outcome resolution...");
 
-async function fetchPriceWithFallback(ticker: string, isCrypto: boolean = false): Promise<number> {
-  // Try Yahoo Finance first
   try {
-    const yf = typeof yahooFinance === 'function' ? new (yahooFinance as any)() : yahooFinance;
-    const symbol = isCrypto ? `${ticker}-USD` : ticker;
-    const q = await yf.quote(symbol) as any;
-    if (q?.regularMarketPrice && q.regularMarketPrice > 0) {
-      console.log(`[Price] ${ticker}: $${q.regularMarketPrice} (Yahoo)`);
-      return q.regularMarketPrice;
-    }
-  } catch (err: any) {
-    console.log(`[Price] Yahoo failed for ${ticker}: ${err.message}`);
-  }
+    // 1. Get all pending predictions
+    const pending = await db.execute(sql`
+      SELECT * FROM predictions 
+      WHERE outcome = 'pending' 
+      OR outcome IS NULL
+    `);
 
-  // Try Finnhub as fallback (stocks only, Finnhub doesn't have good crypto data)
-  if (!isCrypto && FINNHUB_API_KEY) {
-    try {
-      const url = `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_API_KEY}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data?.c && data.c > 0) {
-        console.log(`[Price] ${ticker}: $${data.c} (Finnhub)`);
-        return data.c; // 'c' is current price
-      }
-    } catch (err: any) {
-      console.log(`[Price] Finnhub failed for ${ticker}: ${err.message}`);
-    }
-  }
+    console.log(`[Finalizer] Processing ${pending.rows.length} records.`);
 
-  console.log(`[Price] No price found for ${ticker}`);
-  return 0;
-}
+    for (const row of pending.rows) {
+      try {
+        // 2. Get the current real-time price via Finnhub
+        const currentPrice = await aiMarketService.getLatestPrice(row.ticker);
+        
+        if (!currentPrice) continue;
 
-function getTodayDate(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-export interface FinalizationResult {
-  success: boolean;
-  message: string;
-  finalized: number;
-  skipped?: number;
-  errors?: string[];
-  date: string;
-}
-
-export async function runStockFinalization(): Promise<FinalizationResult> {
-  const today = getTodayDate();
-  
-  const todaysPredictions = await db.select().from(predictions)
-    .where(sql`DATE(${predictions.predictionDate}) = ${today} AND (${predictions.assetType} = 'stock' OR ${predictions.assetType} IS NULL) AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '' OR LOWER(${predictions.outcome}) = 'pending')`);
-  
-  console.log(`[Finalize] Found ${todaysPredictions.length} predictions to finalize for ${today}`);
-  
-  if (todaysPredictions.length === 0) {
-    return { success: true, message: 'No predictions to finalize', finalized: 0, date: today };
-  }
-  
-  const uniqueTickers = Array.from(new Set(todaysPredictions.map(p => p.ticker)));
-  const closingPrices: Record<string, number> = {};
-  const errors: string[] = [];
-  
-  const yf = typeof yahooFinance === 'function' ? new (yahooFinance as any)() : yahooFinance;
-  
-  for (const ticker of uniqueTickers) {
-    try {
-      const q = await yf.quote(ticker) as any;
-      if (q?.regularMarketPrice && q.regularMarketPrice > 0) {
-        closingPrices[ticker] = q.regularMarketPrice;
-        console.log(`[Finalize] ${ticker}: $${q.regularMarketPrice} (quote)`);
-      } else {
-        const chart = await yf.chart(ticker, { period1: '1d', interval: '1d' });
-        if (chart?.quotes?.length > 0) {
-          const lastQuote = chart.quotes[chart.quotes.length - 1];
-          closingPrices[ticker] = lastQuote.close || lastQuote.open || 0;
-          console.log(`[Finalize] ${ticker}: $${closingPrices[ticker]} (chart fallback)`);
+        const entryPrice = Number(row.entry_price);
+        const signalType = row.signal_type; // e.g., 'AUTO:BUY'
+        
+        let outcome = 'pending';
+        
+        // 3. Logic: Did it go up or down?
+        if (signalType.includes('BUY')) {
+          outcome = currentPrice > entryPrice ? 'win' : 'loss';
         } else {
-          errors.push(`${ticker}: no data`);
-          closingPrices[ticker] = 0;
+          outcome = currentPrice < entryPrice ? 'win' : 'loss';
         }
-      }
-    } catch (err: any) {
-      errors.push(`${ticker}: ${err.message}`);
-      closingPrices[ticker] = 0;
-      console.error(`[Finalize] Error fetching ${ticker}:`, err.message);
-    }
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  let finalized = 0;
-  let skipped = 0;
-  for (const pred of todaysPredictions) {
-    const closePrice = closingPrices[pred.ticker];
-    if (closePrice <= 0) {
-      skipped++;
-      continue;
-    }
-    
-    const profitPercent = ((closePrice - pred.entryPrice) / pred.entryPrice) * 100;
-    const outcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
-    
-    await db.update(predictions)
-      .set({
-        outcomePrice: closePrice,
-        outcome: outcome,
-        outcomeDate: new Date()
-      })
-      .where(eq(predictions.id, pred.id));
-    
-    console.log(`[Finalize] ${pred.ticker}: $${pred.entryPrice} -> $${closePrice} = ${outcome} (${profitPercent.toFixed(2)}%)`);
-    finalized++;
-  }
-  
-  return { 
-    success: true, 
-    message: `Finalized ${finalized} predictions`,
-    finalized,
-    skipped,
-    errors: errors.length > 0 ? errors : undefined,
-    date: today
-  };
-}
 
-export async function runCryptoFinalization(): Promise<FinalizationResult> {
-  const today = getTodayDate();
-  
-  const todaysPredictions = await db.select().from(predictions)
-    .where(sql`DATE(${predictions.predictionDate}) = ${today} AND ${predictions.assetType} = 'crypto' AND (${predictions.outcome} IS NULL OR ${predictions.outcome} = '' OR LOWER(${predictions.outcome}) = 'pending')`);
-  
-  console.log(`[Finalize Crypto] Found ${todaysPredictions.length} crypto predictions to finalize for ${today}`);
-  
-  if (todaysPredictions.length === 0) {
-    return { success: true, message: 'No crypto predictions to finalize', finalized: 0, date: today };
-  }
-  
-  const uniqueTickers = Array.from(new Set(todaysPredictions.map(p => p.ticker)));
-  const closingPrices: Record<string, number> = {};
-  const errors: string[] = [];
-  
-  const yf = typeof yahooFinance === 'function' ? new (yahooFinance as any)() : yahooFinance;
-  
-  for (const ticker of uniqueTickers) {
-    try {
-      const yahooSymbol = `${ticker}-USD`;
-      const q = await yf.quote(yahooSymbol) as any;
-      if (q?.regularMarketPrice && q.regularMarketPrice > 0) {
-        closingPrices[ticker] = q.regularMarketPrice;
-        console.log(`[Finalize Crypto] ${ticker}: $${q.regularMarketPrice}`);
-      } else {
-        errors.push(`${ticker}: no data`);
-        closingPrices[ticker] = 0;
-      }
-    } catch (err: any) {
-      errors.push(`${ticker}: ${err.message}`);
-      closingPrices[ticker] = 0;
-      console.error(`[Finalize Crypto] Error fetching ${ticker}:`, err.message);
-    }
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  let finalized = 0;
-  let skipped = 0;
-  for (const pred of todaysPredictions) {
-    const closePrice = closingPrices[pred.ticker];
-    if (closePrice <= 0) {
-      skipped++;
-      continue;
-    }
-    
-    const profitPercent = ((closePrice - pred.entryPrice) / pred.entryPrice) * 100;
-    const outcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
-    
-    await db.update(predictions)
-      .set({
-        outcomePrice: closePrice,
-        outcome: outcome,
-        outcomeDate: new Date()
-      })
-      .where(eq(predictions.id, pred.id));
-    
-    console.log(`[Finalize Crypto] ${pred.ticker}: $${pred.entryPrice} -> $${closePrice} = ${outcome} (${profitPercent.toFixed(2)}%)`);
-    finalized++;
-  }
-  
-  return { 
-    success: true, 
-    message: `Finalized ${finalized} crypto predictions`,
-    finalized,
-    skipped,
-    errors: errors.length > 0 ? errors : undefined,
-    date: today
-  };
-}
+        // 4. Update the Database
+        await db.execute(sql`
+          UPDATE predictions 
+          SET outcome = ${outcome}, 
+              outcome_price = ${currentPrice},
+              outcome_date = NOW()
+          WHERE id = ${row.id}
+        `);
 
-// Finalize ALL pending predictions regardless of date
-export async function runAllPendingFinalization(): Promise<FinalizationResult> {
-  const allPending = await db.select().from(predictions)
-    .where(sql`(${predictions.outcome} IS NULL OR ${predictions.outcome} = '' OR LOWER(${predictions.outcome}) = 'pending')`);
-  
-  console.log(`[Finalize ALL] Found ${allPending.length} total pending predictions`);
-  
-  if (allPending.length === 0) {
-    return { success: true, message: 'No pending predictions found', finalized: 0, date: getTodayDate() };
-  }
-  
-  const stockPreds = allPending.filter(p => p.assetType === 'stock' || !p.assetType);
-  const cryptoPreds = allPending.filter(p => p.assetType === 'crypto');
-  
-  const uniqueStockTickers = Array.from(new Set(stockPreds.map(p => p.ticker)));
-  const uniqueCryptoTickers = Array.from(new Set(cryptoPreds.map(p => p.ticker)));
-  
-  const closingPrices: Record<string, number> = {};
-  const errors: string[] = [];
-  
-  // Fetch stock prices with Finnhub fallback
-  for (const ticker of uniqueStockTickers) {
-    const price = await fetchPriceWithFallback(ticker, false);
-    closingPrices[ticker] = price;
-    if (price <= 0) {
-      errors.push(`${ticker}: no price data`);
+        console.log(`[Finalizer] ${row.ticker}: ${outcome.toUpperCase()} at $${currentPrice}`);
+      } catch (err) {
+        console.error(`[Finalizer] Failed ${row.ticker}:`, err);
+      }
     }
-    await new Promise(resolve => setTimeout(resolve, 50));
+
+    return { success: true, processed: pending.rows.length };
+  } catch (error) {
+    console.error("[Finalizer] Critical Error:", error);
+    throw error;
   }
-  
-  // Fetch crypto prices (Yahoo only for crypto)
-  for (const ticker of uniqueCryptoTickers) {
-    const price = await fetchPriceWithFallback(ticker, true);
-    closingPrices[ticker] = price;
-    if (price <= 0) {
-      errors.push(`${ticker}: no price data`);
-    }
-    await new Promise(resolve => setTimeout(resolve, 50));
-  }
-  
-  let finalized = 0;
-  let skipped = 0;
-  
-  for (const pred of allPending) {
-    const closePrice = closingPrices[pred.ticker];
-    if (closePrice <= 0) {
-      skipped++;
-      continue;
-    }
-    
-    const profitPercent = ((closePrice - pred.entryPrice) / pred.entryPrice) * 100;
-    const outcome = profitPercent > 0 ? 'win' : profitPercent < 0 ? 'loss' : 'neutral';
-    
-    await db.update(predictions)
-      .set({
-        outcomePrice: closePrice,
-        outcome: outcome,
-        outcomeDate: new Date()
-      })
-      .where(eq(predictions.id, pred.id));
-    
-    console.log(`[Finalize ALL] ${pred.ticker}: $${pred.entryPrice} -> $${closePrice} = ${outcome}`);
-    finalized++;
-  }
-  
-  return { 
-    success: true, 
-    message: `Finalized ${finalized} predictions (${stockPreds.length} stocks, ${cryptoPreds.length} crypto)`,
-    finalized,
-    skipped,
-    errors: errors.length > 0 ? errors : undefined,
-    date: getTodayDate()
-  };
 }
