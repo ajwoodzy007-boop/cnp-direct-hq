@@ -53,10 +53,15 @@ function MainDashboard() {
 
   useEffect(() => {
     if (user) {
-      fetch('/api/admin/check')
-        .then(res => res.json())
-        .then(json => setIsAdmin(json.isAdmin))
-        .catch(() => setIsAdmin(false));
+      // MASTER OVERRIDE: Hardcode admin rights for your specific email
+      if (user.email === 'ajwoodzy007@gmail.com') {
+        setIsAdmin(true);
+      } else {
+        fetch('/api/admin/check')
+          .then(res => res.json())
+          .then(json => setIsAdmin(json.isAdmin))
+          .catch(() => setIsAdmin(false));
+      }
     }
   }, [user]);
 
