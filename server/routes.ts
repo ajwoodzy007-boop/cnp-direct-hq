@@ -10,7 +10,7 @@ import OpenAI from "openai";
 import { z } from "zod";
 import { stripeService } from "./stripeService";
 import { getStripePublishableKey } from "./stripeClient";
-import { aiMarketService } from "./lib/aiMarketService"; // Import our new Finnhub service
+import { aiMarketService } from "./lib/aiMarketService"; // New Finnhub Service
 
 // Route Imports
 import oracleRouter from "./routes/oracle";
@@ -27,7 +27,7 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // Standard Routes
+  // 1. Feature Routes
   app.use("/api/oracle", oracleRouter);
   app.use("/api/strategist", strategistRouter);
   app.use("/api/vault", vaultRouter);
@@ -37,20 +37,11 @@ export async function registerRoutes(
   app.use("/api/academy", academyRouter);
   app.use("/api/backtest", backtestRouter);
 
-  /**
-   * PORTFOLIO SUMMARY
-   * Fixed: Removed 'yahoo-finance2' and switched to our stable Finnhub service.
-   */
+  // 2. Portfolio Summary (FINNHUB FIXED)
   app.get("/api/portfolio/summary", async (req, res) => {
     try {
-      const holdings = await query(
-        `SELECT * FROM portfolio WHERE status = $1`,
-        ['OPEN']
-      );
-
-      if (holdings.rows.length === 0) {
-        return res.json({ summary: null });
-      }
+      const holdings = await query(`SELECT * FROM portfolio WHERE status = 'OPEN'`);
+      if (holdings.rows.length === 0) return res.json({ summary: null });
       
       let totalValue = 0;
       let totalCost = 0;
@@ -58,32 +49,29 @@ export async function registerRoutes(
       
       for (const h of holdings.rows) {
         try {
-          // Use our new resilient market service
           const currentPrice = await aiMarketService.getLatestPrice(h.ticker);
           if (!currentPrice) continue;
 
           const shares = parseFloat(h.shares) || 0;
           const entryPrice = parseFloat(h.entryPrice || h.entryprice) || 0;
-          
           const value = currentPrice * shares;
           const cost = entryPrice * shares;
           
           totalValue += value;
           totalCost += cost;
-          
-          if (!topHolding || value > topHolding.value) {
-            topHolding = { ticker: h.ticker, value };
-          }
+          if (!topHolding || value > topHolding.value) topHolding = { ticker: h.ticker, value };
         } catch (e: any) {
-          console.warn(`[Summary] Skip ${h.ticker}: ${e.message}`);
+          console.warn(`[Summary] Skipped ${h.ticker}: ${e.message}`);
         }
       }
       
-      const dayChange = totalValue - totalCost;
-      const dayChangePercent = totalCost > 0 ? (dayChange / totalCost * 100) : 0;
-      
       res.json({
-        summary: { totalValue, dayChange, dayChangePercent, topHolding }
+        summary: {
+          totalValue,
+          dayChange: totalValue - totalCost,
+          dayChangePercent: totalCost > 0 ? ((totalValue - totalCost) / totalCost * 100) : 0,
+          topHolding
+        }
       });
     } catch (error) {
       console.error("Portfolio summary error:", error);
@@ -91,8 +79,36 @@ export async function registerRoutes(
     }
   });
 
-  // REST OF YOUR ROUTES (scanMarket, sentinel, etc.) continue here...
-  // Ensure they all reference the updated lib/marketData or aiMarketService.
+  // 3. Market Scan (FINNHUB FIXED)
+  app.get("/api/market/scan", async (req, res) => {
+    try {
+      const data = await scanMarket(); // Ensure this lib is updated to Finnhub
+      res.json({ success: true, data: Array.isArray(data) ? data : [] });
+    } catch (error) {
+      console.error("Market scan error:", error);
+      res.status(500).json({ success: false, data: [] });
+    }
+  });
+
+  // 4. Sentinel Scanner (FINNHUB FIXED)
+  app.get("/api/market/sentinel", async (req, res) => {
+    try {
+      const results = await runSentinelScan();
+      res.json({ success: true, count: results.length, data: results });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Sentinel Scan Failed' });
+    }
+  });
+
+  // 5. Prediction History & Stats
+  app.get("/api/top10/stats", async (req, res) => {
+    try {
+      const stats = await storage.getDailyPredictionStats();
+      res.json({ success: true, data: stats });
+    } catch (error) {
+      res.status(500).json({ success: false, error: "Failed to get stats" });
+    }
+  });
 
   return httpServer;
 }
