@@ -5,7 +5,12 @@ import { runStockFinalization } from "../lib/finalizationService";
 
 const router = Router();
 
-// Master Admin Access Override
+// Track execution timestamps in memory for the dashboard
+export const systemHeartbeat = {
+  lastGeneration: "Pending...",
+  lastFinalization: "Pending..."
+};
+
 const isMasterAdmin = (req: any) => {
   return req.user && req.user.email === 'ajwoodzy007@gmail.com';
 };
@@ -14,10 +19,6 @@ router.get("/check", (req, res) => {
   res.json({ isAdmin: isMasterAdmin(req) });
 });
 
-/**
- * BUSINESS INTELLIGENCE ROUTE
- * Calculates revenue and conversion metrics for valuation purposes.
- */
 router.get("/stats", async (req, res) => {
   try {
     const userCount = await db.execute(sql`SELECT count(*) FROM users`);
@@ -28,36 +29,29 @@ router.get("/stats", async (req, res) => {
     const premiumU = Number(premiumCount.rows[0].count);
     const totalP = Number(predictionCount.rows[0].count);
 
-    // Revenue and Conversion Formulas
-    const conversionRate = totalU > 0 ? ((premiumU / totalU) * 100).toFixed(1) : "0";
-    const mrr = premiumU * 29.99; // Set based on your subscription model
-    const arr = mrr * 12;
-
     res.json({
       totalUsers: totalU,
       premiumUsers: premiumU,
-      conversionRate: `${conversionRate}%`,
-      mrr: `$${mrr.toLocaleString()}`,
-      arr: `$${arr.toLocaleString()}`,
+      conversionRate: totalU > 0 ? `${((premiumU / totalU) * 100).toFixed(1)}%` : "0%",
+      mrr: `$${(premiumU * 29.99).toLocaleString()}`,
+      arr: `$${(premiumU * 29.99 * 12).toLocaleString()}`,
       totalPredictions: totalP,
-      winRate: "14.3%"
+      winRate: "14.3%",
+      // Added heartbeat data for the buyer
+      lastGeneration: systemHeartbeat.lastGeneration,
+      lastFinalization: systemHeartbeat.lastFinalization
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
 });
 
-/**
- * TRIGGER ACTION: Finalize All
- */
 router.post("/finalize-all", async (req, res) => {
-  if (!isMasterAdmin(req)) {
-    return res.status(403).json({ error: "Unauthorized" });
-  }
-
+  if (!isMasterAdmin(req)) return res.status(403).json({ error: "Unauthorized" });
   try {
     const result = await runStockFinalization();
-    res.json({ success: true, message: `Successfully resolved ${result.processed} predictions.` });
+    systemHeartbeat.lastFinalization = new Date().toLocaleString("en-US", { timeZone: "America/New_York" });
+    res.json({ success: true, message: `Resolved ${result.processed} predictions.` });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -66,12 +60,8 @@ router.post("/finalize-all", async (req, res) => {
 router.get("/diagnostics", async (req, res) => {
   try {
     const start = Date.now();
-    const result = await db.execute(sql`SELECT now()`);
-    res.json({
-      status: "HEALTHY",
-      latency: `${Date.now() - start}ms`,
-      timestamp: result.rows[0].now
-    });
+    await db.execute(sql`SELECT now()`);
+    res.json({ status: "HEALTHY", latency: `${Date.now() - start}ms` });
   } catch (error: any) {
     res.json({ status: "ERROR", error: error.message });
   }
