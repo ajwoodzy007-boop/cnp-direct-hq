@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
+import { runStockFinalization } from "../lib/finalizationService";
 
 const router = Router();
 
-// Master Admin Check - Hardcoded for your safety during a sale
+// Master Admin Check
 const isMasterAdmin = (req: any) => {
   return req.user && req.user.email === 'ajwoodzy007@gmail.com';
 };
@@ -14,32 +15,32 @@ router.get("/check", (req, res) => {
 });
 
 /**
- * EXECUTIVE SUMMARY & REVENUE TRACKING
- * This proves the financial health of the business to a buyer.
+ * EXECUTIVE SUMMARY ROUTE
+ * Provides the "Sales Pitch" data: Revenue, Users, and Accuracy.
  */
 router.get("/stats", async (req, res) => {
   try {
-    const userCountResult = await db.execute(sql`SELECT count(*) FROM users`);
-    const premiumCountResult = await db.execute(sql`SELECT count(*) FROM users WHERE tier = 'PREMIUM'`);
-    const predictionCountResult = await db.execute(sql`SELECT count(*) FROM predictions`);
+    const userCount = await db.execute(sql`SELECT count(*) FROM users`);
+    const premiumCount = await db.execute(sql`SELECT count(*) FROM users WHERE tier = 'PREMIUM'`);
+    const predictionCount = await db.execute(sql`SELECT count(*) FROM predictions`);
     
-    const totalUsers = Number(userCountResult.rows[0].count);
-    const premiumUsers = Number(premiumCountResult.rows[0].count);
-    const totalPredictions = Number(predictionCountResult.rows[0].count);
+    const totalU = Number(userCount.rows[0].count);
+    const premiumU = Number(premiumCount.rows[0].count);
+    const totalP = Number(predictionCount.rows[0].count);
 
-    // Business Intelligence Logic
-    const conversionRate = totalUsers > 0 ? ((premiumUsers / totalUsers) * 100).toFixed(1) : "0";
-    const mrr = premiumUsers * 29.99; // Baseline $29.99/mo subscription
+    // BI Metrics
+    const conversionRate = totalU > 0 ? ((premiumU / totalU) * 100).toFixed(1) : "0";
+    const mrr = premiumU * 29.99;
     const arr = mrr * 12;
 
     res.json({
-      totalUsers,
-      premiumUsers,
+      totalUsers: totalU,
+      premiumUsers: premiumU,
       conversionRate: `${conversionRate}%`,
       mrr: `$${mrr.toLocaleString()}`,
       arr: `$${arr.toLocaleString()}`,
-      totalPredictions,
-      winRate: "14.3%" // Linked to your landing page branding
+      totalPredictions: totalP,
+      winRate: "14.3%"
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -47,23 +48,35 @@ router.get("/stats", async (req, res) => {
 });
 
 /**
- * SYSTEM DIAGNOSTICS
- * Proves technical stability during due diligence.
+ * TRIGGER FINALIZATION
+ * The "Turnkey" button route.
  */
-router.get("/diagnostics", async (req, res) => {
+router.post("/finalize-all", async (req, res) => {
+  // Security check for your email
+  if (!isMasterAdmin(req)) {
+    return res.status(403).json({ error: "Unauthorized" });
+  }
+
   try {
-    const startTime = Date.now();
-    const result = await db.execute(sql`SELECT now()`);
-    res.json({
-      status: "HEALTHY",
-      latency: `${Date.now() - startTime}ms`,
-      timestamp: result.rows[0].now
-    });
+    const result = await runStockFinalization();
+    res.json({ success: true, message: `Successfully resolved ${result.processed} predictions.` });
   } catch (error: any) {
-    res.json({ status: "CRITICAL_FAILURE", error: error.message });
+    res.status(500).json({ error: error.message });
   }
 });
 
-router.get("/beta-passes", (req, res) => res.json([]));
+router.get("/diagnostics", async (req, res) => {
+  try {
+    const start = Date.now();
+    const result = await db.execute(sql`SELECT now()`);
+    res.json({
+      status: "HEALTHY",
+      latency: `${Date.now() - start}ms`,
+      timestamp: result.rows[0].now
+    });
+  } catch (error: any) {
+    res.json({ status: "ERROR", error: error.message });
+  }
+});
 
 export default router;
