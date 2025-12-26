@@ -6,7 +6,7 @@ const router = Router();
 
 /**
  * 1. UI ACCESS CHECK
- * We check req.user directly to avoid the "isAuthenticated" function error.
+ * We check req.user directly to avoid the "req.isAuthenticated" crash.
  */
 router.get("/check", (req, res) => {
   if (req.user && req.user.email === 'ajwoodzy007@gmail.com') {
@@ -28,7 +28,7 @@ router.post("/verify-key", (req, res) => {
  * 3. DASHBOARD STATISTICS
  */
 router.get("/stats", async (req, res) => {
-  // Direct check for the master email
+  // Direct property check for stability
   if (!req.user || req.user.email !== 'ajwoodzy007@gmail.com') {
     return res.status(403).json({ error: "Unauthorized" });
   }
@@ -51,8 +51,9 @@ router.get("/stats", async (req, res) => {
 
 /**
  * 4. DATABASE DIAGNOSTICS
+ * This matches the /api/admin/diagnostics call seen in your logs.
  */
-router.get("/db-status", async (req, res) => {
+router.get("/diagnostics", async (req, res) => {
   if (!req.user || req.user.email !== 'ajwoodzy007@gmail.com') {
     return res.status(403).json({ error: "Unauthorized" });
   }
