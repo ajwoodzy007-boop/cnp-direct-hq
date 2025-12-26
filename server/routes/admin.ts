@@ -5,9 +5,8 @@ import { sql } from "drizzle-orm";
 const router = Router();
 
 /**
- * 1. UI Access Check
- * Used by the frontend (App.tsx) to determine if the Admin Dashboard
- * button should be rendered.
+ * 1. UI ACCESS CHECK
+ * Validates the admin session for the frontend button visibility.
  */
 router.get("/check", (req, res) => {
   if (req.isAuthenticated() && req.user?.email === 'ajwoodzy007@gmail.com') {
@@ -17,18 +16,17 @@ router.get("/check", (req, res) => {
 });
 
 /**
- * 2. Dashboard Statistics
- * This populates the "Total Users", "Premium Users", and "Total Predictions" 
- * cards in your Sentinel Command Center.
+ * 2. DASHBOARD STATISTICS
+ * Directly populates the 'Total Users', 'Premium Users', and 'Total Predictions' cards.
  */
 router.get("/stats", async (req, res) => {
-  // Master email protection
+  // Security: Restricted to master email
   if (!req.isAuthenticated() || req.user?.email !== 'ajwoodzy007@gmail.com') {
-    return res.status(403).json({ error: "Unauthorized" });
+    return res.status(403).json({ error: "Unauthorized access to Sentinel stats." });
   }
 
   try {
-    // Queries the live patient-cake database tables
+    // These queries hit the 'patient-cake' Neon tables
     const userCount = await db.execute(sql`SELECT count(*) FROM users`);
     const premiumCount = await db.execute(sql`SELECT count(*) FROM users WHERE tier = 'PREMIUM'`);
     const predictionCount = await db.execute(sql`SELECT count(*) FROM predictions`);
@@ -37,29 +35,28 @@ router.get("/stats", async (req, res) => {
       totalUsers: Number(userCount.rows[0].count),
       premiumUsers: Number(premiumCount.rows[0].count),
       totalPredictions: Number(predictionCount.rows[0].count),
-      winRate: 0 // Placeholder until win-rate logic is finalized
+      winRate: 0 
     });
   } catch (error: any) {
-    console.error("Stats Fetch Error:", error);
+    console.error("Dashboard Stats Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
 /**
- * 3. Database Diagnostics
- * Checklist Item #1: Confirming the handshake with ep-patient-cake-afr4ov6x.
- * This will resolve the "Loading diagnostics..." state in your UI.
+ * 3. DATABASE DIAGNOSTICS
+ * This resolves the "Loading diagnostics..." text at the bottom of your screen.
  */
 router.get("/db-status", async (req, res) => {
   if (!req.isAuthenticated() || req.user?.email !== 'ajwoodzy007@gmail.com') {
-    return res.status(403).json({ error: "Unauthorized" });
+    return res.status(403).json({ error: "Unauthorized access to Sentinel diagnostics." });
   }
 
   try {
     const startTime = Date.now();
     
-    // Raw SQL to check DB health and regional identity
-    const result = await db.execute(sql`SELECT current_database(), now(), version()`);
+    // Confirms connection to the 'patient-cake' host
+    const result = await db.execute(sql`SELECT current_database(), now()`);
     const latency = Date.now() - startTime;
 
     res.json({
@@ -67,15 +64,14 @@ router.get("/db-status", async (req, res) => {
       host: "ep-patient-cake-afr4ov6x",
       latency: `${latency}ms`,
       database: result.rows[0].current_database,
-      timestamp: result.rows[0].now,
-      server_info: result.rows[0].version
+      timestamp: result.rows[0].now
     });
   } catch (error: any) {
-    console.error("DB Status Diagnostic Error:", error);
-    res.status(500).json({
-      status: "CRITICAL_FAILURE",
+    console.error("DB Status Error:", error);
+    res.json({ 
+      status: "CRITICAL_FAILURE", 
       error: error.message,
-      hint: "Verify DATABASE_URL in Railway matches the patient-cake host."
+      hint: "Check DATABASE_URL in Railway variables."
     });
   }
 });
