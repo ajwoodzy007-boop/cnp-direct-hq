@@ -5,7 +5,7 @@ import { runStockFinalization } from "../lib/finalizationService";
 
 const router = Router();
 
-// Master Admin Check
+// Master Admin Access Override
 const isMasterAdmin = (req: any) => {
   return req.user && req.user.email === 'ajwoodzy007@gmail.com';
 };
@@ -15,8 +15,8 @@ router.get("/check", (req, res) => {
 });
 
 /**
- * EXECUTIVE SUMMARY ROUTE
- * Provides the "Sales Pitch" data: Revenue, Users, and Accuracy.
+ * BUSINESS INTELLIGENCE ROUTE
+ * Calculates revenue and conversion metrics for valuation purposes.
  */
 router.get("/stats", async (req, res) => {
   try {
@@ -28,9 +28,9 @@ router.get("/stats", async (req, res) => {
     const premiumU = Number(premiumCount.rows[0].count);
     const totalP = Number(predictionCount.rows[0].count);
 
-    // BI Metrics
+    // Revenue and Conversion Formulas
     const conversionRate = totalU > 0 ? ((premiumU / totalU) * 100).toFixed(1) : "0";
-    const mrr = premiumU * 29.99;
+    const mrr = premiumU * 29.99; // Set based on your subscription model
     const arr = mrr * 12;
 
     res.json({
@@ -48,11 +48,9 @@ router.get("/stats", async (req, res) => {
 });
 
 /**
- * TRIGGER FINALIZATION
- * The "Turnkey" button route.
+ * TRIGGER ACTION: Finalize All
  */
 router.post("/finalize-all", async (req, res) => {
-  // Security check for your email
   if (!isMasterAdmin(req)) {
     return res.status(403).json({ error: "Unauthorized" });
   }
