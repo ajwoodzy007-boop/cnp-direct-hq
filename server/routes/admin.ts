@@ -6,7 +6,7 @@ const router = Router();
 
 /**
  * 1. UI ACCESS CHECK
- * Validates the admin session for the frontend button visibility.
+ * Confirms admin session for your specific email.
  */
 router.get("/check", (req, res) => {
   if (req.isAuthenticated() && req.user?.email === 'ajwoodzy007@gmail.com') {
@@ -16,17 +16,26 @@ router.get("/check", (req, res) => {
 });
 
 /**
- * 2. DASHBOARD STATISTICS
- * Directly populates the 'Total Users', 'Premium Users', and 'Total Predictions' cards.
+ * 2. ADMIN KEY VERIFICATION
+ * Validates the password you type into the dashboard.
+ */
+router.post("/verify-key", (req, res) => {
+  const { key } = req.body;
+  // Explicitly using your Railway variable name: ADMIN_PASSWORD
+  const isValid = key === process.env.ADMIN_PASSWORD;
+  res.json({ success: isValid });
+});
+
+/**
+ * 3. DASHBOARD STATISTICS
+ * Populates the 'Total Users', 'Premium Users', and 'Total Predictions' cards.
  */
 router.get("/stats", async (req, res) => {
-  // Security: Restricted to master email
   if (!req.isAuthenticated() || req.user?.email !== 'ajwoodzy007@gmail.com') {
-    return res.status(403).json({ error: "Unauthorized access to Sentinel stats." });
+    return res.status(403).json({ error: "Unauthorized" });
   }
 
   try {
-    // These queries hit the 'patient-cake' Neon tables
     const userCount = await db.execute(sql`SELECT count(*) FROM users`);
     const premiumCount = await db.execute(sql`SELECT count(*) FROM users WHERE tier = 'PREMIUM'`);
     const predictionCount = await db.execute(sql`SELECT count(*) FROM predictions`);
@@ -38,24 +47,21 @@ router.get("/stats", async (req, res) => {
       winRate: 0 
     });
   } catch (error: any) {
-    console.error("Dashboard Stats Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
 /**
- * 3. DATABASE DIAGNOSTICS
- * This resolves the "Loading diagnostics..." text at the bottom of your screen.
+ * 4. DATABASE DIAGNOSTICS
+ * Resolves the "Loading diagnostics..." state and confirms connection to patient-cake.
  */
 router.get("/db-status", async (req, res) => {
   if (!req.isAuthenticated() || req.user?.email !== 'ajwoodzy007@gmail.com') {
-    return res.status(403).json({ error: "Unauthorized access to Sentinel diagnostics." });
+    return res.status(403).json({ error: "Unauthorized" });
   }
 
   try {
     const startTime = Date.now();
-    
-    // Confirms connection to the 'patient-cake' host
     const result = await db.execute(sql`SELECT current_database(), now()`);
     const latency = Date.now() - startTime;
 
@@ -67,11 +73,9 @@ router.get("/db-status", async (req, res) => {
       timestamp: result.rows[0].now
     });
   } catch (error: any) {
-    console.error("DB Status Error:", error);
     res.json({ 
       status: "CRITICAL_FAILURE", 
-      error: error.message,
-      hint: "Check DATABASE_URL in Railway variables."
+      error: error.message 
     });
   }
 });
