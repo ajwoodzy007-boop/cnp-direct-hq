@@ -7,10 +7,19 @@ import { WebhookHandlers } from "./webhookHandlers";
 import authRouter from "./routes/auth";
 import adminRouter from "./routes/admin";
 import { initDb } from "./db";
-import { runStockFinalization, runCryptoFinalization } from "./lib/finalizationService";
+import { runStockFinalization } from "./lib/finalizationService";
 
 const app = express();
 const httpServer = createServer(app);
+
+// Helper for professional logging in Railway
+export function log(message: string, source = "express") {
+  const formattedTime = new Date().toLocaleTimeString("en-US", {
+    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+    timeZone: "America/New_York"
+  });
+  console.log(`${formattedTime} [${source}] ${message}`);
+}
 
 declare module "http" {
   interface IncomingMessage {
@@ -18,19 +27,16 @@ declare module "http" {
   }
 }
 
-// STRIPE WEBHOOK ROUTE - Must be BEFORE express.json()
+// 1. STRIPE WEBHOOK ROUTE (Must be before express.json)
 app.post(
   "/api/stripe/webhook",
   express.raw({ type: "application/json" }),
   async (req, res) => {
     const signature = req.headers["stripe-signature"];
-    if (!signature) {
-      return res.status(400).json({ error: "Missing stripe-signature" });
-    }
+    if (!signature) return res.status(400).json({ error: "Missing stripe-signature" });
 
     try {
       const sig = Array.isArray(signature) ? signature[0] : signature;
-      // Using the Railway Environment Variable directly
       await WebhookHandlers.processWebhook(req.body as Buffer, sig, process.env.STRIPE_WEBHOOK_SECRET!);
       res.status(200).json({ received: true });
     } catch (error: any) {
@@ -40,21 +46,16 @@ app.post(
   }
 );
 
-// Standard Middlewares
-app.use(
-  express.json({
-    verify: (req, _res, buf) => {
-      req.rawBody = buf;
-    },
-  }),
-);
-
+// 2. STANDARD MIDDLEWARE
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: false }));
 app.set('trust proxy', 1);
 
-const sessionSecret = process.env.SESSION_SECRET;
+// 3. SESSION MANAGEMENT
 app.use(session({
-  secret: sessionSecret || 'temporary-dev-only-not-for-production',
+  secret: process.env.SESSION_SECRET || 'sentinel-dev-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -64,27 +65,14 @@ app.use(session({
   }
 }));
 
-// Auth & Admin Routes
+// 4. API ROUTES
 app.use('/api/auth', authRouter);
 app.use('/api/admin', adminRouter);
 
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
-  });
-  console.log(`${formattedTime} [${source}] ${message}`);
-}
-
-// Request logging
+// 5. REQUEST LOGGING (Business Intelligence Tracking)
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
@@ -94,40 +82,57 @@ app.use((req, res, next) => {
   next();
 });
 
-// Scheduler for daily predictions
+/**
+ * 6. AUTOMATED BUSINESS SCHEDULER
+ * This makes the app a "Turnkey Asset" for buyers.
+ * Handles Generation at 09:00 ET and Finalization at 16:30 ET.
+ */
 function startPredictionScheduler() {
   const port = process.env.PORT || 5000;
+  
   const checkAndTriggerPredictions = async () => {
     const now = new Date();
+    // Normalize to Eastern Time regardless of server location
     const etTime = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
     const hour = etTime.getHours();
     const minute = etTime.getMinutes();
     const day = etTime.getDay();
-    const isWeekday = day >= 1 && day <= 5;
-    
-    // 9:00 AM ET - Stock Predictions
+    const isWeekday = day >= 1 && day <= 5; 
+
+    // TRIGGER 1: 09:00 AM ET - Oracle Signal Generation
     if (isWeekday && hour === 9 && minute === 0) {
       try {
+        log("Executing scheduled 9:00 AM Generation...", "scheduler");
         await fetch(`http://localhost:${port}/api/oracle/daily?refresh=true`);
-        log("9:00 AM Predictions Triggered", "scheduler");
-      } catch (e) { log(`Error: ${e}`, "scheduler"); }
+        log("SUCCESS: 9:00 AM Daily Picks Generated.", "scheduler");
+      } catch (e) { 
+        log(`CRITICAL: 9:00 AM Generation Failed: ${e}`, "scheduler"); 
+      }
     }
     
-    // 4:15 PM ET - Finalize Stocks
-    if (isWeekday && hour === 16 && minute === 15) {
-      await runStockFinalization();
-      log("4:15 PM Finalization Triggered", "scheduler");
+    // TRIGGER 2: 04:30 PM ET (16:30) - Outcome Finalization
+    if (isWeekday && hour === 16 && minute === 30) {
+      try {
+        log("Executing scheduled 4:30 PM Finalization...", "scheduler");
+        await runStockFinalization();
+        log("SUCCESS: 4:30 PM Outcomes Recorded to Database.", "scheduler");
+      } catch (e) { 
+        log(`CRITICAL: 4:30 PM Finalization Failed: ${e}`, "scheduler"); 
+      }
     }
   };
   
-  const checkInterval = process.env.NODE_ENV === "production" ? 60 * 60 * 1000 : 60 * 1000;
-  setInterval(checkAndTriggerPredictions, checkInterval);
+  // Check every minute
+  setInterval(checkAndTriggerPredictions, 60 * 1000);
+  log("Scheduler Active: Monitoring 09:00 and 16:30 ET windows", "scheduler");
 }
 
+// 7. SERVER INITIALIZATION
 (async () => {
   await initDb();
   await registerRoutes(httpServer, app);
 
+  // Global Error Handler
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     res.status(err.status || 500).json({ message: err.message || "Internal Server Error" });
   });
@@ -141,7 +146,8 @@ function startPredictionScheduler() {
 
   const port = parseInt(process.env.PORT || "5000", 10);
   httpServer.listen({ port, host: "0.0.0.0" }, () => {
-    log(`serving on port ${port}`);
-    setTimeout(() => startPredictionScheduler(), 5000);
+    log(`Sentinel OS serving on port ${port}`);
+    // Delay scheduler start to ensure database and routes are fully ready
+    setTimeout(() => startPredictionScheduler(), 10000);
   });
 })();
