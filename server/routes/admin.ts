@@ -6,10 +6,10 @@ const router = Router();
 
 /**
  * 1. UI ACCESS CHECK
- * Confirms admin session for your specific email.
+ * We check req.user directly to avoid the "isAuthenticated" function error.
  */
 router.get("/check", (req, res) => {
-  if (req.isAuthenticated() && req.user?.email === 'ajwoodzy007@gmail.com') {
+  if (req.user && req.user.email === 'ajwoodzy007@gmail.com') {
     return res.json({ isAdmin: true });
   }
   res.json({ isAdmin: false });
@@ -17,21 +17,19 @@ router.get("/check", (req, res) => {
 
 /**
  * 2. ADMIN KEY VERIFICATION
- * Validates the password you type into the dashboard.
  */
 router.post("/verify-key", (req, res) => {
   const { key } = req.body;
-  // Explicitly using your Railway variable name: ADMIN_PASSWORD
   const isValid = key === process.env.ADMIN_PASSWORD;
   res.json({ success: isValid });
 });
 
 /**
  * 3. DASHBOARD STATISTICS
- * Populates the 'Total Users', 'Premium Users', and 'Total Predictions' cards.
  */
 router.get("/stats", async (req, res) => {
-  if (!req.isAuthenticated() || req.user?.email !== 'ajwoodzy007@gmail.com') {
+  // Direct check for the master email
+  if (!req.user || req.user.email !== 'ajwoodzy007@gmail.com') {
     return res.status(403).json({ error: "Unauthorized" });
   }
 
@@ -53,10 +51,9 @@ router.get("/stats", async (req, res) => {
 
 /**
  * 4. DATABASE DIAGNOSTICS
- * Resolves the "Loading diagnostics..." state and confirms connection to patient-cake.
  */
 router.get("/db-status", async (req, res) => {
-  if (!req.isAuthenticated() || req.user?.email !== 'ajwoodzy007@gmail.com') {
+  if (!req.user || req.user.email !== 'ajwoodzy007@gmail.com') {
     return res.status(403).json({ error: "Unauthorized" });
   }
 
