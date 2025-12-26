@@ -137,7 +137,8 @@ export default function SettingsModal({ user, onClose, onLogout, isAdmin, onAdmi
               </div>
             )}
 
-            {isAdmin && onAdminClick && (
+            {/* MASTER UI OVERRIDE: Show dashboard if isAdmin is true OR it's your specific email */}
+            {(isAdmin || user.email === 'ajwoodzy007@gmail.com') && onAdminClick && (
               <button 
                 onClick={onAdminClick}
                 className="w-full bg-red-900/20 hover:bg-red-900/30 text-red-400 p-3 rounded-lg flex items-center justify-between group transition-all border border-red-500/20 hover:border-red-500/40"
