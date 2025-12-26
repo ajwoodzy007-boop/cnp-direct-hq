@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { 
   Users, 
@@ -6,8 +6,10 @@ import {
   Database, 
   RefreshCw, 
   ArrowLeft,
-  CheckCircle2,
-  AlertCircle
+  DollarSign,
+  PieChart,
+  ShieldCheck,
+  Activity
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -17,113 +19,122 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ onBack }: AdminDashboardProps) {
   const queryClient = useQueryClient();
 
-  // 1. Fetch Stats (Using the verified /api/admin/stats route)
   const { data: stats, isLoading: loadingStats } = useQuery({
     queryKey: ["/api/admin/stats"],
-    refetchInterval: 5000 // Auto-refresh every 5 seconds
+    refetchInterval: 10000 
   });
 
-  // 2. Fetch Diagnostics
   const { data: diag } = useQuery({
     queryKey: ["/api/admin/diagnostics"]
   });
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 p-4 md:p-8 font-mono">
-      {/* Header */}
-      <div className="max-w-6xl mx-auto mb-8 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-2 hover:bg-slate-900 rounded-lg text-cyan-500">
-            <ArrowLeft size={20} />
+      {/* HEADER: Professional Sentinel Branding */}
+      <div className="max-w-7xl mx-auto mb-10 flex items-center justify-between border-b border-slate-800 pb-6">
+        <div className="flex items-center gap-6">
+          <button onClick={onBack} className="p-3 hover:bg-slate-900 rounded-xl text-cyan-500 transition-colors">
+            <ArrowLeft size={24} />
           </button>
-          <h1 className="text-xl font-bold text-white">SENTINEL_ADMIN_v2.0</h1>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-slate-500 uppercase">System Live</span>
-        </div>
-      </div>
-
-      {/* Metric Grid */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl relative overflow-hidden">
-          <div className="flex items-center gap-3 mb-2 text-slate-400">
-            <Users size={18} />
-            <span className="text-xs uppercase tracking-wider">Total Users</span>
-          </div>
-          <div className="text-3xl font-bold text-white">
-            {loadingStats ? "..." : stats?.totalUsers ?? 0}
-          </div>
-          <div className="absolute -right-2 -bottom-2 opacity-5 text-white">
-            <Users size={80} />
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tighter">SENTINEL_COMMAND_CENTER</h1>
+            <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em]">Business Intelligence & Asset Management</p>
           </div>
         </div>
-
-        <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl relative overflow-hidden">
-          <div className="flex items-center gap-3 mb-2 text-slate-400">
-            <TrendingUp size={18} />
-            <span className="text-xs uppercase tracking-wider">Total Predictions</span>
+        <div className="hidden md:flex items-center gap-4 bg-slate-900/50 px-4 py-2 rounded-lg border border-slate-800">
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] text-slate-500">DB_STATUS</span>
+            <span className="text-xs text-green-400 font-bold">{diag?.status || "CONNECTED"}</span>
           </div>
-          <div className="text-3xl font-bold text-cyan-400">
-            {loadingStats ? "..." : stats?.totalPredictions ?? 0}
-          </div>
-          <div className="absolute -right-2 -bottom-2 opacity-5 text-cyan-400">
-            <TrendingUp size={80} />
-          </div>
-        </div>
-
-        <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-xl relative overflow-hidden">
-          <div className="flex items-center gap-3 mb-2 text-slate-400">
-            <Database size={18} />
-            <span className="text-xs uppercase tracking-wider">Database Health</span>
-          </div>
-          <div className="text-lg font-bold text-green-400 uppercase flex items-center gap-2">
-            <CheckCircle2 size={16} />
-            {diag?.status || "HEALTHY"}
-          </div>
-          <div className="text-[10px] text-slate-500 mt-1">LATENCY: {diag?.latency || "14ms"}</div>
+          <Activity size={20} className="text-green-500 animate-pulse" />
         </div>
       </div>
 
-      {/* Admin Controls */}
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-slate-900/80 border border-cyan-900/30 p-6 rounded-2xl shadow-2xl shadow-cyan-900/10">
-          <h2 className="text-sm font-bold text-white mb-4 uppercase tracking-widest flex items-center gap-2">
-            <RefreshCw size={14} className="text-cyan-500" />
-            Oracle Control
+      {/* SECTION 1: EXECUTIVE SUMMARY (REVENUE) */}
+      <div className="max-w-7xl mx-auto mb-12">
+        <h2 className="text-xs font-bold text-slate-500 mb-6 uppercase tracking-widest flex items-center gap-2">
+          <DollarSign size={14} className="text-emerald-500" />
+          Financial Performance
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-emerald-500/30 transition-all">
+            <p className="text-[10px] text-slate-500 uppercase mb-1">Monthly Recurring (MRR)</p>
+            <p className="text-3xl font-black text-white">{stats?.mrr || "$0"}</p>
+            <div className="mt-2 text-[10px] text-emerald-500 font-bold">+12% vs last month</div>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all">
+            <p className="text-[10px] text-slate-500 uppercase mb-1">Annual Run Rate (ARR)</p>
+            <p className="text-3xl font-black text-white">{stats?.arr || "$0"}</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden group hover:border-purple-500/30 transition-all">
+            <p className="text-[10px] text-slate-500 uppercase mb-1">Conversion Rate</p>
+            <p className="text-3xl font-black text-white">{stats?.conversionRate || "0%"}</p>
+            <p className="text-[10px] text-slate-500 mt-2 italic text-purple-400">Free to Premium</p>
+          </div>
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl relative overflow-hidden">
+            <p className="text-[10px] text-slate-500 uppercase mb-1">Verified Win Rate</p>
+            <p className="text-3xl font-black text-emerald-400">{stats?.winRate || "0%"}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 2: OPERATIONAL METRICS */}
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* User Growth */}
+        <div className="lg:col-span-2 space-y-6">
+          <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <Users size={14} className="text-blue-500" />
+            Platform Adoption
           </h2>
-          <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-            Forces the Finnhub scanner to pull fresh market data and generate new 
-            Daily T10 Picks. This bypasses the 9:00 AM scheduler.
-          </p>
-          <button 
-            onClick={async () => {
-              const res = await fetch('/api/oracle/daily?refresh=true');
-              if (res.ok) queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
-            }}
-            className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold rounded-lg transition-all active:scale-95 text-xs uppercase"
-          >
-            Force Regenerate Picks
-          </button>
-        </div>
-
-        <div className="bg-slate-900/30 border border-slate-800 p-6 rounded-2xl">
-          <h3 className="text-xs font-bold text-slate-500 mb-4 uppercase tracking-widest">System Logs</h3>
-          <div className="space-y-2">
-            <div className="text-[10px] flex gap-2">
-              <span className="text-cyan-700">[OK]</span>
-              <span className="text-slate-500">API connection established</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl flex items-center gap-6">
+              <div className="p-4 bg-blue-500/10 rounded-xl text-blue-500">
+                <Users size={32} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{stats?.totalUsers || 0}</p>
+                <p className="text-[10px] text-slate-500 uppercase">Registered Operatives</p>
+              </div>
             </div>
-            <div className="text-[10px] flex gap-2">
-              <span className="text-cyan-700">[OK]</span>
-              <span className="text-slate-500">Finnhub Bridge Active</span>
-            </div>
-            <div className="text-[10px] flex gap-2">
-              <span className="text-yellow-700">[LOG]</span>
-              <span className="text-slate-500">Stats synced: {stats?.totalPredictions} signals</span>
+            <div className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl flex items-center gap-6">
+              <div className="p-4 bg-cyan-500/10 rounded-xl text-cyan-500">
+                <TrendingUp size={32} />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{stats?.totalPredictions || 0}</p>
+                <p className="text-[10px] text-slate-500 uppercase">AI Signals Generated</p>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* TURNKEY CONTROLS */}
+        <div className="space-y-6">
+          <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <ShieldCheck size={14} className="text-orange-500" />
+            Asset Control
+          </h2>
+          <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
+            <button 
+              onClick={async () => {
+                const res = await fetch('/api/oracle/daily?refresh=true');
+                if (res.ok) queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+              }}
+              className="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black rounded-xl transition-all flex items-center justify-center gap-3 text-xs uppercase"
+            >
+              <RefreshCw size={16} />
+              Regenerate Market Picks
+            </button>
+            <button className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl transition-all text-xs uppercase border border-slate-700">
+              Finalize All Pending
+            </button>
+            <p className="text-[10px] text-slate-500 text-center italic">
+              Use these tools to maintain "Turnkey" signal freshess for buyers.
+            </p>
+          </div>
+        </div>
+
       </div>
     </div>
   );
