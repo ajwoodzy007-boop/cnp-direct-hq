@@ -1,32 +1,34 @@
 import express from 'express';
-// REMOVED Yahoo Finance imports completely to stop ETIMEDOUT errors
-import { SentimentIntensityAnalyzer } from 'vader-sentiment';
+// REMOVED Yahoo Finance imports completely
 import { RSI } from 'technicalindicators';
-import { query } from '../db';
 
 const router = express.Router();
 
 /**
  * Backtest Route - Sanitized
- * Yahoo Finance historical data pulls were timing out.
- * This route is now stabilized to prevent system-wide crashes.
+ * Historical data testing is being migrated from Yahoo to Finnhub.
+ * Gutted to prevent 'yahoo-finance2' resolution errors during build.
  */
 router.post('/', async (req, res) => {
   try {
-    const { ticker, days = 30 } = req.body;
-    console.log(`[Backtest] Request for ${ticker} over ${days} days - Yahoo Disabled`);
+    const { ticker, timeframe = '30d' } = req.body;
+    console.log(`[Backtest] Request for ${ticker} (${timeframe}) - Yahoo Disabled`);
 
-    // Returning a successful but empty response to keep the UI from breaking
-    // This allows the rest of the app to stay online for your 16 users
+    // Returning success with empty data to keep the UI from crashing
     res.json({
       ticker: ticker?.toUpperCase(),
-      days,
+      timeframe,
       results: [],
-      message: "Historical backtesting is temporarily offline for maintenance."
+      metrics: {
+        winRate: 0,
+        totalTrades: 0,
+        profitFactor: 0
+      },
+      message: "Backtesting engine is undergoing maintenance."
     });
   } catch (error) {
-    console.error('[Backtest] Route failed:', error);
-    res.status(500).json({ error: 'Backtest engine error' });
+    console.error('[Backtest] Route error:', error);
+    res.status(500).json({ error: 'Backtest service offline' });
   }
 });
 
