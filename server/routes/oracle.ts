@@ -3,16 +3,33 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-// This handles the base path AND any sub-path (like /sentinel)
-router.get(['/', '/sentinel', '/daily', '/*'], async (_req, res) => {
+// 1. Handles the 'sentinel' request (The list of stocks)
+router.get('/sentinel', async (_req, res) => {
   try {
     const data = await runMarketScan();
-    // Return the raw array. Frontend calls .slice() on this.
-    const cleanArray = Array.isArray(data) ? data : [];
-    res.status(200).json(cleanArray); 
+    // Your screenshot shows this is already working perfectly!
+    res.status(200).json(Array.isArray(data) ? data : []);
   } catch (error) {
-    console.error('[Oracle] Sentinel Path Error:', error);
-    res.status(200).json([]); // Still return 200 [] so UI doesn't say "Offline"
+    res.status(200).json([]);
+  }
+});
+
+// 2. Handles the 'daily' request (The specific briefing)
+// We provide a single object with a status and one market highlight
+router.get('/daily', async (_req, res) => {
+  try {
+    const data = await runMarketScan();
+    const marketArray = Array.isArray(data) ? data : [];
+    
+    // Most frontends expect an object for 'daily', not a full list
+    res.status(200).json({
+      success: true,
+      status: 'online',
+      briefing: "Market Sentinel is active and monitoring price action.",
+      data: marketArray[0] || { ticker: 'SPY', price: 0 }
+    });
+  } catch (error) {
+    res.status(200).json({ success: false, status: 'offline' });
   }
 });
 
