@@ -4,30 +4,36 @@ import { runMarketScan } from '../lib/sentinel';
 const router = express.Router();
 
 /**
- * Oracle/Sentinel Route - Sanitized
- * Provides the "Live" status for the dashboard.
+ * GET /api/market/sentinel
+ * This is the primary endpoint the frontend checks for "Online" status
  */
-router.get('/', async (req, res) => {
-  try {
-    const data = await runMarketScan();
-    res.json(data);
-  } catch (error) {
-    console.error('[Oracle] Failed to fetch sentinel data:', error);
-    res.status(500).json({ error: 'Sentinel service temporary offline' });
-  }
-});
-
-// Adding the specific "daily" endpoint your frontend might be calling
-router.get('/daily', async (req, res) => {
+router.get('/sentinel', async (req, res) => {
   try {
     const data = await runMarketScan();
     res.json({
       status: 'online',
-      lastUpdate: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
       marketData: data
     });
   } catch (error) {
-    res.status(500).json({ error: 'Daily briefing offline' });
+    console.error('[Oracle] Sentinel Fetch Error:', error);
+    res.status(500).json({ status: 'offline', error: 'Market data service unavailable' });
+  }
+});
+
+/**
+ * GET /api/oracle/daily
+ * Fallback for daily briefing components
+ */
+router.get('/daily', async (req, res) => {
+  try {
+    const data = await runMarketScan();
+    res.json({
+      success: true,
+      data: data[0] || {}
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Daily update failed' });
   }
 });
 
