@@ -10,34 +10,31 @@ passport.use(
     { usernameField: 'email' }, 
     async (email, password, done) => {
       try {
-        console.log(`[Auth Audit] Attempting login for: ${email}`);
+        console.log(`[Auth] Attempting login for: ${email}`);
         
-        // 1. Search both email AND username columns to be safe
+        // Removed the "username" column check to fix the DB error
         const users = await query(
-          "SELECT * FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($1)", 
+          "SELECT * FROM users WHERE LOWER(email) = LOWER($1)", 
           [email]
         );
         
         const user = users[0];
         
         if (!user) {
-          console.log(`[Auth Audit] User not found in DB for: ${email}`);
+          console.log(`[Auth] User not found: ${email}`);
           return done(null, false, { message: "Invalid email or password" });
         }
 
-        // 2. Log found user (Internal only, don't show to users)
-        console.log(`[Auth Audit] User found. Matching password...`);
-
-        // 3. Temporary Plain-Text Check (Matches your previous structure)
+        // Plain-text check based on your current setup
         if (user.password !== password) {
-          console.log(`[Auth Audit] Password mismatch for: ${email}`);
+          console.log(`[Auth] Password mismatch for: ${email}`);
           return done(null, false, { message: "Invalid email or password" });
         }
 
-        console.log(`[Auth Audit] Login Successful: ${email}`);
+        console.log(`[Auth] Login Successful: ${email}`);
         return done(null, user);
       } catch (err) {
-        console.error(`[Auth Audit] Database Error:`, err);
+        console.error(`[Auth] Database Error:`, err);
         return done(err);
       }
     }
