@@ -1,15 +1,13 @@
 import axios from 'axios';
 
-// 1. Configuration
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
-
-// Helper to pause execution to stay under Finnhub's free-tier rate limits
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-/**
- * fetchFinnhub
- * Internal helper to handle the specific Finnhub quote API call
- */
+// Simple Global Cache
+let cachedData: any = null;
+let lastScanTime = 0;
+const CACHE_DURATION = 60 * 1000; // 1 minute
+
 async function fetchFinnhub(symbol: string) {
   try {
     const response = await axios.get(
@@ -17,30 +15,29 @@ async function fetchFinnhub(symbol: string) {
     );
     return response.data;
   } catch (error: any) {
-    if (error.response?.status === 429) {
-      throw new Error("Finnhub error: Too Many Requests");
-    }
+    if (error.response?.status === 429) throw new Error("429");
     throw error;
   }
 }
 
-/**
- * runMarketScan
- * The primary engine for the Market Sentinel dashboard
- */
 export async function runMarketScan() {
+  const now = Date.now();
+  
+  // 1. Return cached data if it's less than 1 minute old
+  if (cachedData && (now - lastScanTime < CACHE_DURATION)) {
+    console.log("[Sentinel] Returning cached market data...");
+    return cachedData;
+  }
+
   const tickers = ['SPY', 'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMD', 'GOOGL', 'AMZN', 'NFLX', 'META'];
   const results = [];
 
-  console.log(`[Sentinel] Scanning ${tickers.length} blue-chip tickers with 250ms throttling...`);
+  console.log(`[Sentinel] Cache expired. Starting fresh scan with 1s throttling...`);
 
-  // We use a sequential loop instead of Promise.all to prevent 429 Rate Limit crashes
   for (const ticker of tickers) {
     try {
       const data = await fetchFinnhub(ticker);
-      
-      // Ensure the API returned a valid current price ('c')
-      if (data && data.c !== undefined) {
+      if (data && data.c) {
         results.push({
           ticker,
           price: data.c,
@@ -49,25 +46,24 @@ export async function runMarketScan() {
           timestamp: new Date().toISOString()
         });
       }
-
-      // Pause briefly between each request to remain stable
-      await sleep(250); 
-
+      // 2. Increase delay to 1000ms to be 100% safe on free tier
+      await sleep(1000); 
     } catch (error: any) {
-      console.error(`[Sentinel] Skipping ${ticker} due to error: ${error.message}`);
-      // Continue to the next ticker so the whole service doesn't go offline
-      continue; 
+      if (error.message === "429") {
+        console.error(`[Sentinel] Rate limit hit on ${ticker}. Stopping scan.`);
+        break; // Stop scanning to let the API "cool down"
+      }
+      continue;
     }
   }
 
-  // Fallback: If the API is completely blocked, return a placeholder to keep the UI from crashing
-  if (results.length === 0) {
-    return [{ 
-      ticker: 'MARKET', 
-      price: 0, 
-      status: 'Service Throttled - Retrying in 60s' 
-    }];
+  // 3. Only update cache if we got actual results
+  if (results.length > 0) {
+    cachedData = results;
+    lastScanTime = now;
+    return results;
   }
 
-  return results;
+  // 4. Ultimate Fallback: Return old cache even if expired, or empty array
+  return cachedData || [];
 }
