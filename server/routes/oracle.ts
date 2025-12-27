@@ -3,36 +3,36 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-// Handles ALL market-related sub-paths
-router.get(['/', '/sentinel', '/daily', '/all', '/movers'], async (req, res) => {
+router.get(['/sentinel', '/daily', '/'], async (req, res) => {
   try {
-    const rawData = await runMarketScan();
-    const marketArray = Array.isArray(rawData) ? rawData : [];
+    const data = await runMarketScan();
+    // Ensure we always have an array to prevent the .slice() crash
+    const marketArray = Array.isArray(data) ? data : [];
 
-    // Map to every possible property name the UI might want
+    // Map every possible field name the frontend might be looking for
     const safeData = marketArray.map(item => ({
       ...item,
       symbol: item.ticker,
-      price: item.price,
-      change: item.change,
-      percentChange: item.percentChange,
-      changesPercentage: item.percentChange, // Fixes .slice() crash
-      lastPrice: item.price
+      changesPercentage: item.percentChange, // This is usually what triggers the slice crash
+      lastPrice: item.price,
+      price: item.price
     }));
 
-    // THE HYBRID FIX: We return an object that IS ALSO an array.
-    // This allows both `data.slice()` and `data.data.slice()` to work.
-    const hybridResponse: any = [...safeData];
-    hybridResponse.data = safeData; 
-    hybridResponse.marketData = safeData;
-    hybridResponse.status = 'online';
-    hybridResponse.success = true;
+    // If the frontend specifically asks for 'daily', wrap it in a status object
+    if (req.path.includes('daily')) {
+      return res.json({
+        status: 'online', 
+        success: true,
+        data: safeData[0] || {},
+        marketData: safeData
+      });
+    }
 
-    res.status(200).json(hybridResponse);
+    // IMPORTANT: Return the clean array for the dashboard list
+    res.json(safeData);
   } catch (error) {
-    const fallback: any = [];
-    fallback.data = [];
-    res.status(200).json(fallback);
+    // Fail-safe: always return an array
+    res.json([]); 
   }
 });
 
