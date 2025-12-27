@@ -2,41 +2,28 @@ import { build, type BuildOptions } from "esbuild";
 import { join } from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { builtinModules } from "module";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-/**
- * Build Script - Sanitized for Market Sentinel
- * Removed 'yahoo-finance2' to prevent build-time validation crashes.
- */
-const forceExternal = [
-  "stripe",
-  "stripe-replit-sync",
-  "express",
-  "pg",
-  "drizzle-orm"
-  // REMOVED: "yahoo-finance2"
-];
 
 const buildOptions: BuildOptions = {
   entryPoints: [join(__dirname, "../server/index.ts")],
   bundle: true,
   platform: "node",
   target: "node20",
-  // This matches your package.json start script: node dist/index.cjs
-  outfile: join(__dirname, "../dist/index.cjs"),
-  format: "cjs",
-  external: forceExternal,
+  outfile: join(__dirname, "../dist/index.js"), // Changed to .js for ESM
+  format: "esm", // This fixes the "Top-level await" error
+  packages: "external", // This fixes the "Babel/Tailwind/Oxide" errors
   sourcemap: true,
-  minify: false, // Set to true for smaller production files
+  minify: false,
 };
 
 async function startBuild() {
-  console.log("[Build] Starting production build...");
+  console.log("[Build] Starting production build (ESM Mode)...");
   try {
     await build(buildOptions);
-    console.log("[Build] Successfully compiled to dist/index.cjs");
+    console.log("[Build] Successfully compiled to dist/index.js");
   } catch (error) {
     console.error("[Build] Error during compilation:", error);
     process.exit(1);
