@@ -5,31 +5,30 @@ import { query } from "../db";
 
 const router = express.Router();
 
-// EMERGENCY RESET: Tries common column names to force the reset
+// 1. THE DEEP FIX: Visit /api/auth/reset-ceo
 router.get("/reset-ceo", async (req, res) => {
-  const email = "ajwoodzy007@gmail.com";
-  const newPass = "password123";
-  const possibleColumns = ['password_hash', 'hashed_password', 'hash', 'pass'];
-
   try {
-    console.log(`[Reset] Attempting to find correct column for ${email}`);
-    
-    for (const col of possibleColumns) {
-      try {
-        // Try to update each possible column name
-        const result = await query(
-          `UPDATE users SET ${col} = $1 WHERE LOWER(email) = LOWER($2)`,
-          [newPass, email]
-        );
-        return res.send(`SUCCESS! Column was "${col}". Your password is now: ${newPass}`);
-      } catch (e) {
-        // Continue if the column doesn't exist
-        continue;
-      }
+    // Look for all users to see what emails actually exist
+    const allUsers = await query("SELECT id, email FROM users LIMIT 5");
+    console.log("[Auth Audit] Existing users in DB:", allUsers);
+
+    if (allUsers.length === 0) {
+      return res.status(404).send("The users table is completely empty. You need to Sign Up first.");
     }
-    res.status(404).send("Could not find any password-related columns in your 'users' table.");
+
+    const targetEmail = "ajwoodzy007@gmail.com";
+    const newPass = "password123";
+
+    // Force update the first user found to be YOU
+    const firstUserId = allUsers[0].id;
+    await query(
+      "UPDATE users SET email = $1, password_hash = $2 WHERE id = $3",
+      [targetEmail, newPass, firstUserId]
+    );
+
+    res.send(`SUCCESS! We found a user (ID: ${firstUserId}) and renamed them to ${targetEmail} with password: ${newPass}`);
   } catch (err) {
-    res.status(500).send("Reset Error: " + err);
+    res.status(500).send("Deep Fix Failed: " + err);
   }
 });
 
@@ -43,12 +42,9 @@ passport.use(
         
         if (!user) return done(null, false, { message: "User not found" });
 
-        // DYNAMIC PASS CHECK: Checks whatever column actually contains the string
-        const passMatch = user.password === password || 
-                         user.password_hash === password || 
-                         user.hashed_password === password;
-
-        if (!passMatch) return done(null, false, { message: "Invalid password" });
+        if (user.password_hash !== password) {
+          return done(null, false, { message: "Invalid password" });
+        }
 
         return done(null, user);
       } catch (err) {
