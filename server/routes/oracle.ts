@@ -1,37 +1,34 @@
 import express from 'express';
 import { runMarketScan } from '../lib/sentinel';
-import { query } from '../db';
-// REMOVED Yahoo Finance import to stop build errors
 
 const router = express.Router();
 
 /**
- * Oracle Route - Sanitized
- * This route triggers the market scanner which is now 100% Finnhub-powered.
+ * Oracle/Sentinel Route - Sanitized
+ * Provides the "Live" status for the dashboard.
  */
-router.post('/scan', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    console.log('[Oracle] Starting fresh market scan...');
-    
-    // Calls the logic in server/lib/sentinel.ts
-    const results = await runMarketScan();
-    
-    if (!results || results.length === 0) {
-      return res.status(404).json({ message: 'No scan results available' });
-    }
-
-    res.json(results);
+    const data = await runMarketScan();
+    res.json(data);
   } catch (error) {
-    console.error('[Oracle] Scan route failed:', error);
-    res.status(500).json({ error: 'Failed to complete market scan' });
+    console.error('[Oracle] Failed to fetch sentinel data:', error);
+    res.status(500).json({ error: 'Sentinel service temporary offline' });
   }
 });
 
-/**
- * Helper route to check scanner status
- */
-router.get('/status', async (req, res) => {
-  res.json({ status: 'online', engine: 'Finnhub-Sentinel' });
+// Adding the specific "daily" endpoint your frontend might be calling
+router.get('/daily', async (req, res) => {
+  try {
+    const data = await runMarketScan();
+    res.json({
+      status: 'online',
+      lastUpdate: new Date().toISOString(),
+      marketData: data
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Daily briefing offline' });
+  }
 });
 
 export default router;
