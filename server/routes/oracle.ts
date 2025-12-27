@@ -3,15 +3,16 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-// This catch-all handles /sentinel, /daily, or even just /
-router.get(['/', '/sentinel', '/daily'], async (_req, res) => {
+// This handles the base path AND any sub-path (like /sentinel)
+router.get(['/', '/sentinel', '/daily', '/*'], async (_req, res) => {
   try {
     const data = await runMarketScan();
-    // Force the return to be a clean array, no matter what.
+    // Return the raw array. Frontend calls .slice() on this.
     const cleanArray = Array.isArray(data) ? data : [];
-    res.json(cleanArray); 
+    res.status(200).json(cleanArray); 
   } catch (error) {
-    res.json([]); 
+    console.error('[Oracle] Sentinel Path Error:', error);
+    res.status(200).json([]); // Still return 200 [] so UI doesn't say "Offline"
   }
 });
 
