@@ -6,26 +6,24 @@ import aiRouter from "./routes/ai";
 import authRouter from "./routes/auth";
 import backtestRouter from "./routes/backtest";
 import chartRouter from "./routes/chart";
-import oracleRouter from "./routes/oracle";
+import oracleRouter from "./routes/oracle"; // Ensure this matches the file name
 import strategistRouter from "./routes/strategist";
 import stripeRouter from "./routes/stripe";
 
-/**
- * Master Route Registry - Sanitized
- * This file maps your folder structure to the API endpoints.
- * All Yahoo Finance dependencies have been stripped from the sub-routes.
- */
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Registering the 9 routes you listed in your folder
+  // Mapping the API to the sanitized files
   app.use("/api/academy", academyRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api/ai", aiRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/backtest", backtestRouter);
   app.use("/api/chart", chartRouter);
-  app.use("/api/oracle", oracleRouter);
+  app.use("/api/oracle", oracleRouter); 
   app.use("/api/strategist", strategistRouter);
   app.use("/api/stripe", stripeRouter);
+
+  // Fallback for the "Sentinel" specific endpoint if your frontend calls it directly
+  app.use("/api/market/sentinel", oracleRouter);
 
   const httpServer = createServer(app);
   return httpServer;
