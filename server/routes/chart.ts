@@ -1,53 +1,21 @@
 import express from 'express';
-import YahooFinanceDefault from 'yahoo-finance2';
-
-// Handle both ESM (dev) and CJS (production) module formats
-const YahooFinance = (YahooFinanceDefault as any).default || YahooFinanceDefault;
-const yf = typeof YahooFinance === 'function' ? new YahooFinance() : YahooFinance;
 const router = express.Router();
 
-router.get('/', async (req, res) => {
-  const { ticker } = req.query;
-  
-  if (!ticker || typeof ticker !== 'string') {
-    return res.status(400).json({ success: false, error: "Ticker required" });
-  }
-
+// This route is sanitized to remove yahoo-finance2
+router.get('/:ticker', async (req, res) => {
   try {
-    console.log(`[Chart API] Fetching history for: ${ticker}`);
-
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - 30);
-
-    const chartData = await yf.chart(ticker.toUpperCase(), { 
-      period1: startDate,
-      period2: endDate,
-      interval: '1d' 
-    }) as any;
-
-    const quotes = chartData?.quotes || [];
+    const { ticker } = req.params;
+    console.log(`[Chart] Request for ${ticker} - Yahoo Finance disabled`);
     
-    if (!quotes || quotes.length === 0) {
-      console.warn(`[Chart API] No history found for ${ticker}`);
-      return res.status(404).json({ success: false, error: "No history found" });
-    }
-
-    const data = quotes.map((day: any) => ({
-      date: new Date(day.date).toISOString().split('T')[0].slice(5),
-      price: day.close
-    })).filter((d: any) => d.price != null);
-
-    const startPrice = data[0]?.price || 0;
-    const endPrice = data[data.length - 1]?.price || 0;
-    const trend = endPrice >= startPrice ? 'up' : 'down';
-
-    console.log(`[Chart API] Success: Sent ${data.length} candles for ${ticker}`);
-    res.json({ success: true, data, trend });
-
-  } catch (error: any) {
-    console.error(`[Chart API] CRASH on ${ticker}:`, error.message);
-    res.status(500).json({ success: false, error: error.message });
+    // Returning empty results for now so the frontend doesn't crash
+    res.json({ 
+      ticker: ticker?.toUpperCase(), 
+      results: [], 
+      message: "Chart data is being migrated to Finnhub" 
+    });
+  } catch (error) {
+    console.error('[Chart] Route error:', error);
+    res.status(500).json({ error: 'Chart service temporary offline' });
   }
 });
 
