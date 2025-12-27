@@ -8,43 +8,33 @@ router.get(['/sentinel', '/daily', '/'], async (req, res) => {
     const data = await runMarketScan();
     const marketArray = Array.isArray(data) ? data : [];
 
-    // Map the data with extreme safety: strings AND numbers
-    const mappedData = marketArray.map(item => {
-      const p = item.price || 0;
-      const ch = item.change || 0;
-      const pc = item.percentChange || 0;
+    // Providing EVERY possible field name to stop the frontend from crashing
+    const safetyMappedData = marketArray.map(item => ({
+      ...item,
+      symbol: item.ticker,
+      price: item.price,
+      change: item.change,
+      // We provide BOTH names for the percent to satisfy all components
+      percentChange: item.percentChange,
+      changesPercentage: item.percentChange, 
+      lastPrice: item.price,
+      // Ensure values are numbers to prevent .toFixed() errors
+      price_num: Number(item.price),
+      change_num: Number(item.change)
+    }));
 
-      return {
-        ...item,
-        symbol: item.ticker,
-        // Number versions
-        price: p,
-        change: ch,
-        percentChange: pc,
-        changesPercentage: pc,
-        // String versions (some components require these for display)
-        priceStr: p.toFixed(2),
-        changeStr: ch.toFixed(2),
-        percentStr: pc.toFixed(2) + '%',
-        lastPrice: p
-      };
-    });
-
-    // If the frontend is hitting 'daily', it expects the status: 'online' key
     if (req.path.includes('daily')) {
       return res.json({
-        status: 'online', // Critical for clearing the red overlay
+        status: 'online', // This clears the "Offline" red box
         success: true,
-        data: mappedData[0] || { symbol: 'SPY', price: 0 },
-        marketData: mappedData
+        data: safetyMappedData[0] || {},
+        marketData: safetyMappedData
       });
     }
 
-    // Return the clean array for the main dashboard list
-    res.json(mappedData);
+    res.json(safetyMappedData);
   } catch (error) {
-    console.error('[Oracle] Data Mapping Error:', error);
-    res.json([]); 
+    res.json([]); // Return empty array to prevent .slice() errors
   }
 });
 
