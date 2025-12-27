@@ -1,14 +1,19 @@
 import express from 'express';
 import { runMarketScan } from '../lib/sentinel';
 import { query } from '../db';
-// 1. REMOVED Yahoo Finance import to stop ETIMEDOUT errors
+// REMOVED Yahoo Finance import to stop build errors
 
 const router = express.Router();
 
-// 2. Updated to use the Sentinel results we just fixed
+/**
+ * Oracle Route - Sanitized
+ * This route triggers the market scanner which is now 100% Finnhub-powered.
+ */
 router.post('/scan', async (req, res) => {
   try {
     console.log('[Oracle] Starting fresh market scan...');
+    
+    // Calls the logic in server/lib/sentinel.ts
     const results = await runMarketScan();
     
     if (!results || results.length === 0) {
@@ -20,6 +25,13 @@ router.post('/scan', async (req, res) => {
     console.error('[Oracle] Scan route failed:', error);
     res.status(500).json({ error: 'Failed to complete market scan' });
   }
+});
+
+/**
+ * Helper route to check scanner status
+ */
+router.get('/status', async (req, res) => {
+  res.json({ status: 'online', engine: 'Finnhub-Sentinel' });
 });
 
 export default router;
