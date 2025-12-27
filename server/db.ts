@@ -1,80 +1,40 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
-import * as schema from "@shared/schema";
+import pg from 'pg';
+const { Pool } = pg;
 
-const pool = new pg.Pool({
+// 1. Connection Configuration
+// Railway automatically provides the DATABASE_URL environment variable
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  connectionTimeoutMillis: 30000,
-  idleTimeoutMillis: 30000,
-  max: 10
 });
 
-export const db = drizzle(pool, { schema });
-
-export async function initDb() {
-  let client;
-  let retries = 3;
-  
-  while (retries > 0) {
-    try {
-      client = await pool.connect();
-      break;
-    } catch (err) {
-      retries--;
-      console.log(`Database connection attempt failed, ${retries} retries left...`);
-      if (retries === 0) {
-        console.error("Failed to connect to database after 3 attempts");
-        return;
-      }
-      await new Promise(r => setTimeout(r, 2000));
-    }
-  }
-  
-  if (!client) return;
+// 2. Query Helper Function
+// This centralizes database calls and error logging
+export const query = async (text: string, params?: any[]) => {
   try {
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS portfolio (
-        id TEXT PRIMARY KEY,
-        "userId" INTEGER,
-        ticker TEXT NOT NULL,
-        type TEXT NOT NULL,
-        "entryPrice" REAL NOT NULL, 
-        shares REAL NOT NULL,
-        "dateOpened" TEXT NOT NULL,
-        status TEXT DEFAULT 'OPEN',
-        "strikePrice" REAL,
-        "expirationDate" TEXT,
-        "contractSymbol" TEXT
-      );
-    `);
-    
-    await client.query(`
-      ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS "strikePrice" REAL;
-    `).catch(() => {});
-    await client.query(`
-      ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS "expirationDate" TEXT;
-    `).catch(() => {});
-    await client.query(`
-      ALTER TABLE portfolio ADD COLUMN IF NOT EXISTS "contractSymbol" TEXT;
-    `).catch(() => {});
+    const res = await pool.query(text, params);
+    return res.rows;
+  } catch (err) {
+    console.error("[DB Error] Query failed:", err);
+    throw err;
+  }
+};
 
-    await client.query(`
+// 3. Self-Healing Schema Logic
+// This ensures your 'users' table is always ready with the correct columns
+(async () => {
+  try {
+    await query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
-        tier TEXT DEFAULT 'FREE',
+        is_premium BOOLEAN DEFAULT TRUE,
+        is_admin BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    
-    console.log("🗄️  Database Ready: Options Support Active.");
+    console.log("[DB] Users table verified and ready.");
   } catch (err) {
-    console.error("DB Init Error:", err);
-  } finally {
-    client.release();
+    console.error("[DB] Table setup failed:", err);
   }
-}
-
-export const query = (text: string, params?: any[]) => pool.query(text, params);
+})();
