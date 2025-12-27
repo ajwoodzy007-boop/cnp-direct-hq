@@ -5,16 +5,16 @@ import oracleRouter from "./routes/oracle";
 import chartRouter from "./routes/chart";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // 1. Auth Logic
   app.use("/api/auth", authRouter);
 
-  // MARKET & SENTINEL: Map all variations to oracleRouter
+  // 2. Market Logic (Maps all possible paths to the safe Oracle router)
   app.use("/api/market", oracleRouter);
   app.use("/api/oracle", oracleRouter);
   app.use("/api/sentinel", oracleRouter);
 
-  // CHARTS: Map all variations to chartRouter
+  // 3. Chart Logic
   app.use("/api/chart", chartRouter);
-  app.use("/api/charts", chartRouter);
 
   const httpServer = createServer(app);
   return httpServer;
