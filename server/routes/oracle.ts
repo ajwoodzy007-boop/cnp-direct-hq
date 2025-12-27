@@ -5,20 +5,20 @@ const router = express.Router();
 
 /**
  * GET /api/market/sentinel
- * Standardizing the response so the frontend doesn't crash
+ * Specifically fixed to return an ARRAY so .slice() works on the frontend.
  */
 router.get('/sentinel', async (_req, res) => {
   try {
     const data = await runMarketScan();
     
-    // We provide both an array and a status object to satisfy different components
-    res.json({
-      status: 'online',
-      marketData: Array.isArray(data) ? data : [],
-      lastUpdate: new Date().toISOString()
-    });
+    // The frontend uses .slice(), so we MUST return a naked array.
+    // If runMarketScan() returns null or an object, we force it to an empty array.
+    const dataArray = Array.isArray(data) ? data : [];
+    
+    res.json(dataArray); 
   } catch (error) {
-    res.status(500).json({ status: 'offline', marketData: [] });
+    console.error('[Oracle] Sentinel Error:', error);
+    res.json([]); // Return empty array on error to prevent frontend crash
   }
 });
 
