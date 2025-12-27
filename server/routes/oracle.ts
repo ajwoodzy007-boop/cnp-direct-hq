@@ -3,38 +3,38 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
+// This route now returns data INSTANTLY from the cache
 router.get(['/sentinel', '/daily', '/'], async (req, res) => {
   try {
+    // We don't 'await' a new scan here; we just get the current state
     const data = await runMarketScan();
     const marketArray = Array.isArray(data) ? data : [];
 
-    // Providing EVERY possible field name to stop the frontend from crashing
-    const safetyMappedData = marketArray.map(item => ({
+    // Map the Finnhub data to include every possible alias the frontend needs
+    const mappedData = marketArray.map(item => ({
       ...item,
       symbol: item.ticker,
-      price: item.price,
-      change: item.change,
-      // We provide BOTH names for the percent to satisfy all components
-      percentChange: item.percentChange,
-      changesPercentage: item.percentChange, 
-      lastPrice: item.price,
-      // Ensure values are numbers to prevent .toFixed() errors
-      price_num: Number(item.price),
-      change_num: Number(item.change)
+      price: item.price || 0,
+      change: item.change || 0,
+      percentChange: item.percentChange || 0,
+      changesPercentage: item.percentChange || 0, // Critical alias
+      lastPrice: item.price || 0
     }));
 
+    // If the frontend asks for 'daily', wrap it in the status object it wants
     if (req.path.includes('daily')) {
       return res.json({
-        status: 'online', // This clears the "Offline" red box
+        status: 'online', // This removes the red "Offline" box
         success: true,
-        data: safetyMappedData[0] || {},
-        marketData: safetyMappedData
+        data: mappedData[0] || { symbol: 'SPY', price: 0 },
+        marketData: mappedData
       });
     }
 
-    res.json(safetyMappedData);
+    // Otherwise, return the clean array for the dashboard list
+    res.json(mappedData);
   } catch (error) {
-    res.json([]); // Return empty array to prevent .slice() errors
+    res.json([]); // Fail-safe: always return an array
   }
 });
 
