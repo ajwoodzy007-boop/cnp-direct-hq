@@ -5,36 +5,42 @@ import { query } from "../db";
 
 const router = express.Router();
 
+// 1. EMERGENCY RESET ROUTE (Delete this after you log in!)
+// Visit: your-site-url/api/auth/reset-ceo
+router.get("/reset-ceo", async (req, res) => {
+  try {
+    const testPassword = "password123"; // This will be your new temporary password
+    const email = "ajwoodzy007@gmail.com";
+    
+    await query(
+      "UPDATE users SET password = $1 WHERE LOWER(email) = LOWER($2)",
+      [testPassword, email]
+    );
+    
+    res.send(`Success! Password for ${email} is now: ${testPassword}. Go to the login page and try it now.`);
+  } catch (err) {
+    res.status(500).send("Reset failed: " + err);
+  }
+});
+
 passport.use(
   new LocalStrategy(
     { usernameField: 'email' }, 
     async (email, password, done) => {
       try {
-        console.log(`[Auth] Attempting login for: ${email}`);
-        
-        // Removed the "username" column check to fix the DB error
-        const users = await query(
-          "SELECT * FROM users WHERE LOWER(email) = LOWER($1)", 
-          [email]
-        );
-        
+        console.log(`[Auth] Login attempt for: ${email}`);
+        const users = await query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [email]);
         const user = users[0];
         
-        if (!user) {
-          console.log(`[Auth] User not found: ${email}`);
-          return done(null, false, { message: "Invalid email or password" });
-        }
+        if (!user) return done(null, false, { message: "Invalid email or password" });
 
-        // Plain-text check based on your current setup
+        // Plain-text check to match the reset route above
         if (user.password !== password) {
-          console.log(`[Auth] Password mismatch for: ${email}`);
           return done(null, false, { message: "Invalid email or password" });
         }
 
-        console.log(`[Auth] Login Successful: ${email}`);
         return done(null, user);
       } catch (err) {
-        console.error(`[Auth] Database Error:`, err);
         return done(err);
       }
     }
