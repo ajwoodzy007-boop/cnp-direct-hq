@@ -3,36 +3,40 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-router.get(['/sentinel', '/daily', '/'], async (_req, res) => {
+router.get(['/sentinel', '/daily', '/'], async (req, res) => {
   try {
     const data = await runMarketScan();
     const marketArray = Array.isArray(data) ? data : [];
 
-    // Map the data to include all common field aliases
-    const aliasedData = marketArray.map(item => ({
+    // Map the Finnhub data to include every possible alias the frontend needs
+    const mappedData = marketArray.map(item => ({
       ...item,
-      // Provide multiple names for the same value to prevent frontend crashes
+      // Essential Aliases to prevent frontend crashes
       symbol: item.ticker,
-      changesPercentage: item.percentChange,
-      changePercent: item.percentChange,
+      price: item.price,
       lastPrice: item.price,
-      price: item.price
+      change: item.change,
+      // Provide BOTH names for the percentage change
+      percentChange: item.percentChange,
+      changesPercentage: item.percentChange, 
+      timestamp: item.timestamp
     }));
 
-    // If the path is 'daily', return an object; otherwise, return the array
-    if (_req.path.includes('daily')) {
+    // If the frontend is hitting 'daily', it often expects a wrapper object
+    if (req.path.includes('daily')) {
       return res.json({
         status: 'online',
         success: true,
-        data: aliasedData[0] || {},
-        marketData: aliasedData
+        data: mappedData[0] || {},
+        marketData: mappedData
       });
     }
 
-    res.json(aliasedData);
+    // Otherwise, return the clean array that the .slice() function needs
+    res.json(mappedData);
   } catch (error) {
-    console.error('[Oracle] Error:', error);
-    res.json([]);
+    console.error('[Oracle] Data Mapping Error:', error);
+    res.json([]); // Always return an array to prevent .slice() errors
   }
 });
 
