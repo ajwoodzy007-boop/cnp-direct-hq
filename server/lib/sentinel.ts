@@ -3,48 +3,53 @@ import axios from 'axios';
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Persistence: Keep data across refreshes
 let cachedData: any = null;
 let lastScanTime = 0;
-let isScanning = false; // New flag to prevent overlapping scans
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for stability
+let isScanning = false; 
 
-async function fetchFinnhub(symbol: string) {
-  try {
-    const response = await axios.get(
-      `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`,
-      { timeout: 5000 }
-    );
-    return response.data;
-  } catch (error: any) {
-    if (error.response?.status === 429) throw new Error("429");
-    throw error;
-  }
-}
-
+/**
+ * runMarketScan
+ * Designed to never block the main thread.
+ */
 export async function runMarketScan() {
   const now = Date.now();
   
-  // 1. If we have ANY data, return it immediately to keep the UI alive
-  if (cachedData && (now - lastScanTime < CACHE_DURATION)) {
+  // 1. IMMEDIATE RETURN: If we have data, send it.
+  if (cachedData && (now - lastScanTime < 300000)) { // 5 min cache
     return cachedData;
   }
 
-  // 2. If a scan is already running, don't start a new one; return old data or empty state
-  if (isScanning) {
-    return cachedData || [{ ticker: 'MARKET', price: 0, status: 'Initializing...' }];
+  // 2. BACKGROUND TRIGGER: Start the scan but DON'T "await" it here.
+  if (!isScanning) {
+    performBackgroundScan(); 
   }
 
-  // 3. Start scan in the background
+  // 3. INSTANT PLACEHOLDER: If no cache exists, send this immediately so the UI doesn't white-screen.
+  return cachedData || [
+    { ticker: 'SPY', price: 0, change: 0, percentChange: 0, status: 'Initializing' },
+    { ticker: 'AAPL', price: 0, change: 0, percentChange: 0, status: 'Initializing' }
+  ];
+}
+
+/**
+ * Actual API Logic - runs "detached" from the request
+ */
+async function performBackgroundScan() {
   isScanning = true;
+  console.log(`[Sentinel] Background scan started...`);
+  
   const tickers = ['SPY', 'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMD', 'GOOGL', 'AMZN', 'NFLX', 'META'];
   const results = [];
-
-  console.log(`[Sentinel] Starting background scan...`);
 
   try {
     for (const ticker of tickers) {
       try {
-        const data = await fetchFinnhub(ticker);
+        const response = await axios.get(
+          `https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`,
+          { timeout: 5000 }
+        );
+        const data = response.data;
         if (data && data.c) {
           results.push({
             ticker,
@@ -54,9 +59,8 @@ export async function runMarketScan() {
             timestamp: new Date().toISOString()
           });
         }
-        await sleep(1000); 
-      } catch (e: any) {
-        if (e.message === "429") break;
+        await sleep(1000); // 1s throttle
+      } catch (e) {
         continue;
       }
     }
@@ -64,10 +68,9 @@ export async function runMarketScan() {
     if (results.length > 0) {
       cachedData = results;
       lastScanTime = Date.now();
+      console.log(`[Sentinel] Background scan complete. Cache updated.`);
     }
   } finally {
     isScanning = false;
   }
-
-  return cachedData || results;
 }
