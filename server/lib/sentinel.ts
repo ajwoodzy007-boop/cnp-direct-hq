@@ -3,15 +3,16 @@ import axios from 'axios';
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Simple Global Cache
 let cachedData: any = null;
 let lastScanTime = 0;
-const CACHE_DURATION = 60 * 1000; // 1 minute
+let isScanning = false; // New flag to prevent overlapping scans
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for stability
 
 async function fetchFinnhub(symbol: string) {
   try {
     const response = await axios.get(
-      `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`
+      `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`,
+      { timeout: 5000 }
     );
     return response.data;
   } catch (error: any) {
@@ -23,47 +24,50 @@ async function fetchFinnhub(symbol: string) {
 export async function runMarketScan() {
   const now = Date.now();
   
-  // 1. Return cached data if it's less than 1 minute old
+  // 1. If we have ANY data, return it immediately to keep the UI alive
   if (cachedData && (now - lastScanTime < CACHE_DURATION)) {
-    console.log("[Sentinel] Returning cached market data...");
     return cachedData;
   }
 
+  // 2. If a scan is already running, don't start a new one; return old data or empty state
+  if (isScanning) {
+    return cachedData || [{ ticker: 'MARKET', price: 0, status: 'Initializing...' }];
+  }
+
+  // 3. Start scan in the background
+  isScanning = true;
   const tickers = ['SPY', 'AAPL', 'TSLA', 'NVDA', 'MSFT', 'AMD', 'GOOGL', 'AMZN', 'NFLX', 'META'];
   const results = [];
 
-  console.log(`[Sentinel] Cache expired. Starting fresh scan with 1s throttling...`);
+  console.log(`[Sentinel] Starting background scan...`);
 
-  for (const ticker of tickers) {
-    try {
-      const data = await fetchFinnhub(ticker);
-      if (data && data.c) {
-        results.push({
-          ticker,
-          price: data.c,
-          change: data.d,
-          percentChange: data.dp,
-          timestamp: new Date().toISOString()
-        });
+  try {
+    for (const ticker of tickers) {
+      try {
+        const data = await fetchFinnhub(ticker);
+        if (data && data.c) {
+          results.push({
+            ticker,
+            price: data.c,
+            change: data.d,
+            percentChange: data.dp,
+            timestamp: new Date().toISOString()
+          });
+        }
+        await sleep(1000); 
+      } catch (e: any) {
+        if (e.message === "429") break;
+        continue;
       }
-      // 2. Increase delay to 1000ms to be 100% safe on free tier
-      await sleep(1000); 
-    } catch (error: any) {
-      if (error.message === "429") {
-        console.error(`[Sentinel] Rate limit hit on ${ticker}. Stopping scan.`);
-        break; // Stop scanning to let the API "cool down"
-      }
-      continue;
     }
+
+    if (results.length > 0) {
+      cachedData = results;
+      lastScanTime = Date.now();
+    }
+  } finally {
+    isScanning = false;
   }
 
-  // 3. Only update cache if we got actual results
-  if (results.length > 0) {
-    cachedData = results;
-    lastScanTime = now;
-    return results;
-  }
-
-  // 4. Ultimate Fallback: Return old cache even if expired, or empty array
-  return cachedData || [];
+  return cachedData || results;
 }
