@@ -5,34 +5,29 @@ const router = express.Router();
 
 router.get(['/sentinel', '/daily', '/'], async (req, res) => {
   try {
-    const data = await runMarketScan();
-    // Ensure we always have an array to prevent the .slice() crash
-    const marketArray = Array.isArray(data) ? data : [];
+    const rawData = await runMarketScan();
+    const marketArray = Array.isArray(rawData) ? rawData : [];
 
-    // Map every possible field name the frontend might be looking for
+    // Map Finnhub fields to every possible frontend alias
     const safeData = marketArray.map(item => ({
       ...item,
       symbol: item.ticker,
-      changesPercentage: item.percentChange, // This is usually what triggers the slice crash
+      changesPercentage: item.percentChange,
       lastPrice: item.price,
       price: item.price
     }));
 
-    // If the frontend specifically asks for 'daily', wrap it in a status object
-    if (req.path.includes('daily')) {
-      return res.json({
-        status: 'online', 
-        success: true,
-        data: safeData[0] || {},
-        marketData: safeData
-      });
-    }
+    // THE HYBRID FIX: Satisfies 'm.slice()' AND 'm.data.slice()'
+    const hybridResponse: any = [...safeData];
+    hybridResponse.data = safeData; 
+    hybridResponse.status = 'online';
+    hybridResponse.success = true;
 
-    // IMPORTANT: Return the clean array for the dashboard list
-    res.json(safeData);
+    res.status(200).json(hybridResponse);
   } catch (error) {
-    // Fail-safe: always return an array
-    res.json([]); 
+    const fallback: any = [];
+    fallback.data = [];
+    res.status(200).json(fallback);
   }
 });
 
