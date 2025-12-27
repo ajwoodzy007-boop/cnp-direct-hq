@@ -4,9 +4,7 @@ import axios from 'axios';
 const router = express.Router();
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
 
-// We use a wildcard and multiple paths to catch any frontend variation
 router.get(['/:symbol', '/'], async (req, res) => {
-  // Fallback to SPY if no symbol is provided in the URL
   const symbol = (req.params.symbol || 'SPY').toUpperCase();
   
   try {
@@ -19,29 +17,21 @@ router.get(['/:symbol', '/'], async (req, res) => {
     );
 
     const data = response.data;
-
     if (!data || data.s !== 'ok' || !data.c) {
       const fallback: any = [];
-      fallback.data = []; 
+      fallback.data = [];
       return res.json(fallback);
     }
 
-    // Map to every possible property name used by charting libraries
     const formattedData = data.c.map((price: number, index: number) => ({
       date: new Date(data.t[index] * 1000).toISOString(),
-      time: data.t[index],
       price: price,
-      value: price,
-      close: price,
       symbol: symbol
     }));
 
-    // The Hybrid Fix that stopped your white screen crashes
-    const hybridResponse: any = [...formattedData];
-    hybridResponse.data = formattedData;
-    hybridResponse.success = true;
-    
-    res.json(hybridResponse);
+    const hybrid: any = [...formattedData];
+    hybrid.data = formattedData;
+    res.json(hybrid);
   } catch (error) {
     const errFallback: any = [];
     errFallback.data = [];
