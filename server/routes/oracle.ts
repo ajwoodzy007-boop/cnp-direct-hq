@@ -3,24 +3,28 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-router.get(['/sentinel', '/daily', '/'], async (req, res) => {
+// Handles ALL market-related sub-paths
+router.get(['/', '/sentinel', '/daily', '/all', '/movers'], async (req, res) => {
   try {
     const rawData = await runMarketScan();
     const marketArray = Array.isArray(rawData) ? rawData : [];
 
-    // Map Finnhub fields to common frontend aliases
+    // Map to every possible property name the UI might want
     const safeData = marketArray.map(item => ({
       ...item,
       symbol: item.ticker,
-      changesPercentage: item.percentChange,
-      lastPrice: item.price,
-      price: item.price
+      price: item.price,
+      change: item.change,
+      percentChange: item.percentChange,
+      changesPercentage: item.percentChange, // Fixes .slice() crash
+      lastPrice: item.price
     }));
 
-    // THE ULTIMATE FIX: We return an object that IS ALSO an array
+    // THE HYBRID FIX: We return an object that IS ALSO an array.
     // This allows both `data.slice()` and `data.data.slice()` to work.
     const hybridResponse: any = [...safeData];
-    hybridResponse.data = safeData; // Satisfies m?.data?.slice
+    hybridResponse.data = safeData; 
+    hybridResponse.marketData = safeData;
     hybridResponse.status = 'online';
     hybridResponse.success = true;
 
