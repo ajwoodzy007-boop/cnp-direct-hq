@@ -5,33 +5,35 @@ import { query } from "../db";
 
 const router = express.Router();
 
-// 1. THE DEEP FIX: Visit /api/auth/reset-ceo
-router.get("/reset-ceo", async (req, res) => {
+// 1. REGISTRATION ROUTE - Targets the 'password_hash' column
+router.post("/register", async (req, res) => {
   try {
-    // Look for all users to see what emails actually exist
-    const allUsers = await query("SELECT id, email FROM users LIMIT 5");
-    console.log("[Auth Audit] Existing users in DB:", allUsers);
-
-    if (allUsers.length === 0) {
-      return res.status(404).send("The users table is completely empty. You need to Sign Up first.");
+    const { email, password } = req.body;
+    
+    // Check if user exists
+    const existing = await query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [email]);
+    if (existing.length > 0) {
+      return res.status(400).json({ error: "User already exists" });
     }
 
-    const targetEmail = "ajwoodzy007@gmail.com";
-    const newPass = "password123";
-
-    // Force update the first user found to be YOU
-    const firstUserId = allUsers[0].id;
-    await query(
-      "UPDATE users SET email = $1, password_hash = $2 WHERE id = $3",
-      [targetEmail, newPass, firstUserId]
+    // Insert new user into the confirmed 'password_hash' column
+    const result = await query(
+      "INSERT INTO users (email, password_hash, is_premium) VALUES ($1, $2, true) RETURNING id, email",
+      [email, password]
     );
 
-    res.send(`SUCCESS! We found a user (ID: ${firstUserId}) and renamed them to ${targetEmail} with password: ${newPass}`);
+    const newUser = result[0];
+    req.login(newUser, (err) => {
+      if (err) return res.status(500).json({ error: "Login after register failed" });
+      return res.json({ success: true, user: newUser });
+    });
   } catch (err) {
-    res.status(500).send("Deep Fix Failed: " + err);
+    console.error("[Register Error]", err);
+    res.status(500).json({ error: "Registration failed" });
   }
 });
 
+// 2. LOGIN STRATEGY
 passport.use(
   new LocalStrategy(
     { usernameField: 'email' }, 
@@ -41,10 +43,7 @@ passport.use(
         const user = users[0];
         
         if (!user) return done(null, false, { message: "User not found" });
-
-        if (user.password_hash !== password) {
-          return done(null, false, { message: "Invalid password" });
-        }
+        if (user.password_hash !== password) return done(null, false, { message: "Invalid password" });
 
         return done(null, user);
       } catch (err) {
