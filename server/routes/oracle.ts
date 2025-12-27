@@ -4,32 +4,37 @@ import { runMarketScan } from '../lib/sentinel';
 const router = express.Router();
 
 /**
- * GET /api/market/sentinel
- * This is the primary endpoint the frontend checks for "Online" status
+ * Handles GET /api/market/sentinel AND /api/oracle/sentinel
  */
-router.get('/sentinel', async (req, res) => {
+router.get('/sentinel', async (_req, res) => {
   try {
     const data = await runMarketScan();
+    
+    // The frontend expects this specific 'status' and 'marketData' structure
     res.json({
       status: 'online',
-      timestamp: new Date().toISOString(),
-      marketData: data
+      lastUpdate: new Date().toISOString(),
+      marketData: data,
+      systemHealth: 'optimal'
     });
   } catch (error) {
-    console.error('[Oracle] Sentinel Fetch Error:', error);
-    res.status(500).json({ status: 'offline', error: 'Market data service unavailable' });
+    console.error('[Oracle] Sentinel Error:', error);
+    res.status(500).json({ 
+      status: 'offline', 
+      error: 'Market Sentinel Bridge connection failed' 
+    });
   }
 });
 
 /**
- * GET /api/oracle/daily
- * Fallback for daily briefing components
+ * Handles GET /api/oracle/daily
  */
-router.get('/daily', async (req, res) => {
+router.get('/daily', async (_req, res) => {
   try {
     const data = await runMarketScan();
     res.json({
       success: true,
+      briefing: "Market Sentinel is monitoring active price action.",
       data: data[0] || {}
     });
   } catch (error) {
