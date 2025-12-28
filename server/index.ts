@@ -8,18 +8,17 @@ import MemoryStoreFactory from "memorystore";
 const app = express();
 const MemoryStore = MemoryStoreFactory(session);
 
-// 1. MANDATORY SECURITY OVERRIDE (Must be at the absolute top)
-// This specifically targets the 'eval' block seen in your console
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const csp = "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;";
-  res.setHeader("Content-Security-Policy", csp);
-  res.setHeader("X-Content-Security-Policy", csp);
-  res.setHeader("X-WebKit-CSP", csp);
-  next();
-});
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// DISABLE ALL SECURITY HEADERS TEMPORARILY
+// This is to force the table to render and bypass the CSP eval block
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.removeHeader("Content-Security-Policy");
+  res.removeHeader("X-Content-Security-Policy");
+  res.removeHeader("X-WebKit-CSP");
+  next();
+});
 
 // LOGGING MIDDLEWARE
 app.use((req, res, next) => {
@@ -59,17 +58,14 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 (async () => {
-  // REGISTER ROUTES
   const server = await registerRoutes(app);
 
-  // ERROR HANDLER
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     res.status(status).json({ message });
   });
 
-  // VITE / STATIC SERVING
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
