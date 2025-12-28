@@ -3,35 +3,9 @@ import { query } from '../db';
 
 const router = express.Router();
 
-// Visit: [Your-URL]/api/admin/elevate?email=ajwoodzy007@gmail.com
-router.get('/elevate', async (req: express.Request, res: express.Response) => {
-  const email = req.query.email as string;
-  if (!email) return res.status(400).send("Email required.");
-
-  try {
-    // Force set both Tier and Premium status
-    await query(
-      "UPDATE users SET tier = 'ADMIN', is_premium = true WHERE email = $1",
-      [email]
-    );
-
-    const updatedUser = await query(
-      "SELECT email, tier, is_premium FROM users WHERE email = $1",
-      [email]
-    );
-
-    return res.status(200).json({
-      message: "ACCESS_GRANTED",
-      verification: updatedUser[0]
-    });
-  } catch (err) {
-    return res.status(500).send("Elevation failed.");
-  }
-});
-
 router.get('/stats', async (req: express.Request, res: express.Response) => {
   try {
-    // Pulling actual database values for the registry
+    // We select the actual database values to drive the UI
     const operatives = await query(
       "SELECT id, email, tier, is_premium FROM users ORDER BY tier DESC, email ASC"
     );
@@ -42,10 +16,26 @@ router.get('/stats', async (req: express.Request, res: express.Response) => {
       mrr: 1250,
       conversionRate: 12.5,
       aiWinRate: 74,
-      users: operatives 
+      users: operatives
     });
   } catch (err) {
-    return res.status(500).json({ success: false });
+    console.error("Admin Stats Error:", err);
+    return res.status(500).json({ success: false, message: "Database handshake failed" });
+  }
+});
+
+router.get('/elevate', async (req: express.Request, res: express.Response) => {
+  const email = req.query.email as string;
+  if (!email) return res.status(400).send("Email required.");
+
+  try {
+    await query(
+      "UPDATE users SET tier = 'ADMIN', is_premium = true WHERE email = $1",
+      [email]
+    );
+    return res.status(200).send(`ACCESS_GRANTED: ${email} elevated to ADMIN status.`);
+  } catch (err) {
+    return res.status(500).send("Elevation failed.");
   }
 });
 
