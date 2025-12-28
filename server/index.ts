@@ -8,14 +8,8 @@ import MemoryStoreFactory from "memorystore";
 const app = express();
 const MemoryStore = MemoryStoreFactory(session);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
-/**
- * THE CSP OVERRIDE
- * Explicitly allows 'unsafe-eval' for the Operative Table to render.
- * This is applied to every response to bypass Railway's strict production defaults.
- */
+// 1. ABSOLUTE TOP SECURITY OVERRIDE
+// This forces the 'unsafe-eval' permission before ANY other middleware runs
 app.use((req: Request, res: Response, next: NextFunction) => {
   const policy = "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;";
   res.setHeader("Content-Security-Policy", policy);
@@ -24,18 +18,19 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next();
 });
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
 // LOGGING MIDDLEWARE
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let resBody: any;
-
   const originalResJson = res.json;
   res.json = function (body) {
     resBody = body;
     return originalResJson.apply(res, arguments as any);
   };
-
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
@@ -47,10 +42,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// SESSION CONFIGURATION
 app.use(
   session({
-    cookie: { maxAge: 86400000, httpOnly: true, secure: true }, // secure: true for Railway HTTPS
+    cookie: { maxAge: 86400000, httpOnly: true, secure: true }, // secure for Railway HTTPS
     store: new MemoryStore({ checkPeriod: 86400000 }),
     resave: false,
     saveUninitialized: false,
@@ -62,23 +56,15 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 (async () => {
-  // 1. REGISTER ROUTES
   const server = await registerRoutes(app);
-
-  // 2. ERROR HANDLER
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
+    res.status(err.status || 500).json({ message: err.message || "Internal Server Error" });
   });
-
-  // 3. VITE / STATIC SERVING
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
-
   const port = Number(process.env.PORT) || 5000;
   server.listen(port, "0.0.0.0", () => {
     log(`[Server] Sentinel OS Live on Railway port ${port}`);
