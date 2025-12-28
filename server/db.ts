@@ -1,10 +1,10 @@
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
 
-// This is required for Neon to work in a Node.js environment like Railway
+// Required for Neon to operate in a Node.js environment like Railway
 neonConfig.webSocketConstructor = ws;
 
-// Use NEON_DATABASE_URL if available, otherwise fallback to DATABASE_URL
+// Prioritize the NEON_DATABASE_URL you confirmed in your variables
 const connectionString = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!connectionString) {
@@ -13,6 +13,8 @@ if (!connectionString) {
 
 export const pool = new Pool({ 
   connectionString,
+  // Force SSL to true to satisfy the 'sslmode=require' in your URL
+  ssl: true 
 });
 
 export const query = async (text: string, params?: any[]) => {
@@ -22,8 +24,8 @@ export const query = async (text: string, params?: any[]) => {
     const duration = Date.now() - start;
     console.log('[Database] Query executed', { text, duration, rows: res.rowCount });
     return res.rows;
-  } catch (err) {
-    console.error('[Database] Connection Error:', err);
+  } catch (err: any) {
+    console.error('[Database] Connection Error:', err.message);
     throw err;
   }
 };
