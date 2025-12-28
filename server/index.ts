@@ -8,29 +8,33 @@ import MemoryStoreFactory from "memorystore";
 const app = express();
 const MemoryStore = MemoryStoreFactory(session);
 
-// MANDATORY FOR RAILWAY: Trust the proxy to allow cookies to persist
+// MANDATORY FOR RAILWAY: Trust the first proxy
 app.set("trust proxy", 1);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// SECURITY HEADERS
 app.use((req: Request, res: Response, next: NextFunction) => {
   const policy = "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;";
   res.setHeader("Content-Security-Policy", policy);
   next();
 });
 
-// SESSION CONFIGURATION: Hardened for Railway production
+// HARDENED SESSION FOR RAILWAY HTTPS
 app.use(
   session({
     cookie: { 
       maxAge: 86400000, 
       httpOnly: true, 
-      secure: process.env.NODE_ENV === "production", // Must be true for HTTPS
-      sameSite: "lax" 
+      secure: true, // Required for Railway HTTPS
+      sameSite: "lax",
+      path: '/'
     },
+    name: 'sentinel_sid', // Custom name to avoid collision
+    proxy: true, // Explicitly tell express-session to trust the proxy
     store: new MemoryStore({ checkPeriod: 86400000 }),
-    resave: false,
+    resave: true, // Force resave to ensure session stays alive on refresh
     saveUninitialized: false,
     secret: process.env.SESSION_SECRET || "market-sentinel-vault-secret",
   })
