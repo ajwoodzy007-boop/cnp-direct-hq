@@ -1,5 +1,4 @@
 import { Card, CardContent } from "@/components/ui/card";
-// EXPLICIT IMPORT PATH FOR PRODUCTION STABILITY
 import ExclamationCircleIcon from "@heroicons/react/24/outline/ExclamationCircleIcon";
 
 export default function NotFound() {
