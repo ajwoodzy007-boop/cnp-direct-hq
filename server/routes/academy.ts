@@ -4,23 +4,26 @@ const router = express.Router();
 
 router.get('/briefing', (req, res) => {
   try {
-    // This matches the briefing interface in MarketRadar.tsx
-    const dailyIntel = {
-      date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase(),
-      sentiment: 'BULLISH', // Can be BULLISH, BEARISH, or NEUTRAL
-      headline: 'Market Liquidity Surges as Sentinel Detects Institutional Accumulation',
-      summary: 'Sentinel surveillance indicates a significant shift in order flow across major tech tickers. RSI levels suggest a healthy consolidation before the next leg up.',
-      keyLevels: 'SPY 590 Support / 610 Resistance',
-      actionPlan: 'Maintain long exposure on high-RVOL breakouts; tighten stops on overextended AI names.'
-    };
-
+    // Data structure specifically mapped to MarketRadar.tsx briefing state 
     res.json({
       success: true,
-      data: dailyIntel
+      data: {
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase(),
+        sentiment: 'BULLISH',
+        headline: 'Sentinel Detects Institutional Whale Accumulation in Tech',
+        summary: 'Market surveillance indicates high-conviction order flow. RSI metrics show room for growth before overbought territory.',
+        keyLevels: 'SPY 590 Support / 615 Resistance',
+        actionPlan: 'Focus on high-RVOL tech breakouts; maintain trailing stops on existing runners.'
+      }
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Briefing decryption failed' });
   }
+});
+
+// Full report placeholder to prevent 404 crashes [cite: 5]
+router.get('/full-report', (req, res) => {
+  res.json({ success: true, data: { content: "Full decrypted intelligence report loading..." } });
 });
 
 export default router;
