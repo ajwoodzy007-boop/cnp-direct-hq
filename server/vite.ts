@@ -3,7 +3,7 @@ import fs from "fs";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import { type Server } from "http";
-import vite from "vite";
+import * as vite from "vite";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,23 +45,14 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "public");
+  const rootDistPath = path.resolve(__dirname, "..", "dist", "public");
 
-  if (!fs.existsSync(distPath)) {
-    // Check if it's in the root dist folder instead
-    const rootDistPath = path.resolve(__dirname, "..", "dist", "public");
-    if (fs.existsSync(rootDistPath)) {
-      app.use(express.static(rootDistPath));
-      app.get("*", (req, res) => {
-        res.sendFile(path.resolve(rootDistPath, "index.html"));
-      });
-      return;
-    }
-    throw new Error(`Could not find static assets at ${distPath} or ${rootDistPath}`);
+  if (!fs.existsSync(rootDistPath)) {
+    throw new Error(`Static assets not found at: ${rootDistPath}. Ensure the build step completed successfully.`);
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(rootDistPath));
   app.get("*", (req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    res.sendFile(path.resolve(rootDistPath, "index.html"));
   });
 }
