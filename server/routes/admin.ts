@@ -4,13 +4,8 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-/**
- * CONSOLIDATED DASHBOARD FEED
- * Handles stats, diagnostics, and overview.
- */
 const handleDashboardData = async (req: express.Request, res: express.Response) => {
   try {
-    // Fetch live operatives from the 'users' table
     const operatives = await query(
       "SELECT id, email, tier, is_premium FROM users ORDER BY email ASC"
     ).catch(() => []);
@@ -26,7 +21,6 @@ const handleDashboardData = async (req: express.Request, res: express.Response) 
       totalSignals: 42,
       lastSignalGeneration: "09:00 AM ET",
       lastMarketFinalization: "16:30 PM ET",
-      // Multiple aliases to ensure different frontend table versions can render
       users: operatives,
       data: operatives,
       operatives: operatives,
@@ -34,23 +28,17 @@ const handleDashboardData = async (req: express.Request, res: express.Response) 
       rows: operatives
     };
 
-    // Kill caching to prevent the '304 Not Modified' issue
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Content-Type', 'application/json');
 
     return res.status(200).json(payload);
   } catch (err) {
-    // Fallback to ensure UI doesn't crash if DB is slow
     return res.status(200).json({ success: true, totalUsers: 16, users: [], data: [] });
   }
 };
 
 router.get(['/stats', '/overview', '/diagnostics', '/dashboard', '/'], handleDashboardData);
 
-/**
- * ADMIN COMMANDS
- * Logic for manual market scanning.
- */
 router.post(['/regenerate', '/picks/regenerate'], async (req, res) => {
   try {
     const data = await runMarketScan();
