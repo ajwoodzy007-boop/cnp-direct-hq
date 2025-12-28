@@ -1,23 +1,19 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
+import { Express } from "express";
+import { createServer, Server } from "http";
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import bcrypt from "bcryptjs";
 import { query } from "./db";
-import adminRouter from "./routes/admin";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   passport.serializeUser((user: any, done) => done(null, user.id));
 
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (id: any, done) => {
     try {
-      const users = await query("SELECT id, email, tier, ispremium FROM users WHERE id = $1", [id]);
+      // Mapping ispremium from DB to is_premium in code
+      const users = await query("SELECT * FROM users WHERE id = $1", [id]);
       if (!users[0]) return done(null, false);
-      
-      const user = {
-        ...users[0],
-        is_premium: (users[0] as any).ispremium 
-      };
+      const user = { ...users[0], is_premium: (users[0] as any).ispremium };
       done(null, user);
     } catch (err) { done(err); }
   });
@@ -34,9 +30,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) return next(err);
-      if (!user) return res.status(401).json({ message: info?.message || "Login failed" });
+    passport.authenticate("local", (err: any, user: any) => {
+      if (err || !user) return res.status(401).json({ message: "Login failed" });
       req.logIn(user, (err) => {
         if (err) return next(err);
         res.json(user);
@@ -44,13 +39,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   });
 
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
-  });
-
-  app.use("/api/admin", adminRouter);
-
-  const httpServer = createServer(app);
-  return httpServer;
+  return createServer(app);
 }

@@ -2,13 +2,13 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { metaImagesPlugin } from "./vite-plugin-meta-images";
 
+// This replaces __dirname for ES Modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export default defineConfig({
-  plugins: [react(), metaImagesPlugin()],
+  plugins: [react()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "client/src"),
@@ -19,11 +19,7 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
-    // THE CSP FIX: Disabling sourcemaps and using a runtime-safe target
     sourcemap: false,
-    minify: 'esbuild',
-    target: 'es2020',
-    cssCodeSplit: true,
-    reportCompressedSize: false,
+    minify: "esbuild",
   },
 });

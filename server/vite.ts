@@ -2,59 +2,57 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { createServer as createViteServer, createLogger } from "vite";
 import { type Server } from "http";
-import viteConfig from "../vite.config";
+import * as vite from "vite";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export function log(message: string, source = "express") {
-  const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
+export function log(message: string) {
+  const time = new Date().toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   });
-  console.log(`${formattedTime} [${source}] ${message}`);
+  console.log(`${time} [vite] ${message}`);
 }
 
 export async function setupVite(app: Express, server: Server) {
-  const vite = await createViteServer({
-    ...viteConfig,
-    logLevel: "info",
-    server: { middlewareMode: true, hmr: { server } },
+  const viteServer = await vite.createServer({
+    server: {
+      middlewareMode: true,
+      hmr: { server },
+    },
+    appType: "custom",
   });
 
-  app.use(vite.middlewares);
+  app.use(viteServer.middlewares);
   app.use("*", async (req, res, next) => {
+    const url = req.originalUrl;
     try {
-      const clientTemplate = path.resolve(__dirname, "..", "client", "index.html");
-      let template = fs.readFileSync(clientTemplate, "utf-8");
-      template = await vite.transformIndexHtml(req.originalUrl, template);
-      
-      // Force CSP on the transformed HTML response
-      res.status(200).set({ 
-        "Content-Type": "text/html",
-        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
-      }).end(template);
+      const template = fs.readFileSync(
+        path.resolve(__dirname, "..", "client", "index.html"),
+        "utf-8",
+      );
+      const page = await viteServer.transformIndexHtml(url, template);
+      res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
-      vite.ssrFixStacktrace(e as Error);
+      viteServer.ssrFixStacktrace(e as Error);
       next(e);
     }
   });
 }
 
 export function serveStatic(app: Express) {
-  const distPath = path.resolve(__dirname, "..", "dist", "public");
+  const rootDistPath = path.resolve(__dirname, "..", "dist", "public");
 
-  if (!fs.existsSync(distPath)) {
-    throw new Error(`Could not find build folder: ${distPath}.`);
+  if (!fs.existsSync(rootDistPath)) {
+    throw new Error(`Static assets not found at: ${rootDistPath}. Ensure the build step completed successfully.`);
   }
 
-  app.use(express.static(distPath));
-
-  app.use("*", (_req, res) => {
-    // Apply the same CSP to the production index.html
-    res.set({
-      "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
-    }).sendFile(path.resolve(distPath, "index.html"));
+  app.use(express.static(rootDistPath));
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(rootDistPath, "index.html"));
   });
 }

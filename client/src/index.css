@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -56,44 +55,28 @@
   --font-mono: 'JetBrains Mono', monospace;
 }
 
-/* STREAMLIT INSPIRED THEME */
 :root {
-  /* Clean White Background */
   --background: 0 0% 100%;
-  --foreground: 222 15% 13%; /* Dark text */
-
-  /* Streamlit Red/Orange Accent */
-  --primary: 355 78% 62%; /* #F63366 softened */
+  --foreground: 222 15% 13%;
+  --primary: 355 78% 62%;
   --primary-foreground: 0 0% 100%;
-
-  /* Neutral Grays */
   --secondary: 220 14% 96%;
   --secondary-foreground: 222 15% 13%;
-
   --muted: 220 14% 96%;
   --muted-foreground: 220 8% 46%;
-
   --accent: 220 14% 96%;
   --accent-foreground: 222 15% 13%;
-
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
-
   --border: 220 13% 91%;
   --input: 220 13% 91%;
   --ring: 355 78% 62%;
-
   --radius: 0.5rem;
-
-  /* Card is white with subtle shadow in this design */
   --card: 0 0% 100%;
   --card-foreground: 222 15% 13%;
-
   --popover: 0 0% 100%;
   --popover-foreground: 222 15% 13%;
-
-  /* Sidebar styling */
-  --sidebar: 240 5% 97%; /* Very light gray */
+  --sidebar: 240 5% 97%;
   --sidebar-foreground: 222 15% 13%;
   --sidebar-primary: 355 78% 62%;
   --sidebar-primary-foreground: 0 0% 100%;
@@ -101,52 +84,11 @@
   --sidebar-accent-foreground: 222 15% 13%;
   --sidebar-border: 220 13% 91%;
   --sidebar-ring: 355 78% 62%;
-
-  /* Chart Colors */
-  --chart-1: 355 78% 62%; /* Primary */
-  --chart-2: 220 15% 25%; /* Dark Gray */
-  --chart-3: 30 80% 55%;  /* Orange */
-  --chart-4: 280 65% 60%; /* Purple */
-  --chart-5: 160 60% 45%; /* Green */
-}
-
-.dark {
-  --background: 222 20% 10%;
-  --foreground: 210 20% 98%;
-
-  --primary: 355 78% 62%;
-  --primary-foreground: 0 0% 100%;
-
-  --secondary: 217 19% 27%;
-  --secondary-foreground: 210 20% 98%;
-
-  --muted: 217 19% 27%;
-  --muted-foreground: 215 20% 65%;
-
-  --accent: 217 19% 27%;
-  --accent-foreground: 210 20% 98%;
-
-  --destructive: 0 62% 30%;
-  --destructive-foreground: 210 20% 98%;
-
-  --border: 217 19% 27%;
-  --input: 217 19% 27%;
-  --ring: 355 78% 62%;
-
-  --card: 222 20% 12%;
-  --card-foreground: 210 20% 98%;
-
-  --popover: 222 20% 12%;
-  --popover-foreground: 210 20% 98%;
-
-  --sidebar: 222 25% 9%;
-  --sidebar-foreground: 210 20% 98%;
-  --sidebar-primary: 355 78% 62%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 217 19% 27%;
-  --sidebar-accent-foreground: 210 20% 98%;
-  --sidebar-border: 217 19% 27%;
-  --sidebar-ring: 355 78% 62%;
+  --chart-1: 355 78% 62%;
+  --chart-2: 220 15% 25%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 160 60% 45%;
 }
 
 @layer base {
@@ -155,19 +97,5 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
-  }
-  
-  /* Custom Scrollbar for Streamlit feel */
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  
-  ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
   }
 }
