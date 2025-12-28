@@ -11,27 +11,21 @@ const MemoryStore = MemoryStoreFactory(session);
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// DISABLE ALL SECURITY HEADERS TEMPORARILY
-// This is to force the table to render and bypass the CSP eval block
+// Global override to ensure all API responses also allow the dashboard to render
 app.use((req: Request, res: Response, next: NextFunction) => {
-  res.removeHeader("Content-Security-Policy");
-  res.removeHeader("X-Content-Security-Policy");
-  res.removeHeader("X-WebKit-CSP");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;");
   next();
 });
 
-// LOGGING MIDDLEWARE
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
   let resBody: any;
-
   const originalResJson = res.json;
   res.json = function (body) {
     resBody = body;
     return originalResJson.apply(res, arguments as any);
   };
-
   res.on("finish", () => {
     const duration = Date.now() - start;
     if (path.startsWith("/api")) {
@@ -43,7 +37,6 @@ app.use((req, res, next) => {
   next();
 });
 
-// SESSION CONFIGURATION
 app.use(
   session({
     cookie: { maxAge: 86400000, httpOnly: true, secure: false },
@@ -59,19 +52,14 @@ app.use(passport.session());
 
 (async () => {
   const server = await registerRoutes(app);
-
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
+    res.status(err.status || 500).json({ message: err.message || "Internal Server Error" });
   });
-
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
-
   const port = Number(process.env.PORT) || 5000;
   server.listen(port, "0.0.0.0", () => {
     log(`[Server] Sentinel OS Live on port ${port}`);
