@@ -9,6 +9,8 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
     "vite": "^6.0.3",
@@ -24,6 +26,8 @@
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
     "drizzle-orm": "^0.33.0",
-    "drizzle-zod": "^0.5.0"
+    "drizzle-zod": "^0.5.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0"
   }
 }
