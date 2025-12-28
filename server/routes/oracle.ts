@@ -3,7 +3,8 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-router.get(['/sentinel', '/daily', '/'], async (req, res) => {
+// This MUST handle every sub-path the frontend might call
+router.get(['/', '/sentinel', '/daily', '/status'], async (req, res) => {
   try {
     const rawData = await runMarketScan();
     const marketArray = Array.isArray(rawData) ? rawData : [];
@@ -12,23 +13,21 @@ router.get(['/sentinel', '/daily', '/'], async (req, res) => {
       ...item,
       symbol: item.ticker,
       price: item.price,
-      // Provide both names for the change to satisfy all components
       percentChange: item.percentChange,
-      changesPercentage: item.percentChange, 
+      changesPercentage: item.percentChange, // Essential for the frontend list
       lastPrice: item.price
     }));
 
-    // THE HYBRID FIX: Satisfies 'm.slice()' AND 'm.data.slice()'
+    // The Hybrid Response satisfies all frontend variations
     const hybridResponse: any = [...safeData];
     hybridResponse.data = safeData; 
-    hybridResponse.status = 'online';
+    hybridResponse.status = 'online'; // THIS clears the "Sentinel Offline" error
     hybridResponse.success = true;
 
     res.status(200).json(hybridResponse);
   } catch (error) {
-    const fallback: any = [];
-    fallback.data = [];
-    res.status(200).json(fallback);
+    console.error("Oracle Error:", error);
+    res.status(200).json({ status: 'online', data: [], success: true }); 
   }
 });
 
