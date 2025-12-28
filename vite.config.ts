@@ -19,21 +19,18 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
-    // DISABLE MINIFICATION: This prevents the generator from using 'eval' in production code
-    minify: false, 
+    // CRITICAL: Disable sourcemaps and use 'esbuild' to prevent eval() triggers
     sourcemap: false,
-    rollupOptions: {
-      output: {
-        manualChunks: undefined,
+    minify: 'esbuild', 
+    target: 'esnext',
+    reportCompressedSize: false,
+  },
+  server: {
+    proxy: {
+      '/api': {
+        target: 'http://0.0.0.0:5000',
+        changeOrigin: true,
       },
     },
   },
-  server: {
-    headers: {
-      "Content-Security-Policy": "script-src 'self' 'unsafe-eval' 'unsafe-inline'; object-src 'none';"
-    },
-    hmr: {
-      overlay: false
-    }
-  }
 });
