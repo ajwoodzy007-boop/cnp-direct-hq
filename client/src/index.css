@@ -91,51 +91,11 @@
   --chart-5: 160 60% 45%;
 }
 
-.dark {
-  --background: 222 20% 10%;
-  --foreground: 210 20% 98%;
-  --primary: 355 78% 62%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 217 19% 27%;
-  --secondary-foreground: 210 20% 98%;
-  --muted: 217 19% 27%;
-  --muted-foreground: 215 20% 65%;
-  --accent: 217 19% 27%;
-  --accent-foreground: 210 20% 98%;
-  --destructive: 0 62% 30%;
-  --destructive-foreground: 210 20% 98%;
-  --border: 217 19% 27%;
-  --input: 217 19% 27%;
-  --ring: 355 78% 62%;
-  --card: 222 20% 12%;
-  --card-foreground: 210 20% 98%;
-  --popover: 222 20% 12%;
-  --popover-foreground: 210 20% 98%;
-  --sidebar: 222 25% 9%;
-  --sidebar-foreground: 210 20% 98%;
-  --sidebar-primary: 355 78% 62%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 217 19% 27%;
-  --sidebar-accent-foreground: 210 20% 98%;
-  --sidebar-border: 217 19% 27%;
-  --sidebar-ring: 355 78% 62%;
-}
-
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
-  }
-  ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
   }
 }
