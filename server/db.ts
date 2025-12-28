@@ -1,31 +1,27 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
+import { neon, neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
 
-// Required for Neon to operate in a Node.js environment like Railway
 neonConfig.webSocketConstructor = ws;
 
-// Prioritize the NEON_DATABASE_URL you confirmed in your variables
 const connectionString = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!connectionString) {
-  throw new Error("DATABASE_URL is missing. Sentinel Intelligence offline.");
+  throw new Error("DATABASE_URL is missing.");
 }
 
-export const pool = new Pool({ 
-  connectionString,
-  // Force SSL to true to satisfy the 'sslmode=require' in your URL
-  ssl: true 
-});
+// Using the direct SQL driver for better stability on Railway
+const sql = neon(connectionString);
 
-export const query = async (text: string, params?: any[]) => {
+export const query = async (text: string, params: any[] = []) => {
   const start = Date.now();
   try {
-    const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    console.log('[Database] Query executed', { text, duration, rows: res.rowCount });
-    return res.rows;
-  } catch (err: any) {
-    console.error('[Database] Connection Error:', err.message);
+    // Replace $1, $2 with Neon's expected format if necessary, 
+    // but the driver handles standard arrays well.
+    const rows = await sql(text, params);
+    console.log('[Database] Query successful', { duration: Date.now() - start });
+    return rows;
+  } catch (err) {
+    console.error('[Database] CRITICAL_ERROR:', err);
     throw err;
   }
 };
