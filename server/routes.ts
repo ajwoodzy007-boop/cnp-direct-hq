@@ -4,10 +4,10 @@ import authRouter from "./routes/auth";
 import adminRouter from "./routes/admin";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Mount auth routes directly under /api (matches /api/login, /api/user)
+  // Mount auth at /api so /api/login and /api/user are valid paths
   app.use("/api", authRouter);
   
-  // Mount admin routes under /api/admin (matches /api/admin/stats)
+  // Mount admin at /api/admin
   app.use("/api/admin", adminRouter);
 
   const httpServer = createServer(app);
