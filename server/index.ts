@@ -27,7 +27,7 @@ app.use(
     proxy: true,
     store: new MemoryStore({ checkPeriod: 86400000 }),
     cookie: {
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000, 
       httpOnly: true,
       secure: true, 
       sameSite: "lax",
