@@ -1,29 +1,48 @@
 import express from 'express';
 import { query } from '../db';
-// REMOVED Yahoo Finance imports
 
 const router = express.Router();
 
-/**
- * Admin Route - Sanitized
- * Used for managing the 16 users and system health.
- * Yahoo dependencies removed to prevent dashboard lockouts.
- */
+// Middleware: Strict Admin-Only Gate
+router.use((req, res, next) => {
+  const user = req.user as any;
+  if (!user || user.tier !== 'admin') {
+    return res.status(403).json({ message: "ACCESS_DENIED: Sentinel Admin Clearance Required" });
+  }
+  next();
+});
+
 router.get('/stats', async (req, res) => {
   try {
-    // Basic health check for the admin panel
-    const userCount = await query('SELECT COUNT(*) FROM users');
-    const scanCount = await query('SELECT COUNT(*) FROM playbook_sections');
+    // 1. Get Total Users from your DB
+    const userCount = await query("SELECT COUNT(*) FROM users");
+    
+    // 2. Fetch or Mock Financials (MRR/ARR)
+    // You can replace these with real subscription logic later
+    const stats = {
+      mrr: 0,
+      arr: 0,
+      conversionRate: 0,
+      aiWinRate: 68, // Target benchmark
+      totalUsers: parseInt(userCount[0].count) || 0,
+      totalSignals: 124, // Mock for now until signals table is wired
+      lastSignalGeneration: "09:00 AM ET",
+      lastMarketFinalization: "16:30 PM ET"
+    };
 
-    res.json({
-      systemStatus: 'online',
-      activeUsers: userCount[0]?.count || 0,
-      totalScans: scanCount[0]?.count || 0,
-      dataEngine: 'Finnhub'
-    });
+    res.json({ success: true, data: stats });
   } catch (error) {
-    console.error('[Admin] Stats fetch failed:', error);
-    res.status(500).json({ error: 'Admin dashboard error' });
+    res.status(500).json({ success: false, message: "Failed to fetch admin intelligence" });
+  }
+});
+
+// Route for the User Management table
+router.get('/users', async (req, res) => {
+  try {
+    const users = await query("SELECT id, email, tier, is_premium, created_at FROM users ORDER BY created_at DESC");
+    res.json({ success: true, data: users });
+  } catch (error) {
+    res.status(500).json({ success: false });
   }
 });
 
