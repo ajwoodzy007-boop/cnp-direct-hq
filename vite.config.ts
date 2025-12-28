@@ -20,7 +20,7 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    // This allows the dev server to bypass strict CSP during development
+    // FORCE VITE TO ALLOW EVAL DURING DEVELOPMENT
     headers: {
       "Content-Security-Policy": "script-src 'self' 'unsafe-eval' 'unsafe-inline'; object-src 'none';"
     },
