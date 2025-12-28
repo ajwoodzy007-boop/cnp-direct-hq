@@ -3,36 +3,38 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-router.get(['/sentinel', '/daily', '/'], async (req, res) => {
+router.get(['/sentinel', '/daily', '/movers', '/'], async (req, res) => {
   try {
     const rawData = await runMarketScan();
-    // Convert the object { "0": {...} } into a clean array [...]
+    
+    // Convert the object { "0": {...} } from your logs into a clean array
     const marketArray = Array.isArray(rawData) 
       ? rawData 
-      : Object.values(rawData).filter(item => typeof item === 'object' && item !== null && 'ticker' in item);
+      : Object.values(rawData).filter(item => typeof item === 'object' && item !== null);
 
     const safeData = marketArray.map(item => ({
       ...item,
       symbol: item.ticker,
-      changesPercentage: item.percentChange, // Alias for frontend compatibility
+      changesPercentage: item.percentChange, // Fixed property name for movers
       lastPrice: item.price
     }));
 
-    // If the frontend is hitting 'daily', it expects the 'status' wrapper
-    if (req.path.includes('daily')) {
+    // PATH 1: If the UI calls /daily or /status, it wants the 'online' wrapper
+    if (req.path.includes('daily') || req.path.includes('status')) {
       return res.json({
-        status: 'online', 
+        status: 'online',
         success: true,
-        data: safeData,
+        data: safeData[0] || {}, // "Today's Picks" usually wants the top stock
         marketData: safeData
       });
     }
 
-    // IMPORTANT: For 'sentinel', return ONLY the array to prevent .map() crashes
+    // PATH 2: If the UI calls /sentinel or /movers, it wants a RAW ARRAY
+    // This stops the '.slice is not a function' error
     res.json(safeData);
+    
   } catch (error) {
-    console.error("Oracle Error:", error);
-    res.json([]); 
+    res.json([]); // Fail-safe array
   }
 });
 
