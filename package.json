@@ -5,12 +5,14 @@
   "scripts": {
     "dev": "tsx server/index.ts",
     "build": "tsx script/build.ts",
-    "start": "NODE_ENV=production tsx server/index.ts"
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
-    "@types/node": "^22.7.5",
+    "vite": "^6.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
     "@neondatabase/serverless": "^0.10.4",
     "ws": "^8.18.0",
     "passport": "^0.7.0",
@@ -18,12 +20,10 @@
     "express": "^4.19.2",
     "express-session": "^1.18.0",
     "bcryptjs": "^2.4.3",
-    "lucide-react": "^0.453.0",
     "wouter": "^3.3.5",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.4",
+    "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
-    "vite": "^6.0.3",
-    "@vitejs/plugin-react": "^4.3.4"
+    "drizzle-orm": "^0.33.0",
+    "drizzle-zod": "^0.5.0"
   }
 }
