@@ -39,8 +39,15 @@ export async function setupVite(app: Express, server: Server) {
     try {
       const clientTemplate = path.resolve(__dirname, "..", "client", "index.html");
       let template = fs.readFileSync(clientTemplate, "utf-8");
+      
+      // Transform includes our metaImagesPlugin CSP fix
       template = await vite.transformIndexHtml(url, template);
-      res.status(200).set({ "Content-Type": "text/html" }).end(template);
+
+      // THE ULTIMATE FIX: Force the header on the HTML response itself
+      res.status(200).set({ 
+        "Content-Type": "text/html",
+        "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
+      }).end(template);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
       next(e);
@@ -59,8 +66,10 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(distPath));
 
-  // Fallback to index.html for SPA routing
   app.use("*", (_req, res) => {
-    res.sendFile(path.resolve(distPath, "index.html"));
+    // Also apply CSP to static production serving
+    res.set({
+      "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
+    }).sendFile(path.resolve(distPath, "index.html"));
   });
 }
