@@ -6,12 +6,11 @@ import { query } from "../db";
 
 const router = Router();
 
-// This "packs" your ID into the cookie when you login
+// 1. SERIALIZATION: Essential for persistence
 passport.serializeUser((user: any, done) => {
   done(null, user.id);
 });
 
-// This "unpacks" your ID on every refresh to keep you logged in
 passport.deserializeUser(async (id: number, done) => {
   try {
     const users = await query("SELECT id, email, tier, is_premium FROM users WHERE id = $1", [id]);
@@ -22,6 +21,7 @@ passport.deserializeUser(async (id: number, done) => {
   }
 });
 
+// 2. STRATEGY
 passport.use(
   new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
     try {
@@ -37,6 +37,7 @@ passport.use(
   })
 );
 
+// 3. ROUTES: Mounted directly so /api/login and /api/user work
 router.post("/login", passport.authenticate("local"), (req, res) => {
   res.json(req.user);
 });
@@ -48,7 +49,6 @@ router.post("/logout", (req, res, next) => {
   });
 });
 
-// The frontend hits this to check if you are still logged in
 router.get("/user", (req, res) => {
   if (!req.isAuthenticated()) return res.sendStatus(401);
   res.json(req.user);
