@@ -5,21 +5,21 @@ const router = express.Router();
 
 router.get('/stats', async (req: express.Request, res: express.Response) => {
   try {
-    // Exact same query as before to fetch the 16 operatives
+    // We select the actual database values to drive the UI
     const operatives = await query(
-      "SELECT id, email, tier, is_premium FROM users ORDER BY email ASC"
+      "SELECT id, email, tier, is_premium FROM users ORDER BY tier DESC, email ASC"
     ).catch(() => []);
 
     return res.status(200).json({
       success: true,
-      totalUsers: operatives.length || 16,
+      totalUsers: operatives.length,
       mrr: 1250,
       conversionRate: 12.5,
       aiWinRate: 74,
       users: operatives
     });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Database failure" });
+    return res.status(500).json({ success: false, message: "Database handshake failed" });
   }
 });
 
