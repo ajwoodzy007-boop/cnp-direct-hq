@@ -6,17 +6,16 @@ import chartRouter from "./routes/chart";
 import academyRouter from "./routes/academy";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // 1. Authentication Routes
+  // 1. Identity & Permissions
   app.use("/api/auth", authRouter);
 
-  // 2. Market Sentinel Aliases (Clears the "Offline" Error)
-  // We mount the oracleRouter to every path the frontend pings
-  app.use("/api/market", oracleRouter);   // Modern path
-  app.use("/api/sentinel", oracleRouter); // Legacy path often used for health checks
-  app.use("/api/oracle", oracleRouter);   // Backup path
-  app.use("/api/status", oracleRouter);   // Direct status check path
+  // 2. Market Intelligence & Health Checks (Clears 'Sentinel Offline')
+  app.use("/api/market", oracleRouter);
+  app.use("/api/sentinel", oracleRouter);
+  app.use("/api/oracle", oracleRouter);
+  app.use("/api/status", oracleRouter);
 
-  // 3. Chart & Intelligence Routes
+  // 3. Reports & Charts
   app.use("/api/chart", chartRouter);
   app.use("/api/charts", chartRouter);
   app.use("/api/academy", academyRouter);
