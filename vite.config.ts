@@ -2,13 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { metaImagesPlugin } from "./vite-plugin-meta-images"; // Ensure this import exists
+import { metaImagesPlugin } from "./vite-plugin-meta-images";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 export default defineConfig({
-  // The metaImagesPlugin now handles injecting the CSP into the HTML
   plugins: [react(), metaImagesPlugin()],
   resolve: {
     alias: {
@@ -20,16 +19,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
-    // Ensure the build doesn't strip out necessary eval-reliant code
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        defaults: false,
+    // DISABLE MINIFICATION: This prevents the generator from using 'eval' in production code
+    minify: false, 
+    sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
       },
     },
   },
   server: {
-    // This only works in local development
     headers: {
       "Content-Security-Policy": "script-src 'self' 'unsafe-eval' 'unsafe-inline'; object-src 'none';"
     },
