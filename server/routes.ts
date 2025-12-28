@@ -51,6 +51,5 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.use("/api/admin", adminRouter);
 
-  const httpServer = createServer(app);
-  return httpServer;
+  return createServer(app);
 }
