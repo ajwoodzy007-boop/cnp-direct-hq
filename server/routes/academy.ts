@@ -2,7 +2,7 @@ import express from 'express';
 
 const router = express.Router();
 
-// Public Briefing (Already working)
+// Public Briefing - Always accessible
 router.get('/briefing', (req, res) => {
   res.json({
     success: true,
@@ -10,33 +10,34 @@ router.get('/briefing', (req, res) => {
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase(),
       sentiment: 'BULLISH',
       headline: 'Sentinel Detects Institutional Whale Accumulation in Tech',
-      summary: 'Market surveillance indicates high-conviction order flow. RSI metrics show room for growth.',
+      summary: 'Market surveillance indicates high-conviction order flow. RSI metrics show room for growth before overbought territory.',
       keyLevels: 'SPY 590 Support / 615 Resistance',
-      actionPlan: 'Focus on high-RVOL tech breakouts.'
+      actionPlan: 'Focus on high-RVOL tech breakouts; maintain trailing stops on existing runners.'
     }
   });
 });
 
-// Protected Full Report
+// Protected Full Report - Requires Premium
 router.get('/full-report', (req, res) => {
-  // Check if user is logged in and has premium status
   const user = req.user as any;
 
+  // If user is not logged in or is not premium, send 403
   if (!user || !user.is_premium) {
-    // Sending 403 triggers the 'setShowPremiumModal(true)' in MarketRadar.tsx
     return res.status(403).json({ 
       success: false, 
-      message: 'Premium Membership Required',
-      code: 'PREMIUM_REQUIRED'
+      message: 'Member access required' 
     });
   }
 
-  // If they ARE premium, send the real data
+  // Only sends if user.is_premium is true
   res.json({
     success: true,
     data: {
-      content: "Detailed Sentinel Intelligence Analysis...",
-      // Add other fields required by FullReportModal.tsx
+      id: 1,
+      title: "Deep Surveillance Report: Q4 Institutional Pivot",
+      content: "Detailed intelligence regarding institutional accumulation patterns...",
+      author: "Sentinel AI",
+      timestamp: new Date().toISOString()
     }
   });
 });
