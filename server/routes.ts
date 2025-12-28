@@ -1,43 +1,31 @@
-import { Express } from "express";
-import { createServer, Server } from "http";
-import passport from "passport";
-import { Strategy as LocalStrategy } from "passport-local";
-import bcrypt from "bcryptjs";
-import { query } from "./db";
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { setupAuth } from "./auth.js";
+import { storage } from "./storage.js";
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  passport.serializeUser((user: any, done) => done(null, user.id));
+export function registerRoutes(app: Express): Server {
+  // Setup the Auth routes (login, logout, user)
+  setupAuth(app);
 
-  passport.deserializeUser(async (id: any, done) => {
-    try {
-      // Mapping ispremium from DB to is_premium in code
-      const users = await query("SELECT * FROM users WHERE id = $1", [id]);
-      if (!users[0]) return done(null, false);
-      const user = { ...users[0], is_premium: (users[0] as any).ispremium };
-      done(null, user);
-    } catch (err) { done(err); }
+  // Define API routes
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "online", system: "Sentinel OS" });
   });
 
-  passport.use(new LocalStrategy({ usernameField: "email" }, async (email, password, done) => {
-    try {
-      const users = await query("SELECT * FROM users WHERE email = $1", [email]);
-      const user = users[0];
-      if (!user || !(await bcrypt.compare(password, user.password))) {
-        return done(null, false, { message: "Invalid credentials." });
-      }
-      return done(null, user);
-    } catch (err) { return done(err); }
-  }));
-
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: any) => {
-      if (err || !user) return res.status(401).json({ message: "Login failed" });
-      req.logIn(user, (err) => {
-        if (err) return next(err);
-        res.json(user);
-      });
-    })(req, res, next);
+  // Basic search/valuation endpoint
+  app.get("/api/valuation/:ticker", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { ticker } = req.params;
+    res.json({
+      symbol: ticker.toUpperCase(),
+      price: 172.10,
+      intrinsicValue: 184.50,
+      signal: "BUY",
+      confidence: 92
+    });
   });
 
-  return createServer(app);
+  // Create the HTTP server and RETURN it
+  const httpServer = createServer(app);
+  return httpServer;
 }
