@@ -5,21 +5,22 @@ import { runMarketScan } from '../lib/sentinel';
 const router = express.Router();
 
 /**
- * ADMIN STATS & OVERVIEW
- * Feeds the SENTINEL_HQ cards
+ * 1. ADMIN DASHBOARD STATS
+ * This populates the cards seen in SENTINEL_HQ (MRR, Users, etc.)
  */
 router.get(['/stats', '/overview', '/dashboard'], async (req, res) => {
   try {
     const userResult = await query("SELECT COUNT(*) as count FROM users");
     const totalUsers = parseInt(userResult[0].count) || 0;
 
+    // Matches the values currently seen in your dashboard
     const adminStats = {
       mrr: 1250,              
       arr: 15000,             
       conversionRate: 12.5,   
-      aiWinRate: 74,          
+      aiWinRate: 0, // Still 0 until we wire historical signals
       totalUsers: totalUsers, 
-      totalSignals: 412,      
+      totalSignals: 0,      
       lastSignalGeneration: "09:00 AM ET",
       lastMarketFinalization: "16:30 PM ET"
     };
@@ -31,24 +32,29 @@ router.get(['/stats', '/overview', '/dashboard'], async (req, res) => {
 });
 
 /**
- * USER MANAGEMENT: FETCH ALL OPERATIVES
- * Feeds the table shown below the stats cards
+ * 2. OPERATIVE TABLE DATA
+ * This fetches the 16 users for the management table.
  */
 router.get('/users', async (req, res) => {
   try {
     const users = await query(
       "SELECT id, email, tier, is_premium, created_at FROM users ORDER BY created_at DESC"
     );
-    // Returning 'data' array inside the object for frontend compatibility
-    res.json({ success: true, data: users });
+    
+    // We return both 'success' and 'data' to ensure frontend compatibility
+    res.json({ 
+      success: true, 
+      data: users 
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Failed to fetch operatives" });
+    console.error("User Fetch Error:", error);
+    res.status(500).json({ success: false, data: [] });
   }
 });
 
 /**
- * USER MANAGEMENT: UPDATE OPERATIVE STATUS
- * Handles toggling 'tier' (admin/pro) and 'is_premium'
+ * 3. UPDATE USER STATUS
+ * Handles promoting/demoting operatives or changing premium access.
  */
 router.put('/users/:id', async (req, res) => {
   const { id } = req.params;
@@ -60,23 +66,24 @@ router.put('/users/:id', async (req, res) => {
       [tier, is_premium, id]
     );
 
-    if (result.length === 0) {
-      return res.status(404).json({ success: false, message: "Operative not found" });
-    }
-
     res.json({ success: true, user: result[0] });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Update failed" });
+    res.status(500).json({ success: false });
   }
 });
 
 /**
- * REGENERATE PICKS
+ * 4. REGENERATE PICKS
+ * Triggered by the blue button.
  */
 router.post(['/regenerate', '/picks/regenerate'], async (req, res) => {
   try {
     const freshData = await runMarketScan();
-    res.json({ success: true, message: "Sentinel scan initiated", count: Array.isArray(freshData) ? freshData.length : 0 });
+    res.json({ 
+      success: true, 
+      message: "Sentinel scan initiated", 
+      count: Array.isArray(freshData) ? freshData.length : 0 
+    });
   } catch (error) {
     res.status(500).json({ success: false });
   }
