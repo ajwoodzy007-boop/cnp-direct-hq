@@ -3,49 +3,39 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-// Handles all market variations the frontend calls
 router.get(['/sentinel', '/daily', '/'], async (req, res) => {
   try {
     const rawData = await runMarketScan();
-    
-    // 1. Force data into an array (fixes the object-key issue)
-    const marketArray = Array.isArray(rawData) 
-      ? rawData 
-      : Object.values(rawData).filter(item => item && typeof item === 'object');
+    const marketArray = Array.isArray(rawData) ? rawData : Object.values(rawData);
 
-    // 2. Map properties to match frontend expected names
-    const safeData = marketArray.map((item: any) => ({
-      ...item,
-      symbol: item.ticker || item.symbol,
+    const safeData = marketArray.filter((item: any) => item && item.ticker).map((item: any) => ({
+      // CORE FIELDS REQUIRED BY MarketRadar.tsx
+      ticker: item.ticker,
+      name: item.name || item.ticker,
       price: item.price,
-      change: item.change,
+      // ALIGNMENT: MarketRadar expects 'changePercent'
+      changePercent: item.percentChange || 0, 
+      rsi: item.rsi || 50,
+      rvol: item.rvol || 1.0,
+      sentimentScore: item.sentimentScore || 0.5,
+      marketCap: item.marketCap || 0,
+      volume24h: item.volume || 0,
+      verdict: item.verdict || 'NEUTRAL',
+      signal: item.signal || 'WAIT',
+      // Legacy support for other components
       percentChange: item.percentChange,
-      // This specific alias stops the 'Market Movers' crash
-      changesPercentage: item.percentChange, 
-      lastPrice: item.price,
-      timestamp: item.timestamp || new Date().toISOString()
+      changesPercentage: item.percentChange
     }));
 
-    // 3. Create the Hybrid Response
-    // We create an array that ALSO has object properties attached to it.
-    const response: any = [...safeData]; 
-    
-    // Attaching properties so 'm.data.slice()' works in MarketMovers
-    response.data = safeData; 
-    response.marketData = safeData;
-    
-    // Attaching status so 'CommandCenter' clears the red error box
-    response.status = 'online';
-    response.success = true;
-
-    res.status(200).json(response);
+    // MarketRadar expects { success: true, data: [...] }
+    res.status(200).json({
+      success: true,
+      data: safeData,
+      status: 'online' 
+    });
   } catch (error) {
-    console.error("[Oracle Route] Error:", error);
-    // Return safe empty state to prevent frontend white screens
-    const fallback: any = [];
-    fallback.data = [];
-    fallback.status = 'online';
-    res.status(200).json(fallback);
+    console.error("Oracle Error:", error);
+    res.status(200).json({ success: false, data: [], status: 'online' });
   }
 });
 
