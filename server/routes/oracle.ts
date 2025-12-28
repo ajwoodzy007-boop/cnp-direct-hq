@@ -8,13 +8,14 @@ router.get(['/sentinel', '/daily', '/'], async (req, res) => {
     const rawData = await runMarketScan();
     const marketArray = Array.isArray(rawData) ? rawData : [];
 
-    // Map Finnhub fields to every possible frontend alias
     const safeData = marketArray.map(item => ({
       ...item,
       symbol: item.ticker,
-      changesPercentage: item.percentChange,
-      lastPrice: item.price,
-      price: item.price
+      price: item.price,
+      // Provide both names for the change to satisfy all components
+      percentChange: item.percentChange,
+      changesPercentage: item.percentChange, 
+      lastPrice: item.price
     }));
 
     // THE HYBRID FIX: Satisfies 'm.slice()' AND 'm.data.slice()'
