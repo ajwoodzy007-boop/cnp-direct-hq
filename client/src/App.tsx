@@ -1,198 +1,69 @@
-import React, { useState, useEffect } from 'react';
-import { Switch, Route } from "wouter";
+import { Switch, Route, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as SonnerToaster } from "sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { SettingsProvider } from "@/contexts/SettingsContext";
-import AppLayout from './components/AppLayout';
-import AuthPage from './components/AuthPage';
-import AuthLock from './components/AuthLock';
-import PremiumLock from './components/PremiumLock';
-import LegalPage from './components/LegalPage';
-import MarketRadar from './components/MarketRadar';
-import TheOracle from './components/TheOracle';
-import TheStrategist from './components/TheStrategist';
-import TheVault from './components/TheVault';
-import TheAcademy from './components/TheAcademy';
-import TheSummary from './components/TheSummary';
-import SettingsModal from './components/SettingsModal';
-import AboutModal from './components/AboutModal';
-import Pricing from "@/pages/Pricing";
-import CheckoutSuccess from "@/pages/CheckoutSuccess";
-import CheckoutCancel from "@/pages/CheckoutCancel";
-import AiAssistant from './components/AiAssistant';
-import AdminDashboard from './components/AdminDashboard';
-import { useGoHomeOnExhaust } from '../hooks/useGoHomeOnExhaust';
-import { NavigationStackProvider, useTabBack } from '../hooks/useNavigationStack';
+import { useAuth } from "@/hooks/use-auth";
+import { Loader2 } from "lucide-react";
 
-function MainDashboard() {
-  const [currentTab, setTab] = useState('summary');
-  
-  useTabBack(currentTab, setTab);
-  
-  const [user, setUser] = useState<{ email: string; tier: string } | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [legalPage, setLegalPage] = useState<'terms' | 'privacy' | 'risk' | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [showAbout, setShowAbout] = useState(false);
+// PAGE IMPORTS
+import AuthPage from "@/pages/AuthPage";
+import AdminDashboard from "@/components/AdminDashboard";
+import NotFound from "@/pages/not-found";
 
-  useEffect(() => {
-    fetch('/api/auth/me')
-      .then(res => res.json())
-      .then(json => {
-        if (json.authenticated) setUser(json.user);
-        setLoadingUser(false);
-      })
-      .catch(() => setLoadingUser(false));
-  }, []);
+// COMPONENT PROTECTION LOGIC
+function ProtectedRoute({ component: Component, adminOnly = false }: { component: React.ComponentType, adminOnly?: boolean }) {
+  const { user, isLoading } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      // MASTER OVERRIDE: Hardcode admin rights for your specific email
-      if (user.email === 'ajwoodzy007@gmail.com') {
-        setIsAdmin(true);
-      } else {
-        fetch('/api/admin/check')
-          .then(res => res.json())
-          .then(json => setIsAdmin(json.isAdmin))
-          .catch(() => setIsAdmin(false));
-      }
-    }
-  }, [user]);
-
-  const handleLogout = () => {
-    fetch('/api/auth/logout', { method: 'POST' }).then(() => {
-      setUser(null);
-      setTab('summary');
-    });
-  };
-
-  const renderContent = () => {
-    switch (currentTab) {
-      case 'summary': return <TheSummary onNavigate={setTab} user={user} />;
-      case 'radar': return <MarketRadar />;
-      case 'academy': return <TheAcademy />;
-      case 'oracle': 
-        if (!user) return <AuthLock featureName="The Oracle" description="identifies high-conviction daily setups using AI sentiment analysis. Create a free account to see today's top 3 buy signals." onLoginClick={() => setShowAuthModal(true)} />;
-        if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Oracle" />;
-        return <TheOracle />;
-      case 'strategist': 
-        if (!user) return <AuthLock featureName="The Strategist" description="calculates the perfect Option Greeks and strike prices for any stock. Log in to generate institutional-grade trade plans instantly." onLoginClick={() => setShowAuthModal(true)} />;
-        if (user.tier !== 'PREMIUM') return <PremiumLock featureName="The Strategist" />;
-        return <TheStrategist />;
-      case 'vault': 
-        if (!user) return <AuthLock featureName="The Vault" description="is your secure trading journal. You must be logged in to save your trade history, track your P&L, and analyze your signal performance." onLoginClick={() => setShowAuthModal(true)} />;
-        return <TheVault />;
-      default: return <TheSummary onNavigate={setTab} user={user} />;
-    }
-  };
-
-  if (loadingUser) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-cyan-500 animate-pulse font-mono text-sm">Initializing Sentinel OS...</div>;
-
-  if (showAdmin && isAdmin) {
-    return <AdminDashboard onBack={() => setShowAdmin(false)} />;
-  }
-
-  if (legalPage) {
-    return <LegalPage page={legalPage} onBack={() => setLegalPage(null)} />;
-  }
-
-  if (showAuthModal) {
+  if (isLoading) {
     return (
-      <div className="relative">
-        <div className="absolute inset-0 filter blur-sm h-screen overflow-hidden">
-           <AppLayout 
-             currentTab={currentTab} 
-             setTab={() => {}} 
-             user={user} 
-             onLoginClick={() => {}} 
-             onLogoutClick={() => {}}
-             onLegalClick={() => {}}
-             onAboutClick={() => {}}
-           >
-             {renderContent()}
-           </AppLayout>
-        </div>
-        <div className="absolute inset-0 z-50">
-          <AuthPage onLogin={(u) => { setUser(u); setShowAuthModal(false); }} />
-          <button 
-            onClick={() => setShowAuthModal(false)} 
-            className="absolute top-4 right-4 text-slate-400 hover:text-white font-bold text-sm bg-slate-800/80 px-4 py-2 rounded-lg"
-            data-testid="button-close-auth"
-          >
-            Continue as Guest
-          </button>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
-  return (
-    <>
-      <AppLayout 
-        currentTab={currentTab} 
-        setTab={setTab} 
-        user={user}
-        onLoginClick={() => setShowAuthModal(true)}
-        onLogoutClick={() => setShowSettings(true)}
-        onLegalClick={(page) => setLegalPage(page)}
-        onAboutClick={() => setShowAbout(true)}
-      >
-        {renderContent()}
-      </AppLayout>
-      
-      {showSettings && user && (
-        <SettingsModal 
-          user={user} 
-          onClose={() => setShowSettings(false)} 
-          onLogout={handleLogout}
-          isAdmin={isAdmin}
-          onAdminClick={() => { setShowSettings(false); setShowAdmin(true); }}
-        />
-      )}
+  // Redirect to login if not authenticated
+  if (!user) return <Redirect to="/auth" />;
 
-      {showAbout && (
-        <AboutModal 
-          onClose={() => setShowAbout(false)}
-          onSignUp={() => { setShowAbout(false); setShowAuthModal(true); }}
-          isLoggedIn={!!user}
-        />
-      )}
-    </>
-  );
+  // Redirect to home if admin clearance is required but not met
+  if (adminOnly && user.tier !== 'ADMIN') return <Redirect to="/" />;
+
+  return <Component />;
 }
 
-function GlobalNavigationHandler({ children }: { children: React.ReactNode }) {
-  useGoHomeOnExhaust();
-  return <>{children}</>;
+function Router() {
+  return (
+    <Switch>
+      {/* PUBLIC AUTH GATE */}
+      <Route path="/auth" component={AuthPage} />
+
+      {/* PROTECTED ADMIN TERMINAL */}
+      <Route path="/admin">
+        <ProtectedRoute component={AdminDashboard} adminOnly={true} />
+      </Route>
+
+      {/* MAIN TERMINAL / LANDING */}
+      <Route path="/">
+        <ProtectedRoute component={() => (
+          <div className="p-8 font-mono">
+            SENTINEL_OS // SESSION_ACTIVE
+            <br />
+            Welcome, Operative.
+          </div>
+        )} />
+      </Route>
+
+      {/* FALLBACK */}
+      <Route component={NotFound} />
+    </Switch>
+  );
 }
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SettingsProvider>
-        <NavigationStackProvider>
-          <TooltipProvider>
-            <GlobalNavigationHandler>
-              <Toaster />
-              <SonnerToaster position="top-right" richColors />
-              <Switch>
-                <Route path="/" component={MainDashboard} />
-                <Route path="/pricing" component={Pricing} />
-                <Route path="/checkout/success" component={CheckoutSuccess} />
-                <Route path="/checkout/cancel" component={CheckoutCancel} />
-                <Route component={MainDashboard} />
-              </Switch>
-              <AiAssistant />
-            </GlobalNavigationHandler>
-          </TooltipProvider>
-        </NavigationStackProvider>
-      </SettingsProvider>
+      <Router />
+      <Toaster />
     </QueryClientProvider>
   );
 }
