@@ -9,7 +9,7 @@ import adminRouter from "./routes/admin";
 export async function registerRoutes(app: Express): Promise<Server> {
   passport.serializeUser((user: any, done) => done(null, user.id));
 
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (id: string, done) => {
     try {
       const users = await query("SELECT id, email, tier, ispremium FROM users WHERE id = $1", [id]);
       if (!users[0]) return done(null, false);
@@ -44,6 +44,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   });
 
+  app.post("/api/logout", (req, res, next) => {
+    req.logout((err) => {
+      if (err) return next(err);
+      res.sendStatus(200);
+    });
+  });
+
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
@@ -51,5 +58,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.use("/api/admin", adminRouter);
 
-  return createServer(app);
+  const httpServer = createServer(app);
+  return httpServer;
 }
