@@ -8,7 +8,7 @@ import MemoryStoreFactory from "memorystore";
 const app = express();
 const MemoryStore = MemoryStoreFactory(session);
 
-// CRITICAL FOR RAILWAY
+// MANDATORY FOR RAILWAY PROXY
 app.set("trust proxy", 1);
 
 app.use(express.json());
@@ -25,7 +25,7 @@ app.use(
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: true, 
+      secure: true, // Required for Railway HTTPS
       sameSite: "lax",
       path: "/"
     },
@@ -36,7 +36,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 (async () => {
-  // registerRoutes now handles all Auth logic in-line
+  // Logic is now consolidated in registerRoutes
   const server = await registerRoutes(app);
   
   if (process.env.NODE_ENV === "development") {
