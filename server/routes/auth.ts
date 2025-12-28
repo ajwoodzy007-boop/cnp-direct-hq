@@ -6,12 +6,10 @@ import { query } from "../db";
 
 const router = Router();
 
-// SERIALIZATION: Save user ID to the session cookie
 passport.serializeUser((user: any, done) => {
   done(null, user.id);
 });
 
-// DESERIALIZATION: Use the ID from the cookie to find the user on refresh
 passport.deserializeUser(async (id: number, done) => {
   try {
     const users = await query("SELECT id, email, tier, is_premium FROM users WHERE id = $1", [id]);
@@ -27,7 +25,6 @@ passport.use(
     try {
       const users = await query("SELECT * FROM users WHERE email = $1", [email]);
       const user = users[0];
-
       if (!user || !(await bcrypt.compare(password, user.password))) {
         return done(null, false, { message: "Invalid credentials." });
       }
@@ -38,7 +35,7 @@ passport.use(
   })
 );
 
-// Add your auth routes (login, logout, user) here
+// PATH FIX: These combine with app.use("/api", authRouter) to make /api/login
 router.post("/login", passport.authenticate("local"), (req, res) => {
   res.json(req.user);
 });
@@ -55,10 +52,4 @@ router.get("/user", (req, res) => {
   res.json(req.user);
 });
 
-// THE FIX: Provide the default export expected by routes.ts
 export default router;
-
-// Named export kept for index.ts if needed
-export function setupAuth() {
-  // Logic is now contained within the router initialization
-}
