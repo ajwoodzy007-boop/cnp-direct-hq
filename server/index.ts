@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
+import { createServer } from "http"; // IMPORTED DIRECTLY HERE
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic, log } from "./vite.js";
 import { storage } from "./storage.js";
@@ -24,8 +25,11 @@ app.use(
 );
 
 (async () => {
-  // registerRoutes now returns the actual http server object
-  const server = registerRoutes(app);
+  // Register the routes on the app
+  registerRoutes(app);
+
+  // CREATE THE SERVER DIRECTLY IN THIS SCOPE
+  const server = createServer(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -41,7 +45,7 @@ app.use(
 
   const PORT = Number(process.env.PORT) || 5000;
   
-  // Now 'server' will correctly have the .listen function
+  // Now server is guaranteed to be an HTTP Server object
   server.listen(PORT, "0.0.0.0", () => {
     log(`Sentinel OS Online: Listening on port ${PORT}`);
   });

@@ -1,18 +1,17 @@
 import type { Express } from "express";
-import { createServer, type Server } from "http";
-import { setupAuth } from "./auth.js";
 import { storage } from "./storage.js";
+import { setupAuth } from "./auth.js";
 
-export function registerRoutes(app: Express): Server {
-  // Setup the Auth routes (login, logout, user)
+export function registerRoutes(app: Express) {
+  // Setup Auth first
   setupAuth(app);
 
-  // Define API routes
+  // API Health Check
   app.get("/api/health", (_req, res) => {
     res.json({ status: "online", system: "Sentinel OS" });
   });
 
-  // Basic search/valuation endpoint
+  // Valuation Endpoint
   app.get("/api/valuation/:ticker", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const { ticker } = req.params;
@@ -24,8 +23,4 @@ export function registerRoutes(app: Express): Server {
       confidence: 92
     });
   });
-
-  // Create the HTTP server and RETURN it
-  const httpServer = createServer(app);
-  return httpServer;
 }
