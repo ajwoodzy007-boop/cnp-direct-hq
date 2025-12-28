@@ -10,6 +10,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@heroicons/react": "^2.1.1",
     "@neondatabase/serverless": "^0.10.4",
     "@replit/vite-plugin-cartographer": "^0.0.4",
     "@replit/vite-plugin-runtime-error-modal": "^0.0.3",
