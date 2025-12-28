@@ -11,13 +11,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   passport.deserializeUser(async (id: number, done) => {
     try {
-      // UPDATED: Using 'ispremium' to match your actual schema
       const users = await query("SELECT id, email, tier, ispremium FROM users WHERE id = $1", [id]);
       if (!users[0]) return done(null, false);
       
       const user = {
         ...users[0],
-        is_premium: (users[0] as any).ispremium // Map for frontend
+        is_premium: (users[0] as any).ispremium 
       };
       done(null, user);
     } catch (err) { done(err); }
@@ -43,10 +42,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(user);
       });
     })(req, res, next);
-  });
-
-  app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => { if (err) return next(err); res.sendStatus(200); });
   });
 
   app.get("/api/user", (req, res) => {
