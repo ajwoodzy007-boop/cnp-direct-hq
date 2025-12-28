@@ -6,7 +6,7 @@ export function metaImagesPlugin(): Plugin {
   return {
     name: 'vite-plugin-meta-images',
     transformIndexHtml(html) {
-      // Injecting meta-tag version of CSP for extra browser compatibility
+      // THE HTML FALLBACK: Injecting the CSP tag directly into the head
       const cspTag = `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;">`;
       
       if (!html.includes('Content-Security-Policy')) {
@@ -18,19 +18,11 @@ export function metaImagesPlugin(): Plugin {
 
       const publicDir = path.resolve(process.cwd(), 'client', 'public');
       const opengraphPngPath = path.join(publicDir, 'opengraph.png');
-      const opengraphJpgPath = path.join(publicDir, 'opengraph.jpg');
-      const opengraphJpegPath = path.join(publicDir, 'opengraph.jpeg');
+      const imageExt = fs.existsSync(opengraphPngPath) ? 'png' : 'jpg';
 
-      let imageExt: string | null = null;
-      if (fs.existsSync(opengraphPngPath)) imageExt = 'png';
-      else if (fs.existsSync(opengraphJpgPath)) imageExt = 'jpg';
-      else if (fs.existsSync(opengraphJpegPath)) imageExt = 'jpeg';
-
-      if (imageExt) {
-        const imageUrl = `${baseUrl}/opengraph.${imageExt}`;
-        html = html.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/>/g, `<meta property="og:image" content="${imageUrl}" />`);
-        html = html.replace(/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/>/g, `<meta name="twitter:image" content="${imageUrl}" />`);
-      }
+      const imageUrl = `${baseUrl}/opengraph.${imageExt}`;
+      html = html.replace(/<meta\s+property="og:image"\s+content="[^"]*"\s*\/>/g, `<meta property="og:image" content="${imageUrl}" />`);
+      html = html.replace(/<meta\s+name="twitter:image"\s+content="[^"]*"\s*\/>/g, `<meta name="twitter:image" content="${imageUrl}" />`);
 
       return html;
     },
@@ -44,5 +36,5 @@ function getDeploymentUrl(): string | null {
 }
 
 function log(...args: any[]): void {
-  if (process.env.NODE_ENV !== 'test') console.log(...args);
+  if (process.env.NODE_ENV !== 'production') console.log(...args);
 }
