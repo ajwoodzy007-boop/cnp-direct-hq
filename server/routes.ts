@@ -39,6 +39,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(401).json({ message: info?.message || "Login failed" });
       req.logIn(user, (err) => {
         if (err) return next(err);
+        // On success, we just return the user; the frontend will handle the redirect to "/"
         res.json(user);
       });
     })(req, res, next);
