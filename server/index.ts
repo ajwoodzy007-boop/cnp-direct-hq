@@ -12,14 +12,14 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 /**
- * MANUAL SECURITY HEADERS
- * This replaces the heavy Helmet library to prevent 502 crashes
- * while still unlocking the 'eval' permission for your table
+ * MANDATORY SECURITY HEADERS
+ * This manually sets the CSP to allow 'unsafe-eval'.
+ * This is the ONLY way to fix the 'script-src blocked' error preventing your table rendering.
  */
 app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader(
     "Content-Security-Policy",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline'; object-src 'none'; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
+    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
   );
   next();
 });
