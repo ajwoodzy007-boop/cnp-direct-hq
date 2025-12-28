@@ -5,57 +5,42 @@ import { query } from "../db";
 
 const router = express.Router();
 
-// 1. OPTIMIZED REGISTRATION
+// 1. REGISTRATION: Forced to bypass any missing table issues
 router.post("/register", async (req, res) => {
   try {
     const { email, password } = req.body;
-    
-    if (!email || !password) {
-      return res.status(400).json({ error: "Email and password are required" });
-    }
+    if (!email || !password) return res.status(400).json({ error: "Missing fields" });
 
-    // Step A: Instant check for existing user
-    const existing = await query("SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]);
-    if (existing.length > 0) {
-      return res.status(400).json({ error: "User already exists" });
-    }
+    // Ensure email is lowercase for consistency
+    const userEmail = email.toLowerCase();
 
-    // Step B: Force insert with premium access
+    const existing = await query("SELECT * FROM users WHERE email = $1", [userEmail]);
+    if (existing.length > 0) return res.status(400).json({ error: "User exists" });
+
+    // Insert with 'password_hash' column we verified earlier
     const result = await query(
       "INSERT INTO users (email, password_hash, is_premium) VALUES ($1, $2, true) RETURNING id, email, is_premium",
-      [email, password]
+      [userEmail, password]
     );
 
-    const newUser = result[0];
-
-    // Step C: Instant Login
-    req.login(newUser, (err) => {
-      if (err) return res.status(500).json({ error: "Auth system delay. Try logging in now." });
-      return res.status(200).json({ success: true, user: newUser });
+    req.login(result[0], (err) => {
+      if (err) return res.status(500).json({ error: "Login failed" });
+      return res.json({ success: true, user: result[0] });
     });
-
   } catch (err) {
-    console.error("[Register Error]", err);
-    res.status(500).json({ error: "Registration failed - Database busy" });
+    console.error("Register Error:", err);
+    res.status(500).json({ error: "Database registration failed" });
   }
 });
 
-// 2. STABLE USER CHECK (Prevents the "Offline" overlay)
-router.get("/user", (req, res) => {
-  // If not logged in, we send a 200 with 'null' so the frontend knows to show the login screen 
-  // instead of showing a red "Offline" error.
-  if (!req.isAuthenticated() || !req.user) {
-    return res.json(null); 
-  }
-  res.json(req.user);
-});
-
-// ... Keep your existing Passport LocalStrategy and Serializers below ...
+// 2. LOGIN STRATEGY
 passport.use(new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
   try {
-    const users = await query("SELECT * FROM users WHERE LOWER(email) = LOWER($1)", [email]);
+    const users = await query("SELECT * FROM users WHERE email = $1", [email.toLowerCase()]);
     const user = users[0];
-    if (!user || user.password_hash !== password) return done(null, false, { message: "Invalid credentials" });
+    if (!user || user.password_hash !== password) {
+      return done(null, false, { message: "Invalid credentials" });
+    }
     return done(null, user);
   } catch (err) { return done(err); }
 }));
@@ -69,10 +54,17 @@ passport.deserializeUser(async (id: number, done) => {
 });
 
 router.post("/login", (req, res, next) => {
-  passport.authenticate("local", (err: any, user: any) => {
-    if (err || !user) return res.status(401).json({ success: false });
+  passport.authenticate("local", (err: any, user: any, info: any) => {
+    if (err) return next(err);
+    if (!user) return res.status(401).json({ error: info?.message });
     req.logIn(user, () => res.json({ success: true, user }));
   })(req, res, next);
+});
+
+// 3. THE "WHO AM I" ROUTE: Crucial for rendering the dashboard
+router.get("/user", (req, res) => {
+  if (!req.isAuthenticated()) return res.json(null);
+  res.json(req.user);
 });
 
 export default router;
