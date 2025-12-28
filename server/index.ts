@@ -8,7 +8,7 @@ import MemoryStoreFactory from "memorystore";
 const app = express();
 const MemoryStore = MemoryStoreFactory(session);
 
-// MANDATORY FOR RAILWAY HTTPS PERSISTENCE
+// REQUIRED FOR RAILWAY PROXIES
 app.set("trust proxy", 1);
 
 app.use(express.json());
@@ -18,15 +18,14 @@ app.use(
   session({
     name: 'cnp_sentinel_session',
     secret: process.env.SESSION_SECRET || "market-sentinel-vault-secret",
-    resave: true, 
+    resave: false, 
     saveUninitialized: false,
-    rolling: true,
     proxy: true,
     store: new MemoryStore({ checkPeriod: 86400000 }),
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000,
       httpOnly: true,
-      secure: true, 
+      secure: true, // Must be true for Railway HTTPS
       sameSite: "lax",
       path: "/"
     },
@@ -38,13 +37,11 @@ app.use(passport.session());
 
 (async () => {
   const server = await registerRoutes(app);
-  
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
-
   const port = Number(process.env.PORT) || 5000;
   server.listen(port, "0.0.0.0", () => {
     log(`[Server] Sentinel OS Live on port ${port}`);
