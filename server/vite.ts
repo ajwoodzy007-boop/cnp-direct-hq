@@ -9,16 +9,10 @@ import viteConfig from "../vite.config";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const viteLogger = createLogger();
-
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
+    hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true,
   });
-
   console.log(`${formattedTime} [${source}] ${message}`);
 }
 
@@ -26,24 +20,17 @@ export async function setupVite(app: Express, server: Server) {
   const vite = await createViteServer({
     ...viteConfig,
     logLevel: "info",
-    server: {
-      middlewareMode: true,
-      hmr: { server },
-    },
+    server: { middlewareMode: true, hmr: { server } },
   });
 
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
-    const url = req.originalUrl;
-
     try {
       const clientTemplate = path.resolve(__dirname, "..", "client", "index.html");
       let template = fs.readFileSync(clientTemplate, "utf-8");
+      template = await vite.transformIndexHtml(req.originalUrl, template);
       
-      // Transform includes our metaImagesPlugin CSP fix
-      template = await vite.transformIndexHtml(url, template);
-
-      // THE ULTIMATE FIX: Force the header on the HTML response itself
+      // Force CSP on the transformed HTML response
       res.status(200).set({ 
         "Content-Type": "text/html",
         "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
@@ -59,15 +46,13 @@ export function serveStatic(app: Express) {
   const distPath = path.resolve(__dirname, "..", "dist", "public");
 
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find build folder: ${distPath}. Make sure to run 'npm run build' first.`,
-    );
+    throw new Error(`Could not find build folder: ${distPath}.`);
   }
 
   app.use(express.static(distPath));
 
   app.use("*", (_req, res) => {
-    // Also apply CSP to static production serving
+    // Apply the same CSP to the production index.html
     res.set({
       "Content-Security-Policy": "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
     }).sendFile(path.resolve(distPath, "index.html"));
