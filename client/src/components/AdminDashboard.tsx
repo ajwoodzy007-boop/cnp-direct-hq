@@ -4,8 +4,7 @@ import {
   Target, 
   TrendingUp, 
   Activity,
-  ShieldCheck,
-  UserPlus
+  ShieldCheck
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Skeleton from "@/components/Skeleton";
@@ -32,13 +31,7 @@ export default function AdminDashboard() {
 
   if (isLoading) return <div className="p-8"><Skeleton className="h-[400px] w-full" /></div>;
   
-  if (error) {
-    return (
-      <div className="p-8 text-red-500">
-        Authentication Error: Sentinel OS Access Denied.
-      </div>
-    );
-  }
+  if (error) return <div className="p-8 text-red-500">Access Denied: Terminal Secured.</div>;
 
   const operatives = stats?.users || [];
 
@@ -50,7 +43,6 @@ export default function AdminDashboard() {
         </h2>
       </div>
 
-      {/* KPI GRID */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-primary/20 bg-card/50 backdrop-blur">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -59,7 +51,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
-            <p className="text-xs text-muted-foreground">+2 from last session</p>
+            <p className="text-xs text-muted-foreground">Active Registry</p>
           </CardContent>
         </Card>
         <Card className="border-primary/20 bg-card/50 backdrop-blur">
@@ -69,7 +61,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">${stats?.mrr || 0}</div>
-            <p className="text-xs text-muted-foreground">+12% growth curve</p>
+            <p className="text-xs text-muted-foreground">Institutional Revenue</p>
           </CardContent>
         </Card>
         <Card className="border-primary/20 bg-card/50 backdrop-blur">
@@ -79,7 +71,7 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.conversionRate || 0}%</div>
-            <p className="text-xs text-muted-foreground">Optimized for Tier-1</p>
+            <p className="text-xs text-muted-foreground">Free to Premium</p>
           </CardContent>
         </Card>
         <Card className="border-primary/20 bg-card/50 backdrop-blur">
@@ -89,12 +81,11 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats?.aiWinRate || 0}%</div>
-            <p className="text-xs text-muted-foreground">Institutional-Grade</p>
+            <p className="text-xs text-muted-foreground">Target Precision</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* OPERATIVE TABLE - STATIC RENDER (ZERO EVAL) */}
       <Card className="border-primary/20 bg-card/50">
         <CardHeader>
           <CardTitle className="text-xl font-mono flex items-center gap-2">
@@ -103,7 +94,7 @@ export default function AdminDashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border border-border">
+          <div className="rounded-md border border-border overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-muted-foreground border-b border-border">
                 <tr>
@@ -113,31 +104,27 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {operatives.length > 0 ? (
-                  operatives.map((op) => (
-                    <tr key={op.id} className="hover:bg-primary/5 transition-colors">
-                      <td className="p-3 font-mono">{op.email}</td>
-                      <td className="p-3 text-primary uppercase text-xs font-bold">{op.tier}</td>
-                      <td className="p-3">
-                        {op.is_premium ? (
-                          <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-1 text-xs font-medium text-green-500 ring-1 ring-inset ring-green-500/20">
-                            PREMIUM
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-yellow-500/10 px-2 py-1 text-xs font-medium text-yellow-500 ring-1 ring-inset ring-yellow-500/20">
-                            STANDARD
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={3} className="p-8 text-center text-muted-foreground italic">
-                      No operatives found in the database.
+                {operatives.map((op) => (
+                  <tr key={op.id} className="hover:bg-primary/5 transition-colors">
+                    <td className="p-3 font-mono">{op.email}</td>
+                    <td className="p-3">
+                      <span className={`text-xs font-bold uppercase ${op.tier === 'ADMIN' ? 'text-primary' : 'text-muted-foreground'}`}>
+                        {op.tier}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      {op.is_premium ? (
+                        <span className="inline-flex items-center rounded-full bg-green-500/10 px-2 py-1 text-xs font-medium text-green-500 ring-1 ring-inset ring-green-500/20">
+                          PREMIUM
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-slate-500/10 px-2 py-1 text-xs font-medium text-slate-400 ring-1 ring-inset ring-slate-500/20">
+                          LOCKED
+                        </span>
+                      )}
                     </td>
                   </tr>
-                )}
+                ))}
               </tbody>
             </table>
           </div>
