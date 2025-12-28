@@ -8,20 +8,19 @@ import MemoryStoreFactory from "memorystore";
 const app = express();
 const MemoryStore = MemoryStoreFactory(session);
 
-// FORCE JSON AND URL ENCODING
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 /**
- * RAILWAY PRODUCTION SECURITY OVERRIDE
- * This manually injects the 'unsafe-eval' permission required for the table.
- * We apply this to EVERY response to bypass Railway's default strictness.
+ * THE CSP OVERRIDE
+ * Explicitly allows 'unsafe-eval' for the Operative Table to render.
+ * This is applied to every response to bypass Railway's strict production defaults.
  */
 app.use((req: Request, res: Response, next: NextFunction) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
-  );
+  const policy = "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;";
+  res.setHeader("Content-Security-Policy", policy);
+  res.setHeader("X-Content-Security-Policy", policy);
+  res.setHeader("X-WebKit-CSP", policy);
   next();
 });
 
@@ -51,7 +50,7 @@ app.use((req, res, next) => {
 // SESSION CONFIGURATION
 app.use(
   session({
-    cookie: { maxAge: 86400000, httpOnly: true, secure: true }, // Set to true for Railway HTTPS
+    cookie: { maxAge: 86400000, httpOnly: true, secure: true }, // secure: true for Railway HTTPS
     store: new MemoryStore({ checkPeriod: 86400000 }),
     resave: false,
     saveUninitialized: false,
@@ -63,7 +62,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 (async () => {
-  // 1. REGISTER ROUTES: Provides the user data found in Neon
+  // 1. REGISTER ROUTES
   const server = await registerRoutes(app);
 
   // 2. ERROR HANDLER
@@ -74,7 +73,6 @@ app.use(passport.session());
   });
 
   // 3. VITE / STATIC SERVING
-  // On Railway, we usually run in production mode
   if (process.env.NODE_ENV === "development") {
     await setupVite(app, server);
   } else {
