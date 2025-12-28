@@ -8,23 +8,20 @@ import MemoryStoreFactory from "memorystore";
 const app = express();
 const MemoryStore = MemoryStoreFactory(session);
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
-
-/**
- * MANDATORY SECURITY HEADERS
- * This manually sets the CSP to allow 'unsafe-eval'.
- * This is the ONLY way to fix the 'script-src blocked' error preventing your table rendering.
- */
+// 1. MANDATORY SECURITY OVERRIDE (Must be at the absolute top)
+// This specifically targets the 'eval' block seen in your console
 app.use((req: Request, res: Response, next: NextFunction) => {
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;"
-  );
+  const csp = "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.cnpdirect.com; connect-src 'self' https://www.cnpdirect.com wss://www.cnpdirect.com;";
+  res.setHeader("Content-Security-Policy", csp);
+  res.setHeader("X-Content-Security-Policy", csp);
+  res.setHeader("X-WebKit-CSP", csp);
   next();
 });
 
-// LOGGING MIDDLEWARE: Critical for the frontend "Sentinel" health check
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// LOGGING MIDDLEWARE
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -62,17 +59,17 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 (async () => {
-  // 1. REGISTER ROUTES: This ensures the API endpoints are active
+  // REGISTER ROUTES
   const server = await registerRoutes(app);
 
-  // 2. ERROR HANDLER
+  // ERROR HANDLER
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
     res.status(status).json({ message });
   });
 
-  // 3. VITE / STATIC SERVING
+  // VITE / STATIC SERVING
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
