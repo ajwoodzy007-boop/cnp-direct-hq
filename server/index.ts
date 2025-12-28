@@ -1,35 +1,55 @@
-import express from "express";
+import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import passport from "passport";
 import { registerRoutes } from "./routes";
-import { serveStatic } from "./vite";
+import { setupVite, serveStatic, log } from "./vite";
 import MemoryStoreFactory from "memorystore";
 
 const app = express();
 const MemoryStore = MemoryStoreFactory(session);
+
 app.set("trust proxy", 1);
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // ULTRA-PERMISSIVE HEADER TO BYPASS CSP BLOCKS
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader("Content-Security-Policy", "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * 'unsafe-inline'; img-src * data: blob:; style-src * 'unsafe-inline';");
   next();
 });
 
-app.use(session({
-  secret: process.env.SESSION_SECRET || "vault-secret",
-  resave: true,
-  saveUninitialized: false,
-  proxy: true,
-  cookie: { secure: true, httpOnly: true, sameSite: "lax" },
-  store: new MemoryStore({ checkPeriod: 86400000 })
-}));
+app.use(
+  session({
+    name: 'sentinel_session',
+    secret: process.env.SESSION_SECRET || "market-sentinel-vault-secret",
+    resave: true, 
+    saveUninitialized: false,
+    proxy: true,
+    store: new MemoryStore({ checkPeriod: 86400000 }),
+    cookie: {
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      httpOnly: true,
+      secure: true, 
+      sameSite: "lax",
+      path: "/"
+    },
+  })
+);
 
 app.use(passport.initialize());
 app.use(passport.session());
 
 (async () => {
   const server = await registerRoutes(app);
-  serveStatic(app);
-  server.listen(Number(process.env.PORT) || 5000, "0.0.0.0");
+  
+  if (process.env.NODE_ENV === "production") {
+    serveStatic(app);
+  } else {
+    await setupVite(app, server);
+  }
+
+  const port = Number(process.env.PORT) || 5000;
+  server.listen(port, "0.0.0.0", () => {
+    log(`[Server] Sentinel OS Live on port ${port}`);
+  });
 })();
