@@ -1,48 +1,36 @@
-import { build, type BuildOptions } from "esbuild";
-import { join } from "path";
+import { build } from "vite";
+import path, { dirname } from "path";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
-import { build as viteBuild } from "vite";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-async function startBuild() {
-  console.log("[Build] Starting full production build...");
-  
+async function runBuild() {
   try {
-    // 1. Build the Server (Backend)
-    const serverBuildOptions: BuildOptions = {
-      entryPoints: [join(__dirname, "../server/index.ts")],
-      bundle: true,
-      platform: "node",
-      target: "node20",
-      outfile: join(__dirname, "../dist/index.js"),
-      format: "esm",
-      packages: "external",
-      sourcemap: true,
-    };
+    console.log("[Build] Starting full production build...");
 
-    console.log("[Build] Compiling server...");
-    await build(serverBuildOptions);
-    console.log("[Build] Server compiled successfully.");
+    // 1. Clean previous builds
+    const distPath = path.resolve(__dirname, "..", "dist");
+    if (fs.existsSync(distPath)) {
+      fs.rmSync(distPath, { recursive: true, force: true });
+    }
 
-    // 2. Build the Client (Frontend Dashboard)
-    console.log("[Build] Compiling frontend with Vite...");
-    await viteBuild({
-      configFile: join(__dirname, "../vite.config.ts"),
+    // 2. Build Frontend via Vite
+    await build({
+      configFile: path.resolve(__dirname, "..", "vite.config.ts"),
       build: {
-        outDir: join(__dirname, "../dist/public"),
+        outDir: path.resolve(__dirname, "..", "dist", "public"),
         emptyOutDir: true,
-      },
+      }
     });
-    console.log("[Build] Frontend compiled successfully.");
 
-    console.log("[Build] Full project build complete.");
+    console.log("[Build] Frontend compiled successfully to dist/public.");
+    console.log("[Build] Build process complete.");
   } catch (error) {
     console.error("[Build] Error during compilation:", error);
     process.exit(1);
   }
 }
 
-startBuild();
+runBuild();
