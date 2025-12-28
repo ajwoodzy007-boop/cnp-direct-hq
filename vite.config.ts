@@ -19,18 +19,11 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
-    // CRITICAL: Disable sourcemaps and use 'esbuild' to prevent eval() triggers
+    // THE CSP FIX: Disabling sourcemaps and using a runtime-safe target
     sourcemap: false,
-    minify: 'esbuild', 
-    target: 'esnext',
+    minify: 'esbuild',
+    target: 'es2020',
+    cssCodeSplit: true,
     reportCompressedSize: false,
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: 'http://0.0.0.0:5000',
-        changeOrigin: true,
-      },
-    },
   },
 });
