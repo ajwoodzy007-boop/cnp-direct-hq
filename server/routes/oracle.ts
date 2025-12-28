@@ -3,38 +3,39 @@ import { runMarketScan } from '../lib/sentinel';
 
 const router = express.Router();
 
-router.get(['/sentinel', '/daily', '/movers', '/'], async (req, res) => {
+router.get(['/sentinel', '/daily', '/'], async (req, res) => {
   try {
-    const rawData = await runMarketScan();
-    
-    // Convert the object { "0": {...} } from your logs into a clean array
-    const marketArray = Array.isArray(rawData) 
-      ? rawData 
-      : Object.values(rawData).filter(item => typeof item === 'object' && item !== null);
+    const data = await runMarketScan();
+    const marketArray = Array.isArray(data) ? data : Object.values(data);
 
-    const safeData = marketArray.map(item => ({
+    // Map the Finnhub data to include every possible alias the frontend needs
+    const mappedData = marketArray.filter(item => item && item.ticker).map(item => ({
       ...item,
+      // Essential Aliases to prevent frontend crashes
       symbol: item.ticker,
-      changesPercentage: item.percentChange, // Fixed property name for movers
-      lastPrice: item.price
+      price: item.price,
+      lastPrice: item.price,
+      change: item.change,
+      // Provide BOTH names for the percentage change
+      percentChange: item.percentChange,
+      changesPercentage: item.percentChange, 
+      timestamp: item.timestamp
     }));
 
-    // PATH 1: If the UI calls /daily or /status, it wants the 'online' wrapper
-    if (req.path.includes('daily') || req.path.includes('status')) {
-      return res.json({
-        status: 'online',
-        success: true,
-        data: safeData[0] || {}, // "Today's Picks" usually wants the top stock
-        marketData: safeData
-      });
-    }
+    // HYBRID STRUCTURE: This is the fix for index-Ha37Khn5.js:202
+    // It allows both `data.slice()` and `data.data.slice()` to work simultaneously.
+    const hybridResponse: any = [...mappedData];
+    hybridResponse.data = mappedData;
+    hybridResponse.status = 'online';
+    hybridResponse.success = true;
 
-    // PATH 2: If the UI calls /sentinel or /movers, it wants a RAW ARRAY
-    // This stops the '.slice is not a function' error
-    res.json(safeData);
-    
+    res.json(hybridResponse);
   } catch (error) {
-    res.json([]); // Fail-safe array
+    console.error('[Oracle] Data Mapping Error:', error);
+    // Return hybrid empty state to prevent .slice() crashes
+    const fallback: any = [];
+    fallback.data = [];
+    res.json(fallback);
   }
 });
 
