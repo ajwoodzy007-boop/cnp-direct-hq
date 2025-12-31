@@ -4,7 +4,45 @@ import { type Express } from "express";
 import session from "express-session";
 import { getStorage } from "./storage.js";
 
-export function setupAuth(app: Express) {
+export async function setupAuth(app: Express) {
+  // CRITICAL: Session middleware MUST be set up before passport.session()
+  // This initializes express-session which passport.session() depends on
+  let sessionStore: session.Store;
+  
+  try {
+    // Try to get the database session store from storage
+    const storage = getStorage();
+    sessionStore = storage.sessionStore;
+  } catch (err) {
+    console.warn("Database session store unavailable, using memory store fallback:", err);
+    // Fallback: Use memorystore package for session storage
+    // This provides a better memory store implementation than the default
+    const memorystoreModule = await import("memorystore");
+    const MemoryStoreFactory = (memorystoreModule.default || memorystoreModule) as any;
+    const MemoryStore = MemoryStoreFactory(session);
+    sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // Prune expired entries every 24h
+    });
+    console.warn("Using in-memory session store (sessions will not persist across restarts)");
+  }
+
+  // Configure express-session middleware
+  app.use(
+    session({
+      secret: process.env.SESSION_SECRET || "cnp-sentinel-secret-change-in-production",
+      resave: false,
+      saveUninitialized: false,
+      store: sessionStore,
+      cookie: {
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      },
+    })
+  );
+
+  // Configure passport strategies
   passport.use(
     new LocalStrategy(
       { usernameField: "email", passwordField: "password" },
@@ -73,6 +111,7 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Initialize passport (AFTER session middleware is set up)
   app.use(passport.initialize());
   app.use(passport.session());
 
