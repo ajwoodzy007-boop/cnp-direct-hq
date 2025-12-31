@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { storage } from "../storage";
+import { getStorage } from "../storage.js";
 import { scanMarket, getNews } from "./marketData";
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
@@ -47,6 +47,7 @@ export async function generateTradingStrategies(
   experienceLevel: string = "intermediate"
 ): Promise<PlaybookResult> {
   try {
+    const storage = getStorage();
     const run = await storage.createPlaybookRun({
       userId,
       playbookType: "strategy",
@@ -97,6 +98,7 @@ Format each section with clear, actionable bullet points. Be specific with numbe
 
 export async function generateMarketBriefing(userId: string): Promise<PlaybookResult> {
   try {
+    const storage = getStorage();
     const run = await storage.createPlaybookRun({
       userId,
       playbookType: "briefing",
@@ -160,6 +162,7 @@ export async function generateEntryExitSignals(
   tickers: string[]
 ): Promise<PlaybookResult> {
   try {
+    const storage = getStorage();
     const run = await storage.createPlaybookRun({
       userId,
       playbookType: "signals",
@@ -224,6 +227,7 @@ export async function generateRiskAssessment(
   ticker: string
 ): Promise<PlaybookResult> {
   try {
+    const storage = getStorage();
     const run = await storage.createPlaybookRun({
       userId,
       playbookType: "risk",
@@ -290,6 +294,7 @@ export async function generatePortfolioOptimization(
   holdings: { ticker: string; shares: number; avgCost: number }[]
 ): Promise<PlaybookResult> {
   try {
+    const storage = getStorage();
     const run = await storage.createPlaybookRun({
       userId,
       playbookType: "portfolio",
@@ -365,6 +370,7 @@ export async function generatePatternRecognition(
   ticker: string
 ): Promise<PlaybookResult> {
   try {
+    const storage = getStorage();
     const run = await storage.createPlaybookRun({
       userId,
       playbookType: "patterns",
@@ -429,6 +435,7 @@ export async function generateEarningsAnalysis(
   ticker: string
 ): Promise<PlaybookResult> {
   try {
+    const storage = getStorage();
     const run = await storage.createPlaybookRun({
       userId,
       playbookType: "earnings",
@@ -495,6 +502,7 @@ export async function generateOptionsSignals(
   timeframe: string = "weekly"
 ): Promise<PlaybookResult> {
   try {
+    const storage = getStorage();
     const run = await storage.createPlaybookRun({
       userId,
       playbookType: "options",

@@ -1,15 +1,11 @@
 import type { Express } from "express";
-import { storage } from "./storage.js";
-import { setupAuth } from "./auth.js";
 
 export function registerRoutes(app: Express) {
-  // Setup Auth first
-  setupAuth(app);
+  // Note: setupAuth is called in index.ts before registerRoutes
+  // This prevents duplicate route registration
 
-  // API Health Check
-  app.get("/api/health", (_req, res) => {
-    res.json({ status: "online", system: "Sentinel OS" });
-  });
+  // API Health Check (also defined in index.ts, but kept here for backward compatibility)
+  // The one in index.ts takes precedence since it's registered first
 
   // Valuation Endpoint
   app.get("/api/valuation/:ticker", async (req, res) => {

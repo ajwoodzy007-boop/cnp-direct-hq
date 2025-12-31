@@ -2,7 +2,7 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { type Express } from "express";
 import session from "express-session";
-import { storage } from "./storage.js";
+import { getStorage } from "./storage.js";
 
 export function setupAuth(app: Express) {
   passport.use(
@@ -11,6 +11,7 @@ export function setupAuth(app: Express) {
       async (email, password, done) => {
         try {
           // Find the user in the database
+          const storage = getStorage();
           const user: any = await (storage as any).getUserByEmail(email);
           
           if (!user) {
@@ -35,6 +36,7 @@ export function setupAuth(app: Express) {
 
   passport.deserializeUser(async (id: any, done) => {
     try {
+      const storage = getStorage();
       const user = await storage.getUser(id);
       done(null, user);
     } catch (err) {
