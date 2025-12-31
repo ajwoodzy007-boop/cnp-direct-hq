@@ -70,17 +70,29 @@ export function NavigationStackProvider({ children }: { children: React.ReactNod
 export function useNavigationStack() {
   const context = useContext(NavigationStackContext);
   if (!context) {
-    throw new Error('useNavigationStack must be used within NavigationStackProvider');
+    // Return a no-op implementation instead of throwing
+    // This allows components to work without the provider
+    return {
+      register: () => () => {},
+      hasModals: () => false,
+    };
   }
   return context;
 }
 
 export function useModalBack(isOpen: boolean, onClose: () => void, id: string) {
-  const { register } = useNavigationStack();
+  const context = useContext(NavigationStackContext);
   const registeredRef = useRef(false);
   const unregisterRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    // Gracefully handle missing NavigationStackProvider - just skip registration
+    if (!context) {
+      return;
+    }
+
+    const { register } = context;
+    
     if (isOpen && !registeredRef.current) {
       registeredRef.current = true;
       unregisterRef.current = register({
@@ -95,7 +107,7 @@ export function useModalBack(isOpen: boolean, onClose: () => void, id: string) {
         unregisterRef.current = null;
       }
     }
-  }, [isOpen, onClose, register, id]);
+  }, [isOpen, onClose, context, id]);
 
   useEffect(() => {
     return () => {

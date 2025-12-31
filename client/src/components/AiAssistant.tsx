@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChatBubbleLeftRightIcon, XMarkIcon, PaperAirplaneIcon, ArrowPathIcon, CpuChipIcon } from '@heroicons/react/24/outline';
-import { useModalBack } from '../../hooks/useNavigationStack';
+import { useModalBack } from '@/hooks/useNavigationStack';
 
 interface Message {
   role: 'user' | 'assistant';

@@ -3,8 +3,8 @@ import { ShieldExclamationIcon, ArrowPathIcon, ChevronDownIcon, ChevronUpIcon, S
 import StockChart from './StockChart';
 import Skeleton from './Skeleton';
 import FullReportModal from './FullReportModal';
-import { useModalBack } from '../../hooks/useNavigationStack';
-import HelpTip from '../../components/HelpTip';
+import { useModalBack } from '@/hooks/useNavigationStack';
+import HelpTip from './HelpTip';
 import TickerInfo from './TickerInfo';
 
 interface SentinelData {

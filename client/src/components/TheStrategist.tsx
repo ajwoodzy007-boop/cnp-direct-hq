@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CpuChipIcon, MagnifyingGlassIcon, BoltIcon, ShieldCheckIcon, ArrowTrendingUpIcon, ExclamationTriangleIcon, ViewfinderCircleIcon, CurrencyDollarIcon, FireIcon, ChevronRightIcon, ArrowTrendingDownIcon, ChartBarIcon } from '@heroicons/react/24/outline';
-import HelpTip from '../../components/HelpTip';
+import HelpTip from './HelpTip';
 import TickerInfo from './TickerInfo';
 
 export default function TheStrategist() {

@@ -6,8 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import PremiumLock from './PremiumLock';
 import Skeleton from './Skeleton';
-import { useModalBack } from '../../hooks/useNavigationStack';
-import HelpTip from '../../components/HelpTip';
+import { useModalBack } from '@/hooks/useNavigationStack';
+import HelpTip from './HelpTip';
 import TickerInfo from './TickerInfo';
 
 interface PickData {

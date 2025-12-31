@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TrophyIcon, ArrowTrendingUpIcon, ViewfinderCircleIcon, CalendarIcon, ChevronRightIcon, XMarkIcon, ArrowPathIcon, ChartBarIcon, CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
-import { useModalBack } from '../../hooks/useNavigationStack';
+import { useModalBack } from '@/hooks/useNavigationStack';
 import TickerInfo from './TickerInfo';
 
 interface BacktestPick {

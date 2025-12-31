@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Squares2X2Icon, PlusIcon, SignalIcon, ChartPieIcon, ArrowTrendingUpIcon, ClockIcon, ExclamationCircleIcon, PencilIcon, TrashIcon, XMarkIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
 import Skeleton from './Skeleton';
-import { useModalBack } from '../../hooks/useNavigationStack';
+import { useModalBack } from '@/hooks/useNavigationStack';
 import TickerInfo from './TickerInfo';
 
 export default function TheVault() {
