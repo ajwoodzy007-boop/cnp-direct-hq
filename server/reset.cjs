@@ -1,36 +1,52 @@
 const { Client } = require('pg');
-const crypto = require('crypto');
-const { promisify } = require('util');
+const fs = require('fs');
+const path = require('path');
 
-const scryptAsync = promisify(crypto.scrypt);
-
-async function hashPassword(password) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const buf = await scryptAsync(password, salt, 64);
-  return `${buf.toString("hex")}.${salt}`;
-}
-
-async function fix() {
+async function restoreData() {
     const client = new Client("postgresql://neondb_owner:npg_RgsUuBVyA57z@ep-withered-cloud-aepmhqdn.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require");
+    
+    // PATH TO YOUR DOWNLOADS FOLDER
+    const filePath = "C:/Users/ajwoo/Downloads/daily_prediction_entries.json";
+
     try {
         await client.connect();
-        const hashedPassword = await hashPassword('admin123');
-        
+        console.log("🔗 Connected to Neon...");
+
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+        console.log(`📖 Found ${data.length} predictions in backup file.`);
+
+        // 1. Ensure the table exists
         await client.query(`
-            UPDATE users 
-            SET password = $1, role = 'admin', "isAdmin" = true 
-            WHERE email = 'admin@cnpdirect.com'
-        `, [hashedPassword]);
+            CREATE TABLE IF NOT EXISTS predictions (
+                id SERIAL PRIMARY KEY,
+                title TEXT,
+                description TEXT,
+                date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                "userId" INTEGER,
+                data JSONB
+            );
+        `);
+
+        // 2. Clear old (if any) and Insert New
+        await client.query('DELETE FROM predictions');
+        
+        for (const item of data) {
+            await client.query(
+                `INSERT INTO predictions (title, description, date, "userId", data) 
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [item.title, item.description, item.date, item.userId, JSON.stringify(item.data || {})]
+            );
+        }
 
         console.log("-----------------------------------------");
-        console.log("✅ PASSWORD ENCRYPTED SUCCESSFULLY");
-        console.log("User: admin@cnpdirect.com");
-        console.log("Pass: admin123");
+        console.log(`🚀 SUCCESS! ${data.length} PREDICTIONS RESTORED.`);
         console.log("-----------------------------------------");
+
     } catch (err) {
-        console.error(err.message);
+        console.error("❌ ERROR:", err.message);
     } finally {
         await client.end();
     }
 }
-fix();
+
+restoreData();
