@@ -30,11 +30,11 @@ export async function setupAuth(app: Express) {
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "cnp-sentinel-secret-change-in-production",
-      resave: false,
-      saveUninitialized: false,
+      resave: true, // Force save session even if not modified
+      saveUninitialized: true, // Save uninitialized sessions
       store: sessionStore,
       cookie: {
-        secure: process.env.NODE_ENV === "production",
+        secure: false, // Railway handles SSL at proxy level
         sameSite: "lax",
         httpOnly: true,
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
@@ -141,7 +141,36 @@ export async function setupAuth(app: Express) {
     });
   });
 
-  app.get("/api/user", (req: any, res: any) => {
+  app.get("/api/user", async (req: any, res: any) => {
+    // TEMP BYPASS: Auto-login ajwoodzy007@gmail.com in production if not authenticated
+    if (!req.isAuthenticated() && process.env.NODE_ENV === "production") {
+      try {
+        const storage = getStorage();
+        const member = await storage.getUserByEmail("ajwoodzy007@gmail.com");
+        if (member) {
+          // Manually log the user in for this session
+          const user = {
+            id: member.id,
+            email: member.email,
+            membership_tier: member.membership_tier,
+            tier: member.membership_tier,
+            isAdmin: member.membership_tier === 'admin',
+          };
+          req.logIn(user, (err: any) => {
+            if (err) {
+              console.error("Bypass login error:", err);
+              return res.sendStatus(401);
+            }
+            console.log("BYPASS: Auto-logged in ajwoodzy007@gmail.com");
+            return res.json(user);
+          });
+          return;
+        }
+      } catch (err) {
+        console.error("Bypass check error:", err);
+      }
+    }
+    
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
   });

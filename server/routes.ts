@@ -1,7 +1,10 @@
 import type { Express } from "express";
 import { getStorage } from "./storage.js";
+import adminRouter from "./routes/admin.js";
 
 export function registerRoutes(app: Express) {
+  // Register admin routes
+  app.use("/api/admin", adminRouter);
   // Note: setupAuth is called in index.ts before registerRoutes
   // This prevents duplicate route registration
 
