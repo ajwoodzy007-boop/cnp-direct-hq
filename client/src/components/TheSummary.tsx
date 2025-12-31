@@ -63,7 +63,8 @@ export default function TheSummary({ onNavigate, user }: Props) {
 
   const marketMovers: MarketMover[] = sentinelData?.data?.slice(0, 4) || [];
   const topPredictions: Prediction[] = predictionsData?.data?.slice(0, 3) || [];
-  const signalAccuracy = statsData?.data?.winRate ?? null;
+  // Safety check: Ensure stats object exists before accessing properties
+  const signalAccuracy = statsData?.data?.winRate ?? 0;
   const systemHeat = -14.2;
 
   const currentHour = new Date().getHours();

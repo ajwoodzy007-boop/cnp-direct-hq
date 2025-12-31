@@ -2,12 +2,18 @@ import type { Express } from "express";
 import { getStorage } from "./storage.js";
 import adminRouter from "./routes/admin.js";
 import oracleRouter from "./routes/oracle.js";
+import marketRouter from "./routes/market.js";
+import backtestRouter from "./routes/backtest.js";
 
 export function registerRoutes(app: Express) {
   // Register admin routes
   app.use("/api/admin", adminRouter);
   // Register oracle routes
   app.use("/api/oracle", oracleRouter);
+  // Register market routes
+  app.use("/api/market", marketRouter);
+  // Register backtest routes
+  app.use("/api/backtest", backtestRouter);
   // Note: setupAuth is called in index.ts before registerRoutes
   // This prevents duplicate route registration
 

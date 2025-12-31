@@ -72,11 +72,34 @@ export default function TrackRecord() {
     try {
       const res = await fetch('/api/backtest/summary');
       const data = await res.json();
-      if (data.success) {
-        setSummary(data);
+      if (data.success && data.data) {
+        setSummary(data.data);
+      } else {
+        // Set default structure if API doesn't return expected format
+        setSummary({
+          thirtyDay: {
+            winRate: 0,
+            wins: 0,
+            losses: 0,
+            avgReturn: 0,
+            totalPicks: 0
+          },
+          sixMonth: null
+        });
       }
     } catch (error) {
       console.error('Failed to fetch backtest summary:', error);
+      // Set default structure on error to prevent crash
+      setSummary({
+        thirtyDay: {
+          winRate: 0,
+          wins: 0,
+          losses: 0,
+          avgReturn: 0,
+          totalPicks: 0
+        },
+        sixMonth: null
+      });
     } finally {
       setLoading(false);
     }
@@ -171,17 +194,17 @@ export default function TrackRecord() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-slate-950/50 backdrop-blur-md p-4 rounded-xl border border-slate-700/50">
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">30-Day Signal Confidence</div>
-              <div className="text-3xl font-bold text-emerald-400">{summary.thirtyDay.winRate}%</div>
-              <div className="text-xs text-slate-500 mt-1">{summary.thirtyDay.wins}W / {summary.thirtyDay.losses}L</div>
+              <div className="text-3xl font-bold text-emerald-400">{summary?.thirtyDay?.winRate ?? 0}%</div>
+              <div className="text-xs text-slate-500 mt-1">{summary?.thirtyDay?.wins ?? 0}W / {summary?.thirtyDay?.losses ?? 0}L</div>
             </div>
             
             <div className="bg-slate-950/50 backdrop-blur-md p-4 rounded-xl border border-slate-700/50">
               <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Avg Return</div>
-              <div className="text-3xl font-bold text-green-400">+{summary.thirtyDay.avgReturn}%</div>
+              <div className="text-3xl font-bold text-green-400">+{summary?.thirtyDay?.avgReturn ?? 0}%</div>
               <div className="text-xs text-slate-500 mt-1">Per Pick</div>
             </div>
-            
-            {summary.sixMonth && (
+
+            {summary?.sixMonth && (
               <>
                 <div className="bg-slate-950/50 backdrop-blur-md p-4 rounded-xl border border-slate-700/50">
                   <div className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">6-Month Signal Confidence</div>

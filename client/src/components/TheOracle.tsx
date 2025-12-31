@@ -184,11 +184,34 @@ export default function TheOracle() {
     try {
       const res = await fetch('/api/backtest/summary');
       const data = await res.json();
-      if (data.success) {
-        setBacktestSummary(data);
+      if (data.success && data.data) {
+        setBacktestSummary(data.data);
+      } else {
+        // Set default structure if API doesn't return expected format
+        setBacktestSummary({
+          thirtyDay: {
+            winRate: 0,
+            wins: 0,
+            losses: 0,
+            avgReturn: 0,
+            totalPicks: 0
+          },
+          sixMonth: null
+        });
       }
     } catch (error) {
       console.error('Failed to fetch backtest summary:', error);
+      // Set default structure on error to prevent crash
+      setBacktestSummary({
+        thirtyDay: {
+          winRate: 0,
+          wins: 0,
+          losses: 0,
+          avgReturn: 0,
+          totalPicks: 0
+        },
+        sixMonth: null
+      });
     }
   };
 
@@ -592,7 +615,7 @@ export default function TheOracle() {
               <div className="text-xs text-red-400/60">Tactical Drawdown Limit</div>
             </div>
 
-            {backtestSummary && (
+            {backtestSummary && backtestSummary.thirtyDay && (
               <>
                 <div 
                   onClick={() => { setModal30DayTab('performance'); fetch30DayData(); }}
@@ -602,8 +625,8 @@ export default function TheOracle() {
                   <div className="text-xs text-emerald-500 uppercase font-bold tracking-wider flex items-center gap-1">
                     30-Day <CalendarIcon className="h-3 w-3" />
                   </div>
-                  <div className="text-2xl font-bold text-emerald-400">{backtestSummary.thirtyDay.winRate}%</div>
-                  <div className="text-xs text-slate-600">{backtestSummary.thirtyDay.wins}W / {backtestSummary.thirtyDay.losses}L</div>
+                  <div className="text-2xl font-bold text-emerald-400">{backtestSummary.thirtyDay?.winRate ?? 0}%</div>
+                  <div className="text-xs text-slate-600">{backtestSummary.thirtyDay?.wins ?? 0}W / {backtestSummary.thirtyDay?.losses ?? 0}L</div>
                 </div>
 
                 <div 
@@ -611,7 +634,7 @@ export default function TheOracle() {
                   className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-emerald-500/30 hover:border-emerald-500/60 transition-colors cursor-pointer"
                 >
                   <div className="text-xs text-emerald-500 uppercase font-bold tracking-wider">30-Day Avg</div>
-                  <div className="text-2xl font-bold text-green-400">+{backtestSummary.thirtyDay.avgReturn}%</div>
+                  <div className="text-2xl font-bold text-green-400">+{backtestSummary.thirtyDay?.avgReturn ?? 0}%</div>
                   <div className="text-xs text-slate-600">Per Pick</div>
                 </div>
 
@@ -634,7 +657,7 @@ export default function TheOracle() {
                       className="bg-slate-950/50 backdrop-blur-md px-4 py-3 rounded-xl border border-yellow-500/30 hover:border-yellow-500/60 transition-colors cursor-pointer"
                     >
                       <div className="text-xs text-yellow-500 uppercase font-bold tracking-wider">Cumulative</div>
-                      <div className="text-2xl font-bold text-yellow-400">+{backtestSummary.sixMonth.cumulativeReturn}%</div>
+                      <div className="text-2xl font-bold text-yellow-400">+{backtestSummary.sixMonth?.cumulativeReturn ?? 0}%</div>
                       <div className="text-xs text-slate-600">6 Months</div>
                     </div>
                   </>
@@ -1690,23 +1713,23 @@ export default function TheOracle() {
           
           {modal30DayTab === 'performance' ? (
             <>
-              {backtestSummary ? (
+              {backtestSummary && backtestSummary.thirtyDay ? (
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-emerald-400">{backtestSummary.thirtyDay.winRate}%</div>
+                      <div className="text-2xl font-bold text-emerald-400">{backtestSummary.thirtyDay?.winRate ?? 0}%</div>
                       <div className="text-xs text-slate-500">Signal Confidence</div>
                     </div>
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-green-400">+{backtestSummary.thirtyDay.avgReturn}%</div>
+                      <div className="text-2xl font-bold text-green-400">+{backtestSummary.thirtyDay?.avgReturn ?? 0}%</div>
                       <div className="text-xs text-slate-500">Avg Return</div>
                     </div>
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-white">{backtestSummary.thirtyDay.totalPicks}</div>
+                      <div className="text-2xl font-bold text-white">{backtestSummary.thirtyDay?.totalPicks ?? 0}</div>
                       <div className="text-xs text-slate-500">Total Picks</div>
                     </div>
                     <div className="bg-slate-800 p-4 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-cyan-400">{backtestSummary.thirtyDay.wins}W / {backtestSummary.thirtyDay.losses}L</div>
+                      <div className="text-2xl font-bold text-cyan-400">{backtestSummary.thirtyDay?.wins ?? 0}W / {backtestSummary.thirtyDay?.losses ?? 0}L</div>
                       <div className="text-xs text-slate-500">Win/Loss</div>
                     </div>
                   </div>
@@ -1725,24 +1748,24 @@ export default function TheOracle() {
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-slate-400">Total Trades Analyzed:</span>
-                        <span className="text-white font-bold ml-2">{backtestSummary.thirtyDay.totalPicks}</span>
+                        <span className="text-white font-bold ml-2">{backtestSummary.thirtyDay?.totalPicks ?? 0}</span>
                       </div>
                       <div>
                         <span className="text-slate-400">Winning Trades:</span>
-                        <span className="text-green-400 font-bold ml-2">{backtestSummary.thirtyDay.wins}</span>
+                        <span className="text-green-400 font-bold ml-2">{backtestSummary.thirtyDay?.wins ?? 0}</span>
                       </div>
                       <div>
                         <span className="text-slate-400">Losing Trades:</span>
-                        <span className="text-red-400 font-bold ml-2">{backtestSummary.thirtyDay.losses}</span>
+                        <span className="text-red-400 font-bold ml-2">{backtestSummary.thirtyDay?.losses ?? 0}</span>
                       </div>
                       <div>
                         <span className="text-slate-400">Avg Return Per Trade:</span>
-                        <span className="text-green-400 font-bold ml-2">+{backtestSummary.thirtyDay.avgReturn}%</span>
+                        <span className="text-green-400 font-bold ml-2">+{backtestSummary.thirtyDay?.avgReturn ?? 0}%</span>
                       </div>
                     </div>
                   </div>
 
-                  {backtestSummary.sixMonth && (
+                  {backtestSummary?.sixMonth && (
                     <div className="bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border border-yellow-500/30 p-6 rounded-lg">
                       <h4 className="text-lg font-bold text-yellow-400 mb-3 flex items-center gap-2">
                         <TrophyIcon className="h-5 w-5" />
@@ -1751,19 +1774,19 @@ export default function TheOracle() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-slate-400">Total Trades:</span>
-                          <span className="text-white font-bold ml-2">{backtestSummary.sixMonth.totalPicks}</span>
+                          <span className="text-white font-bold ml-2">{backtestSummary.sixMonth?.totalPicks ?? 0}</span>
                         </div>
                         <div>
                           <span className="text-slate-400">Signal Confidence:</span>
-                          <span className="text-emerald-400 font-bold ml-2">{backtestSummary.sixMonth.winRate}%</span>
+                          <span className="text-emerald-400 font-bold ml-2">{backtestSummary.sixMonth?.winRate ?? 0}%</span>
                         </div>
                         <div>
                           <span className="text-slate-400">Avg Return:</span>
-                          <span className="text-green-400 font-bold ml-2">+{backtestSummary.sixMonth.avgReturn}%</span>
+                          <span className="text-green-400 font-bold ml-2">+{backtestSummary.sixMonth?.avgReturn ?? 0}%</span>
                         </div>
                         <div>
                           <span className="text-slate-400">Cumulative Return:</span>
-                          <span className="text-yellow-400 font-bold ml-2">+{backtestSummary.sixMonth.cumulativeReturn}%</span>
+                          <span className="text-yellow-400 font-bold ml-2">+{backtestSummary.sixMonth?.cumulativeReturn ?? 0}%</span>
                         </div>
                       </div>
                     </div>
@@ -1961,19 +1984,19 @@ export default function TheOracle() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-emerald-400">{backtestSummary.sixMonth.winRate}%</div>
+                  <div className="text-2xl font-bold text-emerald-400">{backtestSummary.sixMonth?.winRate ?? 0}%</div>
                   <div className="text-xs text-slate-500">Signal Confidence</div>
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-400">+{backtestSummary.sixMonth.avgReturn}%</div>
+                  <div className="text-2xl font-bold text-green-400">+{backtestSummary.sixMonth?.avgReturn ?? 0}%</div>
                   <div className="text-xs text-slate-500">Avg Return</div>
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-white">{backtestSummary.sixMonth.totalPicks}</div>
+                  <div className="text-2xl font-bold text-white">{backtestSummary.sixMonth?.totalPicks ?? 0}</div>
                   <div className="text-xs text-slate-500">Total Picks</div>
                 </div>
                 <div className="bg-slate-800 p-4 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-yellow-400">+{backtestSummary.sixMonth.cumulativeReturn}%</div>
+                  <div className="text-2xl font-bold text-yellow-400">+{backtestSummary.sixMonth?.cumulativeReturn ?? 0}%</div>
                   <div className="text-xs text-slate-500">Cumulative</div>
                 </div>
               </div>
@@ -1986,19 +2009,19 @@ export default function TheOracle() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-slate-400">Total Trades Analyzed:</span>
-                    <span className="text-white font-bold ml-2">{backtestSummary.sixMonth.totalPicks}</span>
+                    <span className="text-white font-bold ml-2">{backtestSummary.sixMonth?.totalPicks ?? 0}</span>
                   </div>
                   <div>
                     <span className="text-slate-400">Signal Confidence:</span>
-                    <span className="text-emerald-400 font-bold ml-2">{backtestSummary.sixMonth.winRate}%</span>
+                    <span className="text-emerald-400 font-bold ml-2">{backtestSummary.sixMonth?.winRate ?? 0}%</span>
                   </div>
                   <div>
                     <span className="text-slate-400">Avg Return Per Trade:</span>
-                    <span className="text-green-400 font-bold ml-2">+{backtestSummary.sixMonth.avgReturn}%</span>
+                    <span className="text-green-400 font-bold ml-2">+{backtestSummary.sixMonth?.avgReturn ?? 0}%</span>
                   </div>
                   <div>
                     <span className="text-slate-400">Cumulative Return:</span>
-                    <span className="text-yellow-400 font-bold ml-2">+{backtestSummary.sixMonth.cumulativeReturn}%</span>
+                    <span className="text-yellow-400 font-bold ml-2">+{backtestSummary.sixMonth?.cumulativeReturn ?? 0}%</span>
                   </div>
                 </div>
               </div>
