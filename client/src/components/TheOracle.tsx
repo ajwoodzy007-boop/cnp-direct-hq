@@ -385,7 +385,11 @@ export default function TheOracle() {
           headers: { 'Cache-Control': 'no-cache' }
         });
         const json = await res.json();
-        if (json.success) setPicks(json.data);
+        if (json.success && Array.isArray(json.data)) {
+          setPicks(json.data);
+        } else {
+          setPicks([]); // Ensure picks is always an array
+        }
       } catch (e) {
         console.error("Oracle offline");
       } finally {
@@ -404,11 +408,15 @@ export default function TheOracle() {
       try {
         const res = await fetch('/api/market/sentinel');
         const json = await res.json();
-        if (json.success && json.data) {
+        if (json.success && json.data && Array.isArray(json.data)) {
           const priceMap = new Map<string, number>();
-          json.data.forEach((s: any) => priceMap.set(s.ticker, s.price));
+          json.data.forEach((s: any) => {
+            if (s && s.ticker) {
+              priceMap.set(s.ticker, s.price);
+            }
+          });
           
-          setPicks(prev => prev.map(pick => ({
+          setPicks(prev => (Array.isArray(prev) ? prev : []).map(pick => ({
             ...pick,
             currentPrice: priceMap.get(pick.ticker) || pick.currentPrice || pick.entryPrice
           })));
@@ -799,7 +807,7 @@ export default function TheOracle() {
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentPicks.map((pick, index) => {
+            {(Array.isArray(currentPicks) ? currentPicks : []).map((pick, index) => {
               const confScore = pick.confidenceScore || (pick.confidence === 'High' ? 85 : 60);
               const progress = getProgressToTarget(pick);
               const basePrice = pick.openPrice || pick.entryPrice;
@@ -810,6 +818,8 @@ export default function TheOracle() {
 
               const isCrypto = activeTab === 'crypto';
               const accentColor = isCrypto ? 'orange' : 'cyan';
+              const signalText = pick.signal || '';
+              const safeSignalLower = signalText.toLowerCase();
 
               return (
                 <div key={pick.ticker} className={`bg-slate-900 border border-slate-800 rounded-xl p-6 hover:border-${accentColor}-500/30 transition-all group`} data-testid={`oracle-pick-${pick.ticker}`}>
@@ -827,9 +837,9 @@ export default function TheOracle() {
                           <PopoverContent className="w-72 bg-slate-900 border-slate-700 text-slate-300 text-sm">
                             <div className={`font-bold text-${accentColor}-400 mb-2`}>Why this pick?</div>
                             <p className="text-xs leading-relaxed">
-                              {pick.aiReasoning || (isCrypto 
-                                ? `Strong ${pick.signal?.toLowerCase() || 'buy'} signal detected with ${confScore}% confidence. RSI at ${pick.rsi || 50} indicates ${(pick.rsi || 50) < 40 ? 'oversold conditions' : 'momentum opportunity'}. 24/7 crypto markets offer round-the-clock trading.`
-                                : `Strong ${pick.signal.toLowerCase()} signal detected with ${confScore}% confidence. RSI at ${pick.rsi || 65} indicates ${pick.signal.includes('VALUE') ? 'oversold conditions' : 'momentum continuation'}. Sentiment analysis shows ${(pick.sentimentScore || 0.5) > 0.5 ? 'bullish' : 'neutral'} market tone.`)}
+                              {pick.aiReasoning || "AI analysis pending for this historical record." || (isCrypto 
+                                ? `Strong ${safeSignalLower || 'buy'} signal detected with ${confScore}% confidence. RSI at ${pick.rsi || 50} indicates ${(pick.rsi || 50) < 40 ? 'oversold conditions' : 'momentum opportunity'}. 24/7 crypto markets offer round-the-clock trading.`
+                                : `Strong ${safeSignalLower} signal detected with ${confScore}% confidence. RSI at ${pick.rsi || 65} indicates ${signalText.includes('VALUE') ? 'oversold conditions' : 'momentum continuation'}. Sentiment analysis shows ${(pick.sentimentScore || 0.5) > 0.5 ? 'bullish' : 'neutral'} market tone.`)}
                             </p>
                           </PopoverContent>
                         </Popover>
@@ -1069,7 +1079,7 @@ export default function TheOracle() {
                   <div>
                     <div className="font-bold text-cyan-100">AI Recommendation: {selectedPick.signal}</div>
                     <p className="text-sm text-cyan-200/70 mt-1 leading-relaxed">
-                      {selectedPick.aiReasoning || `The Sentinel Engine has detected a high-probability setup based on ${selectedPick.signal.includes('MOMENTUM') ? ' accelerating volume and breakout price action.' : ' oversold conditions and resilient sentiment.'}`}
+                      {selectedPick.aiReasoning || "AI analysis pending for this historical record." || `The Sentinel Engine has detected a high-probability setup based on ${(selectedPick.signal || '').includes('MOMENTUM') ? ' accelerating volume and breakout price action.' : ' oversold conditions and resilient sentiment.'}`}
                     </p>
                   </div>
                 </div>
@@ -1081,10 +1091,10 @@ export default function TheOracle() {
                     <SignalIcon className="h-3 w-3" /> RSI Level <HelpTip content="RSI measures momentum. Below 30 means 'Oversold' (cheap). Above 70 means 'Overbought' (expensive). Why It Matters: The Sentinel Engine only uses Oversold signals that align with high volume to minimize risk." />
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
-                    {selectedPick.rsi || (selectedPick.signal.includes('VALUE') ? 32 : 68)}
+                    {selectedPick.rsi || ((selectedPick.signal || '').includes('VALUE') ? 32 : 68)}
                   </div>
                   <div className="text-xs text-slate-600 mt-1">
-                    {selectedPick.signal.includes('VALUE') ? 'Oversold Zone' : 'Momentum Zone'}
+                    {(selectedPick.signal || '').includes('VALUE') ? 'Oversold Zone' : 'Momentum Zone'}
                   </div>
                 </div>
 
@@ -1159,7 +1169,14 @@ export default function TheOracle() {
               </div>
               <h3 className="text-xl font-bold text-white">Trade Recap</h3>
               <p className="text-sm text-slate-500 uppercase tracking-wider">
-                {selectedHistoryItem.date ? new Date(selectedHistoryItem.date).toLocaleDateString() : '-'} • {selectedHistoryItem.type}
+                {selectedHistoryItem.date ? (() => {
+                  try {
+                    const date = new Date(selectedHistoryItem.date);
+                    return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+                  } catch {
+                    return '-';
+                  }
+                })() : '-'} • {selectedHistoryItem.type}
               </p>
               {selectedHistoryItem.lockedAt && (
                 <div className="mt-2 inline-flex items-center gap-1 px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">
@@ -1257,7 +1274,14 @@ export default function TheOracle() {
                 <span>SENTINEL AUTO-LOG</span>
                 <span className="flex items-center gap-1">
                   <ClockIcon className="h-3 w-3" />
-                  {selectedHistoryItem.date ? new Date(selectedHistoryItem.date).toLocaleString() : '-'}
+                  {selectedHistoryItem.date ? (() => {
+                    try {
+                      const date = new Date(selectedHistoryItem.date);
+                      return isNaN(date.getTime()) ? '-' : date.toLocaleString();
+                    } catch {
+                      return '-';
+                    }
+                  })() : '-'}
                 </span>
               </div>
               <div className="text-center mt-2 text-[10px] text-slate-700">
@@ -1307,7 +1331,9 @@ export default function TheOracle() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {liveSignals.map((sig, i) => (
+                            {(Array.isArray(liveSignals) ? liveSignals : []).map((sig, i) => {
+                        const sigSignal = sig?.signal || '';
+                        return (
                         <div 
                           key={i} 
                           onClick={() => analyzeSignal(sig)}
@@ -1316,12 +1342,12 @@ export default function TheOracle() {
                         >
                           <div className="flex items-center gap-4">
                             <div className={`h-10 w-10 rounded-lg flex items-center justify-center font-bold text-sm ${
-                              sig.signal.includes('BUY') ? 'bg-green-500/20 text-green-400' : 
-                              sig.signal.includes('SELL') ? 'bg-red-500/20 text-red-400' : 
+                              sigSignal.includes('BUY') ? 'bg-green-500/20 text-green-400' : 
+                              sigSignal.includes('SELL') ? 'bg-red-500/20 text-red-400' : 
                               signalsType === 'crypto' ? 'bg-orange-500/20 text-orange-300' : 'bg-slate-700 text-slate-300'
                             }`}>
                               {signalsType === 'crypto' && <CurrencyDollarIcon className="h-4 w-4" />}
-                              {signalsType !== 'crypto' && sig.ticker?.slice(0, 3)}
+                              {signalsType !== 'crypto' && (sig?.ticker || '').slice(0, 3)}
                             </div>
                             <div>
                               <div className="text-white font-bold flex items-center gap-1">
@@ -1613,7 +1639,7 @@ export default function TheOracle() {
                       <h4 className="text-sm font-bold text-white uppercase mb-3 flex items-center gap-2">
                         <ViewfinderCircleIcon className="h-4 w-4 text-cyan-400" /> Trade Ideas
                       </h4>
-                      {deepAnalysis.tradeIdeas.slice(0, 1).map((idea: any, i: number) => (
+                      {(Array.isArray(deepAnalysis.tradeIdeas) ? deepAnalysis.tradeIdeas.slice(0, 1) : []).map((idea: any, i: number) => (
                         <div key={i} className={`border rounded-lg p-4 ${idea.direction === 'LONG' ? 'bg-green-900/10 border-green-500/20' : 'bg-red-900/10 border-red-500/20'}`}>
                           <div className="flex items-center justify-between mb-3">
                             <span className={`px-2 py-1 rounded text-xs font-bold ${idea.direction === 'LONG' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
@@ -1816,7 +1842,7 @@ export default function TheOracle() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-700">
-                            {detailed30Day.days.map((day: any, idx: number) => (
+                            {(detailed30Day?.days && Array.isArray(detailed30Day.days) ? detailed30Day.days : []).map((day: any, idx: number) => (
                               <React.Fragment key={idx}>
                                 <tr 
                                   onClick={() => setExpandedDay30(expandedDay30 === idx ? null : idx)}
@@ -1841,7 +1867,7 @@ export default function TheOracle() {
                                   <tr>
                                     <td colSpan={4} className="bg-slate-900 px-4 py-3">
                                       <div className="space-y-2">
-                                        {day.picks.map((pick: any, pIdx: number) => (
+                                        {(day?.picks && Array.isArray(day.picks) ? day.picks : []).map((pick: any, pIdx: number) => (
                                           <div 
                                             key={pIdx}
                                             className={`flex items-center justify-between p-2 rounded-lg border ${pick.win ? 'bg-green-900/20 border-green-500/30' : 'bg-red-900/20 border-red-500/30'}`}
@@ -1908,7 +1934,14 @@ export default function TheOracle() {
                         data-testid={`audit-row-${idx}`}
                       >
                         <td className="px-4 py-3 font-bold text-white">{trade.ticker}</td>
-                        <td className="px-4 py-3 text-slate-400">{trade.date ? new Date(trade.date).toLocaleDateString() : '-'}</td>
+                        <td className="px-4 py-3 text-slate-400">{trade.date ? (() => {
+                          try {
+                            const date = new Date(trade.date);
+                            return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
+                          } catch {
+                            return '-';
+                          }
+                        })() : '-'}</td>
                         <td className="px-4 py-3 text-slate-400">{trade.type}</td>
                         <td className="px-4 py-3 font-mono text-slate-300">${Number(trade.open || trade.entry).toFixed(2)}</td>
                         <td className="px-4 py-3 font-mono text-slate-300">${Number(trade.exit).toFixed(2)}</td>
@@ -2050,7 +2083,7 @@ export default function TheOracle() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-700">
-                        {detailed6Month.days.map((day: any, idx: number) => (
+                        {(detailed6Month?.days && Array.isArray(detailed6Month.days) ? detailed6Month.days : []).map((day: any, idx: number) => (
                           <React.Fragment key={idx}>
                             <tr 
                               onClick={() => setExpandedDay6m(expandedDay6m === idx ? null : idx)}
@@ -2075,7 +2108,7 @@ export default function TheOracle() {
                               <tr>
                                 <td colSpan={4} className="bg-slate-900 px-4 py-3">
                                   <div className="space-y-2">
-                                    {day.picks.map((pick: any, pIdx: number) => (
+                                    {(day?.picks && Array.isArray(day.picks) ? day.picks : []).map((pick: any, pIdx: number) => (
                                       <div 
                                         key={pIdx}
                                         className={`flex items-center justify-between p-2 rounded-lg border ${pick.win ? 'bg-green-900/20 border-green-500/30' : 'bg-red-900/20 border-red-500/30'}`}
