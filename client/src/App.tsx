@@ -4,6 +4,8 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
 import AdminDashboard from "./components/AdminDashboard";
+import AdminPredictions from "./components/AdminPredictions";
+import AdminUsers from "./components/AdminUsers";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/not-found";
 
@@ -14,9 +16,16 @@ function Router() {
 
   return (
     <Switch>
-      {/* Root Path IS the Command Center */}
+      {/* Root Path IS the Admin Dashboard */}
       <Route path="/">
         {!user ? <Redirect to="/auth" /> : <AdminDashboard />}
+      </Route>
+      {/* Admin Routes */}
+      <Route path="/admin/predictions">
+        {!user ? <Redirect to="/auth" /> : <AdminPredictions />}
+      </Route>
+      <Route path="/admin/users">
+        {!user ? <Redirect to="/auth" /> : <AdminUsers />}
       </Route>
       <Route path="/auth">
         {user ? <Redirect to="/" /> : <AuthPage />}

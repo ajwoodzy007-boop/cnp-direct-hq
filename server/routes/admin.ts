@@ -1,7 +1,11 @@
 import express from 'express';
 import { query } from '../db';
+import { requireAdmin } from '../middleware/admin.js';
 
 const router = express.Router();
+
+// All admin routes require admin privileges
+router.use(requireAdmin);
 
 router.get('/stats', async (req: express.Request, res: express.Response) => {
   try {
