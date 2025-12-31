@@ -416,7 +416,7 @@ export default function TheOracle() {
   const currentPicks = activeTab === 'stocks' ? sortedPicks : sortedCryptoPicks;
   const currentLoading = activeTab === 'stocks' ? loading : cryptoLoading;
   const currentStats = activeTab === 'stocks' ? stats : cryptoStats;
-  const currentHistory = activeTab === 'stocks' ? historyData : cryptoHistoryData;
+  const currentHistory = (activeTab === 'stocks' ? historyData : cryptoHistoryData) || [];
 
   const getRiskBadge = (risk: string) => {
     switch (risk) {
@@ -426,8 +426,10 @@ export default function TheOracle() {
     }
   };
 
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500 relative">
+  // Render helper wrapped in try/catch for error handling
+  const renderContent = () => {
+    return (
+      <div className="space-y-8 animate-in fade-in duration-500 relative">
       <div className={`bg-gradient-to-br ${activeTab === 'crypto' ? 'from-slate-900 via-slate-900 to-orange-950' : 'from-slate-900 via-slate-900 to-cyan-950'} p-8 rounded-2xl border border-slate-800 relative overflow-hidden`}>
         <div className="relative z-10">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
@@ -551,13 +553,20 @@ export default function TheOracle() {
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
-                   {currentHistory.map((trade, idx) => (
+                   {(currentHistory || []).map((trade, idx) => (
                      <tr key={idx} className="hover:bg-slate-800/50">
-                        <td className="p-3 font-bold">{trade.ticker}</td>
-                        <td className="p-3">{trade.date ? new Date(trade.date).toLocaleDateString() : '-'}</td>
-                        <td className="p-3 text-slate-500">{trade.type || 'TRADE'}</td>
-                        <td className={`p-3 text-right font-bold ${trade.profitPercent >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                           {trade.profitPercent >= 0 ? '+' : ''}{trade.profitPercent}%
+                        <td className="p-3 font-bold">{trade?.ticker || 'N/A'}</td>
+                        <td className="p-3">{trade?.date ? (() => {
+                          try {
+                            const date = new Date(trade.date);
+                            return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString();
+                          } catch {
+                            return 'N/A';
+                          }
+                        })() : 'N/A'}</td>
+                        <td className="p-3 text-slate-500">{trade?.type || 'TRADE'}</td>
+                        <td className={`p-3 text-right font-bold ${(trade?.profitPercent || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                           {(trade?.profitPercent || 0) >= 0 ? '+' : ''}{trade?.profitPercent || 0}%
                         </td>
                      </tr>
                    ))}
@@ -567,5 +576,22 @@ export default function TheOracle() {
         </DialogContent>
       </Dialog>
     </div>
-  );
+    );
+  };
+
+  // Wrap render in try/catch for error handling
+  try {
+    return renderContent();
+  } catch (error) {
+    console.error('Oracle render error:', error);
+    return (
+      <div className="flex items-center justify-center min-h-screen p-8">
+        <div className="bg-slate-900 border border-red-500/30 rounded-xl p-8 max-w-md text-center">
+          <ExclamationTriangleIcon className="h-12 w-12 text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-white mb-2">Error loading Oracle UI</h2>
+          <p className="text-slate-400 text-sm">Please refresh the page or contact support if the issue persists.</p>
+        </div>
+      </div>
+    );
+  }
 }
