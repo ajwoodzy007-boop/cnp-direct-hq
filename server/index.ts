@@ -1,6 +1,5 @@
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
 import { setupAuth } from "./auth";
-import { storage } from "./storage";
 import path from "path";
 import { fileURLToPath } from "url";
 import { registerRoutes } from "./routes";
@@ -13,71 +12,46 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-/**
- * 1. RAILWAY HEALTHCHECK
- * This MUST return 200 OK for Railway to stop showing "Service Unavailable".
- */
+// 1. HARDCODED HEALTHCHECK
+// Essential for Railway to verify the service is "Live"
 app.get("/api/health", (_req, res) => {
   res.status(200).send("OK");
 });
 
-/**
- * 2. LOGGING MIDDLEWARE
- */
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      console.log(`${req.method} ${path} ${res.statusCode} in ${duration}ms`);
-    }
-  });
-  next();
-});
-
 (async () => {
-  // Create the HTTP server
-  const server = createServer(app);
+  try {
+    const server = createServer(app);
 
-  /**
-   * 3. AUTHENTICATION (Includes Password Bypass)
-   */
-  setupAuth(app);
+    // 2. AUTHENTICATION & API
+    setupAuth(app);
+    await registerRoutes(app);
 
-  /**
-   * 4. API ROUTES
-   */
-  await registerRoutes(app);
+    // 3. STATIC FILES (PRODUCTION)
+    if (process.env.NODE_ENV === "production") {
+      const publicPath = path.resolve(process.cwd(), "dist", "public");
+      const indexPath = path.resolve(publicPath, "index.html");
 
-  /**
-   * 5. PRODUCTION STATIC FILES (Frontend)
-   */
-  if (process.env.NODE_ENV === "production") {
-    // Railway puts build files in dist/public
-    const publicPath = path.resolve(process.cwd(), "dist", "public");
-    const indexPath = path.resolve(publicPath, "index.html");
+      app.use(express.static(publicPath));
 
-    console.log("Serving production files from:", publicPath);
-    app.use(express.static(publicPath));
-
-    // Handle SPA routing
-    app.get("*", (req, res) => {
-      res.sendFile(indexPath, (err) => {
-        if (err) {
-          console.error("Index file missing at:", indexPath);
-          res.status(404).send("Frontend build not found. Please check build logs.");
+      app.get("*", (req, res) => {
+        if (req.path.startsWith('/api')) {
+          return res.status(404).json({ message: "API route not found" });
         }
+        res.sendFile(indexPath);
       });
-    });
-  } else {
-    // Local Development
-    const { setupVite } = await import("./vite");
-    await setupVite(app, server);
-  }
+    } else {
+      const { setupVite } = await import("./vite");
+      await setupVite(app, server);
+    }
 
-  const PORT = Number(process.env.PORT) || 5000;
-  server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Sentinel OS Online: Listening on port ${PORT}`);
-  });
+    // 4. BIND TO PORT (Fixed TypeScript Port Error)
+    const PORT = Number(process.env.PORT) || 5000;
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`Sentinel OS Online on port ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error("SERVER CRASH DURING STARTUP:", error);
+    process.exit(1);
+  }
 })();
