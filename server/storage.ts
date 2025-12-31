@@ -21,10 +21,16 @@ export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.sessionStore = new PostgresSessionStore({
-      pool,
-      createTableIfMissing: true,
-    });
+    try {
+      this.sessionStore = new PostgresSessionStore({
+        pool,
+        createTableIfMissing: true,
+        tableName: "session",
+      });
+    } catch (err) {
+      console.error("Failed to initialize session store:", err);
+      throw err;
+    }
   }
 
   async getUser(id: string): Promise<User | undefined> {

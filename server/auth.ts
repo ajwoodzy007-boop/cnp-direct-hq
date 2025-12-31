@@ -46,8 +46,23 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  app.post("/api/login", passport.authenticate("local"), (req: any, res: any) => {
-    res.json(req.user);
+  app.post("/api/login", (req: any, res: any, next: any) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
+      if (err) {
+        console.error("Login error:", err);
+        return res.status(500).json({ error: err.message || "Authentication error" });
+      }
+      if (!user) {
+        return res.status(401).json({ error: info?.message || "Invalid email or password" });
+      }
+      req.logIn(user, (loginErr: any) => {
+        if (loginErr) {
+          console.error("Session creation error:", loginErr);
+          return res.status(500).json({ error: "Failed to establish session" });
+        }
+        return res.json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req: any, res: any, next: any) => {
