@@ -3,11 +3,13 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider, useAuth } from "./hooks/use-auth";
+import MainDashboard from "./pages/MainDashboard";
 import AdminDashboard from "./components/AdminDashboard";
 import AdminPredictions from "./components/AdminPredictions";
 import AdminUsers from "./components/AdminUsers";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/not-found";
+import { isAdmin } from "./lib/permissions";
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -16,20 +18,27 @@ function Router() {
 
   return (
     <Switch>
-      {/* Root Path IS the Admin Dashboard */}
+      {/* Root Path - Main Dashboard (Command Center/Oracle) */}
       <Route path="/">
-        {!user ? <Redirect to="/auth" /> : <AdminDashboard />}
+        {!user ? <Redirect to="/auth" /> : <MainDashboard />}
       </Route>
-      {/* Admin Routes */}
+      
+      {/* Admin Routes - Only accessible to admins */}
+      <Route path="/admin">
+        {!user ? <Redirect to="/auth" /> : isAdmin(user) ? <AdminDashboard /> : <Redirect to="/" />}
+      </Route>
       <Route path="/admin/predictions">
-        {!user ? <Redirect to="/auth" /> : <AdminPredictions />}
+        {!user ? <Redirect to="/auth" /> : isAdmin(user) ? <AdminPredictions /> : <Redirect to="/" />}
       </Route>
       <Route path="/admin/users">
-        {!user ? <Redirect to="/auth" /> : <AdminUsers />}
+        {!user ? <Redirect to="/auth" /> : isAdmin(user) ? <AdminUsers /> : <Redirect to="/" />}
       </Route>
+      
+      {/* Auth Route */}
       <Route path="/auth">
         {user ? <Redirect to="/" /> : <AuthPage />}
       </Route>
+      
       <Route component={NotFound} />
     </Switch>
   );

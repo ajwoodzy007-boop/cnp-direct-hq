@@ -4,10 +4,12 @@ import { queryClient, apiRequest } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 type User = {
-  id: string;
+  id: string | number;
   email: string;
-  tier: string;
-  is_premium: boolean;
+  tier?: string;
+  membership_tier?: string;
+  is_premium?: boolean;
+  isAdmin?: boolean;
 };
 
 type AuthContextType = {
