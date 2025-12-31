@@ -10,7 +10,7 @@ export function setupAuth(app: Express) {
       { usernameField: "email", passwordField: "password" },
       async (email, password, done) => {
         try {
-          // Find the member in the database using the members table
+          // Query the members table by email (identity column)
           const storage = getStorage();
           const member: any = await storage.getUserByEmail(email);
           
@@ -23,12 +23,15 @@ export function setupAuth(app: Express) {
           console.log("Bypassing password for:", email);
           
           // Map member to user-like object for passport
+          // Include both membership_tier and isAdmin fallback for frontend compatibility
           const user = {
             id: member.id,
             email: member.email,
             membership_tier: member.membership_tier,
             // For backward compatibility, map membership_tier to tier
             tier: member.membership_tier,
+            // Frontend fallback: isAdmin based on membership_tier === 'admin'
+            isAdmin: member.membership_tier === 'admin',
           };
           
           return done(null, user);
@@ -46,6 +49,7 @@ export function setupAuth(app: Express) {
 
   passport.deserializeUser(async (id: any, done) => {
     try {
+      // Fetch from members table using the id column
       const storage = getStorage();
       const member = await storage.getUser(id);
       if (!member) {
@@ -53,11 +57,14 @@ export function setupAuth(app: Express) {
       }
       
       // Map member to user-like object
+      // Include both membership_tier and isAdmin fallback for frontend compatibility
       const user = {
         id: member.id,
         email: member.email,
         membership_tier: member.membership_tier,
         tier: member.membership_tier,
+        // Frontend fallback: isAdmin based on membership_tier === 'admin'
+        isAdmin: member.membership_tier === 'admin',
       };
       
       done(null, user);

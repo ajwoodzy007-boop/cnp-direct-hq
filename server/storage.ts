@@ -4,7 +4,7 @@ import { getPool } from "./db.js";
 
 const PostgresSessionStore = connectPg(session);
 
-// Member type matching the members table schema
+// Member type matching the members table schema (Snowy Dawn)
 export type Member = {
   id: number;
   email: string;
@@ -39,6 +39,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Query members table using id column
   async getUser(id: number): Promise<Member | undefined> {
     try {
       const res = await getPool().query("SELECT * FROM members WHERE id = $1", [id]);
@@ -49,6 +50,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Query members table using email column (identity column)
   async getUserByEmail(email: string): Promise<Member | undefined> {
     try {
       const res = await getPool().query("SELECT * FROM members WHERE email = $1", [email]);
@@ -59,6 +61,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Insert into members table with password_hash column (required NOT NULL constraint)
   async createUser(email: string, passwordHash: string): Promise<Member> {
     const res = await getPool().query(
       "INSERT INTO members (email, password_hash, membership_tier) VALUES ($1, $2, 'FREE') RETURNING *",

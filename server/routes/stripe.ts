@@ -58,10 +58,12 @@ router.get('/success', async (req, res) => {
     if (session.payment_status === 'paid' || session.status === 'open') {
       const userId = session.metadata?.userId;
       
-      await query(`UPDATE users SET tier = 'PREMIUM' WHERE id = $1`, [userId]);
+      // Update members table, set membership_tier to 'PREMIUM'
+      await query(`UPDATE members SET membership_tier = 'PREMIUM' WHERE id = $1`, [userId]);
       
       if ((req.session as any).user) {
-        (req.session as any).user.tier = 'PREMIUM';
+        (req.session as any).user.membership_tier = 'PREMIUM';
+        (req.session as any).user.tier = 'PREMIUM'; // Backward compatibility
       }
 
       res.redirect(`/?upgrade=success`);
