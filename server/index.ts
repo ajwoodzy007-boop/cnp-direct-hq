@@ -14,8 +14,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
 /**
- * 1. RAILWAY HEALTHCHECK ENDPOINT
- * This is critical to prevent the "Service Unavailable" loop.
+ * 1. RAILWAY HEALTHCHECK
+ * This MUST return 200 OK for Railway to stop showing "Service Unavailable".
  */
 app.get("/api/health", (_req, res) => {
   res.status(200).send("OK");
@@ -41,8 +41,7 @@ app.use((req, res, next) => {
   const server = createServer(app);
 
   /**
-   * 3. AUTHENTICATION & BYPASS
-   * This calls our modified setupAuth which includes the password bypass.
+   * 3. AUTHENTICATION (Includes Password Bypass)
    */
   setupAuth(app);
 
@@ -52,23 +51,22 @@ app.use((req, res, next) => {
   await registerRoutes(app);
 
   /**
-   * 5. FRONTEND STATIC FILES & SPA ROUTING
-   * Specifically configured for Railway's 'dist/public' structure.
+   * 5. PRODUCTION STATIC FILES (Frontend)
    */
   if (process.env.NODE_ENV === "production") {
+    // Railway puts build files in dist/public
     const publicPath = path.resolve(process.cwd(), "dist", "public");
     const indexPath = path.resolve(publicPath, "index.html");
 
-    console.log("Production Mode: Serving static files from", publicPath);
-
+    console.log("Serving production files from:", publicPath);
     app.use(express.static(publicPath));
 
-    // Catch-all for React/Vite routing
+    // Handle SPA routing
     app.get("*", (req, res) => {
       res.sendFile(indexPath, (err) => {
         if (err) {
-          console.error("Critical Error: index.html not found at", indexPath);
-          res.status(404).send("Build files missing. Ensure build command is successful.");
+          console.error("Index file missing at:", indexPath);
+          res.status(404).send("Frontend build not found. Please check build logs.");
         }
       });
     });
