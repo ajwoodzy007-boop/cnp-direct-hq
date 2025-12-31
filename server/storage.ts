@@ -1,20 +1,23 @@
-import { 
-  users, predictions, dailyPredictionRuns, dailyPredictionEntries, 
-  userProfiles, userPortfolio, aiPlaybookRuns, playbookSections, 
-  cachedMarketMetrics, aiSignalInsights, aiPredictionScores, aiModelMetrics,
-  type User, type InsertUser, type Prediction, type InsertPrediction 
-} from "../shared/schema.js"; // Note the path and .js extension
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { getPool } from "./db.js";
 
 const PostgresSessionStore = connectPg(session);
 
+// Member type matching the members table schema
+export type Member = {
+  id: number;
+  email: string;
+  password_hash: string;
+  membership_tier: string;
+  created_at?: Date | string;
+};
+
 export interface IStorage {
   sessionStore: session.Store;
-  getUser(id: string): Promise<User | undefined>;
-  getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
+  getUser(id: number): Promise<Member | undefined>;
+  getUserByEmail(email: string): Promise<Member | undefined>;
+  createUser(email: string, passwordHash: string): Promise<Member>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -31,15 +34,14 @@ export class DatabaseStorage implements IStorage {
     } catch (err) {
       console.error("Failed to initialize session store:", err);
       // Don't throw - allow server to start even if session store fails
-      // Fallback to memory store for emergency
       // For now, we'll let the caller handle fallback in index.ts
       throw err; // Let index.ts handle the fallback
     }
   }
 
-  async getUser(id: string): Promise<User | undefined> {
+  async getUser(id: number): Promise<Member | undefined> {
     try {
-      const res = await getPool().query("SELECT * FROM users WHERE id = $1", [id]);
+      const res = await getPool().query("SELECT * FROM members WHERE id = $1", [id]);
       return res.rows[0];
     } catch (err) {
       console.error("Database error in getUser:", err);
@@ -47,9 +49,9 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getUserByEmail(email: string): Promise<User | undefined> {
+  async getUserByEmail(email: string): Promise<Member | undefined> {
     try {
-      const res = await getPool().query("SELECT * FROM users WHERE email = $1", [email]);
+      const res = await getPool().query("SELECT * FROM members WHERE email = $1", [email]);
       return res.rows[0];
     } catch (err) {
       console.error("Database error in getUserByEmail:", err);
@@ -57,11 +59,10 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = crypto.randomUUID();
+  async createUser(email: string, passwordHash: string): Promise<Member> {
     const res = await getPool().query(
-      "INSERT INTO users (id, email, password, is_premium) VALUES ($1, $2, $3, $4) RETURNING *",
-      [id, insertUser.email, insertUser.password, insertUser.is_premium ?? false]
+      "INSERT INTO members (email, password_hash, membership_tier) VALUES ($1, $2, 'FREE') RETURNING *",
+      [email, passwordHash]
     );
     return res.rows[0];
   }

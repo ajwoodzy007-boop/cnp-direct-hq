@@ -5,15 +5,19 @@ const router = express.Router();
 
 router.get('/stats', async (req: express.Request, res: express.Response) => {
   try {
-    // UPDATED: Using 'ispremium' to match your actual Neon schema
+    // UPDATED: Query members table instead of users
     const operatives = await query(
-      "SELECT id, email, tier, ispremium FROM users ORDER BY tier DESC, email ASC"
+      "SELECT id, email, membership_tier FROM members ORDER BY membership_tier DESC, email ASC"
     );
 
-    // Map the database 'ispremium' to the frontend 'is_premium' so the UI doesn't break
-    const mappedOperatives = operatives.map((op: any) => ({
-      ...op,
-      is_premium: op.ispremium // Translate for the frontend
+    // Map the database fields to the frontend format
+    const mappedOperatives = (operatives.rows || []).map((op: any) => ({
+      id: op.id,
+      email: op.email,
+      tier: op.membership_tier,
+      membership_tier: op.membership_tier,
+      // For backward compatibility with frontend
+      is_premium: op.membership_tier === 'PREMIUM' || op.membership_tier === 'PRO' || op.membership_tier === 'admin',
     }));
 
     return res.status(200).json({
@@ -25,6 +29,7 @@ router.get('/stats', async (req: express.Request, res: express.Response) => {
       users: mappedOperatives
     });
   } catch (err) {
+    console.error("Admin stats error:", err);
     return res.status(500).json({ success: false });
   }
 });
@@ -34,13 +39,14 @@ router.get('/elevate', async (req: express.Request, res: express.Response) => {
   if (!email) return res.status(400).send("Email required.");
 
   try {
-    // UPDATED: Setting 'ispremium' to match your schema
+    // UPDATED: Update members table, set membership_tier to 'admin'
     await query(
-      "UPDATE users SET tier = 'ADMIN', ispremium = true WHERE email = $1",
+      "UPDATE members SET membership_tier = 'admin' WHERE email = $1",
       [email]
     );
     return res.status(200).send(`ACCESS_GRANTED: ${email} is now ADMIN.`);
   } catch (err) {
+    console.error("Elevate error:", err);
     return res.status(500).send("Elevation failed.");
   }
 });

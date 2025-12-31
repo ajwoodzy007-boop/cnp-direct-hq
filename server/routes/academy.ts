@@ -17,7 +17,8 @@ router.get('/briefing', (req, res) => {
 
 router.get('/full-report', (req, res) => {
   const user = req.user as any;
-  if (!user || (user.tier !== 'admin' && !user.is_premium)) {
+  // UPDATED: Check membership_tier === 'admin' instead of tier !== 'admin'
+  if (!user || (user.membership_tier !== 'admin' && user.tier !== 'admin' && !user.is_premium)) {
     return res.status(403).json({ success: false, message: 'Premium Required' });
   }
   res.json({

@@ -10,17 +10,27 @@ export function setupAuth(app: Express) {
       { usernameField: "email", passwordField: "password" },
       async (email, password, done) => {
         try {
-          // Find the user in the database
+          // Find the member in the database using the members table
           const storage = getStorage();
-          const user: any = await (storage as any).getUserByEmail(email);
+          const member: any = await storage.getUserByEmail(email);
           
-          if (!user) {
+          if (!member) {
             return done(null, false, { message: "User not found" });
           }
           
           // EMERGENCY BYPASS: We are NOT checking the password here.
           // If the email exists, we let you in.
           console.log("Bypassing password for:", email);
+          
+          // Map member to user-like object for passport
+          const user = {
+            id: member.id,
+            email: member.email,
+            membership_tier: member.membership_tier,
+            // For backward compatibility, map membership_tier to tier
+            tier: member.membership_tier,
+          };
+          
           return done(null, user);
           
         } catch (err) {
@@ -37,7 +47,19 @@ export function setupAuth(app: Express) {
   passport.deserializeUser(async (id: any, done) => {
     try {
       const storage = getStorage();
-      const user = await storage.getUser(id);
+      const member = await storage.getUser(id);
+      if (!member) {
+        return done(null, false);
+      }
+      
+      // Map member to user-like object
+      const user = {
+        id: member.id,
+        email: member.email,
+        membership_tier: member.membership_tier,
+        tier: member.membership_tier,
+      };
+      
       done(null, user);
     } catch (err) {
       done(err);
