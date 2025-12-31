@@ -1,10 +1,13 @@
 import type { Express } from "express";
 import { getStorage } from "./storage.js";
 import adminRouter from "./routes/admin.js";
+import oracleRouter from "./routes/oracle.js";
 
 export function registerRoutes(app: Express) {
   // Register admin routes
   app.use("/api/admin", adminRouter);
+  // Register oracle routes
+  app.use("/api/oracle", oracleRouter);
   // Note: setupAuth is called in index.ts before registerRoutes
   // This prevents duplicate route registration
 
@@ -28,11 +31,11 @@ export function registerRoutes(app: Express) {
   // PREDICTION ROUTES - Using predictions table
   // ============================================
 
-  // GET /api/predictions - Get all predictions from predictions table
+  // GET /api/predictions - Get all predictions from predictions table (most recent 50 by default, no date filter)
   app.get("/api/predictions", async (req, res) => {
     try {
       const storage = getStorage();
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
       
       const predictions = await storage.getPredictions(limit, offset);

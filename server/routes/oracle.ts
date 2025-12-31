@@ -1,10 +1,29 @@
 import express from 'express';
-import { runMarketScan } from '../lib/sentinel';
+import { getStorage } from '../storage.js';
 
 const router = express.Router();
 
+// GET /api/oracle/daily - Get latest predictions from predictions table (no date filter)
+router.get('/daily', async (req, res) => {
+  try {
+    const storage = getStorage();
+    // Get the most recent 50 predictions regardless of date
+    const predictions = await storage.getPredictions(50, 0);
+    
+    res.json({
+      success: true,
+      data: predictions
+    });
+  } catch (error: any) {
+    console.error("Error fetching daily predictions:", error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Fallback route for other oracle endpoints (keeps existing market scan functionality)
 router.get('*', async (req, res) => {
   try {
+    const { runMarketScan } = await import('../lib/sentinel.js');
     const rawData = await runMarketScan().catch(() => []);
     const marketArray = Array.isArray(rawData) ? rawData : Object.values(rawData);
 

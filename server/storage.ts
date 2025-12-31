@@ -103,9 +103,10 @@ export class DatabaseStorage implements IStorage {
 
   /**
    * Get all predictions from the predictions table (not daily_prediction_entries)
+   * Returns the most recent 50 rows regardless of date - no date filtering
    * Maps columns to match frontend expectations
    */
-  async getPredictions(limit: number = 100, offset: number = 0): Promise<Prediction[]> {
+  async getPredictions(limit: number = 50, offset: number = 0): Promise<Prediction[]> {
     try {
       const res = await getPool().query(
         `SELECT * FROM predictions 
