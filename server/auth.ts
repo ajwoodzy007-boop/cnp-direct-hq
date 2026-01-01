@@ -4,7 +4,7 @@ import session from "express-session";
 import express, { type Express } from "express";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { members } from "../drizzle/schema";
+import { members as users, type User } from "../drizzle/schema"; // Using 'members' table
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import MemoryStoreConfig from "memorystore";
@@ -25,11 +25,11 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-export async function setupAuth(app: Express) {
+export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "sentinel-vault-secret",
-    resave: true,
-    saveUninitialized: true,
+    secret: process.env.SESSION_SECRET || "sentinel-vault-secret-v1",
+    resave: false,
+    saveUninitialized: false,
     store: new MemoryStore({
       checkPeriod: 86400000,
     }),
@@ -37,7 +37,7 @@ export async function setupAuth(app: Express) {
       secure: app.get("env") === "production",
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   };
 
@@ -45,100 +45,41 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // ⚡ THE FIX: Use 'email' instead of 'username' and use members table
   passport.use(
     new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
       try {
-        // Query members table with email column
-        const [member] = await db.select().from(members).where(eq(members.email, email));
-        
-        if (!member || !member.passwordHash) {
+        const [user] = await db.select().from(users).where(eq(users.email, email));
+        if (!user || !(await comparePasswords(password, user.passwordHash))) {
           return done(null, false);
         }
-        
-        // Compare password with password_hash column
-        const passwordMatch = await comparePasswords(password, member.passwordHash);
-        
-        if (!passwordMatch) {
-          return done(null, false);
-        }
-        
-        return done(null, member);
+        return done(null, user);
       } catch (err) {
-        console.error("LocalStrategy error:", err);
         return done(err);
       }
     }),
   );
 
   passport.serializeUser((user: any, done) => {
-    // Fix: Handle id as string
+    // ⚡ Always store the ID as a string in the session
     done(null, String(user.id));
   });
   
-  passport.deserializeUser(async (id: string, done) => {
+  passport.deserializeUser(async (id: any, done) => {
     try {
-      // Query members table using the id (convert string to number for serial id)
-      const memberId = typeof id === 'string' ? parseInt(id, 10) : id;
-      if (isNaN(memberId)) {
-        return done(null, null);
-      }
-      const [member] = await db.select().from(members).where(eq(members.id, memberId));
-      done(null, member || null);
+      // ⚡ THE FIX: Cast the ID to String to match the PgVarchar column type in Drizzle
+      const [user] = await db.select().from(users).where(eq(users.id, String(id)));
+      done(null, user || null);
     } catch (err) {
-      console.error("DeserializeUser error:", err);
       done(err);
     }
   });
 
-  app.post("/api/register", async (req, res, next) => {
-    try {
-      // Check if email already exists in members table
-      const [existingMember] = await db
-        .select()
-        .from(members)
-        .where(eq(members.email, req.body.email));
-
-      if (existingMember) {
-        return res.status(400).send("Email already registered");
-      }
-
-      const hashedPassword = await hashPassword(req.body.password);
-      
-      // Insert into members table with correct column names
-      const [newMember] = await db
-        .insert(members)
-        .values({ 
-          email: req.body.email,
-          passwordHash: hashedPassword,
-          membershipTier: 'FREE'
-        })
-        .returning();
-
-      req.login(newMember, (err) => {
-        if (err) return next(err);
-        res.status(201).json(newMember);
-      });
-    } catch (err) {
-      console.error("Register error:", err);
-      next(err);
-    }
-  });
-
   app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err: any, user: any, info: any) => {
-      if (err) {
-        console.error("Login authentication error:", err);
-        return next(err);
-      }
-      if (!user) {
-        return res.status(401).json({ error: "Invalid email or password" });
-      }
+    passport.authenticate("local", (err: any, user: any) => {
+      if (err) return next(err);
+      if (!user) return res.status(401).json({ message: "Invalid credentials" });
       req.login(user, (err) => {
-        if (err) {
-          console.error("Login session error:", err);
-          return next(err);
-        }
+        if (err) return next(err);
         res.status(200).json(user);
       });
     })(req, res, next);
@@ -152,28 +93,7 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) {
-      // Temporary bypass for production - auto-login ajwoodzy007@gmail.com
-      if (process.env.NODE_ENV === "production") {
-        db.select()
-          .from(members)
-          .where(eq(members.email, "ajwoodzy007@gmail.com"))
-          .then(([user]) => {
-            if (user) {
-              req.login(user, (err) => {
-                if (!err) {
-                  return res.json(user);
-                }
-              });
-            }
-          })
-          .catch(() => {
-            return res.sendStatus(401);
-          });
-        return;
-      }
-      return res.sendStatus(401);
-    }
+    if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
   });
 }
