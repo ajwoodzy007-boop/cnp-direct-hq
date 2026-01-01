@@ -97,6 +97,52 @@ export function setupAuth(app: Express) {
     }
   });
 
+  app.post("/api/register", async (req, res, next) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      // Check if email already exists
+      const [existingUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email));
+
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      // Generate hashed password
+      const hashedPassword = await hashPassword(password);
+      
+      // ⚡ TEMPORARY: Log the hashed password for database format reference
+      console.log("🔑 [Register] Generated hashedPassword:", hashedPassword);
+      console.log("🔑 [Register] Format: <hex_hash>.<hex_salt>");
+      console.log("🔑 [Register] This is what should be stored in password_hash column");
+
+      // Insert new user into members table
+      const [newUser] = await db
+        .insert(users)
+        .values({
+          email: email,
+          passwordHash: hashedPassword,
+          membershipTier: 'FREE'
+        })
+        .returning();
+
+      req.login(newUser, (err) => {
+        if (err) return next(err);
+        res.status(201).json(newUser);
+      });
+    } catch (err) {
+      console.error("Register error:", err);
+      next(err);
+    }
+  });
+
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err: any, user: any) => {
       if (err) return res.status(500).json({ message: "Internal Auth Error" });
