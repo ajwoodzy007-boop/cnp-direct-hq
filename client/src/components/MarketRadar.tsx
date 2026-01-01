@@ -2,15 +2,13 @@ import React, { useState } from 'react';
 import { useQuery } from "@tanstack/react-query";
 import StockChart from './StockChart';
 
-// ⚡ THE FIX: "export default" ensures MainDashboard.tsx doesn't crash the build
 export default function MarketRadar() {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
 
   const { data: briefing, isLoading: loadingBriefing } = useQuery({
     queryKey: ["briefing"],
     queryFn: async () => {
-      // ⚡ DIRECT LINK: Talk to Port 5000 directly
-      const res = await fetch("http://localhost:5000/api/academy/briefing");
+      const res = await fetch("/api/academy/briefing");
       if (!res.ok) throw new Error("Briefing Offline");
       return res.json();
     }
@@ -19,7 +17,7 @@ export default function MarketRadar() {
   const { data: radarData, isLoading: loadingRadar } = useQuery({
     queryKey: ["radar"],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/market/radar");
+      const res = await fetch("/api/market/radar");
       if (!res.ok) throw new Error("Radar Offline");
       return res.json();
     }
@@ -27,7 +25,6 @@ export default function MarketRadar() {
 
   return (
     <div className="space-y-6">
-      {/* BRIEFING SECTION */}
       <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl">
         <h3 className="text-cyan-500 font-black text-xs uppercase tracking-widest mb-2">System Briefing</h3>
         <p className="text-slate-300 text-sm leading-relaxed">
@@ -35,7 +32,6 @@ export default function MarketRadar() {
         </p>
       </div>
 
-      {/* RADAR TABLE */}
       <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950">
         <table className="w-full text-left border-collapse">
           <thead className="bg-slate-900/80">
