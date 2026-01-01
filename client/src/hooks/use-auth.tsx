@@ -1,16 +1,8 @@
 import { createContext, ReactNode, useContext } from "react";
 import { useQuery, useMutation, UseMutationResult } from "@tanstack/react-query";
-import { queryClient, apiRequest } from "../lib/queryClient";
+import { insertUserSchema, type User, type InsertUser } from "../../../shared/schema";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-
-type User = {
-  id: string | number;
-  email: string;
-  tier?: string;
-  membership_tier?: string;
-  is_premium?: boolean;
-  isAdmin?: boolean;
-};
 
 type AuthContextType = {
   user: User | null;
@@ -18,55 +10,66 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<User, Error, any>;
   logoutMutation: UseMutationResult<void, Error, void>;
+  registerMutation: UseMutationResult<User, Error, InsertUser>;
 };
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
 
-  // 1. Check current session status
   const { data: user, error, isLoading } = useQuery<User | null, Error>({
     queryKey: ["/api/user"],
     queryFn: async () => {
-      try {
-        const res = await apiRequest("GET", "/api/user");
-        return await res.json();
-      } catch (e) {
-        return null;
-      }
+      const res = await fetch("/api/user");
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Could not fetch user");
+      return res.json();
     },
-    retry: false,
   });
 
-  // 2. Login Logic
   const loginMutation = useMutation({
     mutationFn: async (credentials: any) => {
       const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: "Login failed" }));
+        throw new Error(errorData.message || "Login failed");
+      }
+      return res.json();
     },
     onSuccess: (user: User) => {
       queryClient.setQueryData(["/api/user"], user);
-      toast({ title: "Welcome Back", description: `Accessing Sentinel Command Center...` });
+      toast({ title: "Authorized", description: "Welcome back, Operator." });
     },
     onError: (error: Error) => {
-      toast({ title: "Login Failed", description: error.message, variant: "destructive" });
+      toast({ title: "Access Denied", description: error.message, variant: "destructive" });
     },
   });
 
-  // 3. Logout Logic
+  const registerMutation = useMutation({
+    mutationFn: async (data: InsertUser) => {
+      const res = await apiRequest("POST", "/api/register", data);
+      return res.json();
+    },
+    onSuccess: (user: User) => {
+      queryClient.setQueryData(["/api/user"], user);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Registration Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/logout");
     },
     onSuccess: () => {
       queryClient.setQueryData(["/api/user"], null);
-      window.location.href = "/auth";
     },
   });
 
   return (
-    <AuthContext.Provider value={{ user: user ?? null, isLoading, error, loginMutation, logoutMutation }}>
+    <AuthContext.Provider value={{ user: user ?? null, isLoading, error, loginMutation, logoutMutation, registerMutation }}>
       {children}
     </AuthContext.Provider>
   );
@@ -74,6 +77,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 }
