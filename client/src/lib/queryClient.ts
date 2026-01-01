@@ -36,7 +36,55 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    // Handle queryKeys that start with '/' (absolute paths) vs array parts
+    let url: string;
+    if (queryKey[0] && typeof queryKey[0] === 'string' && queryKey[0].startsWith('/')) {
+      // Absolute path like ['/api/market/sentinel']
+      url = queryKey[0];
+      // Append additional queryKey parts if any
+      if (queryKey.length > 1) {
+        url += '/' + queryKey.slice(1).join('/');
+      }
+      // Use absolute URL in development to bypass Vite proxy issues
+      if (import.meta.env.DEV) {
+        url = `http://localhost:5000${url}`;
+      }
+    } else {
+      // Array parts like ['api', 'chart', 'SPY'] or ['chart', 'SPY'] or ['chart-data', 'SPY']
+      // Special handling for chart queries - redirect to correct endpoint
+      const firstKey = queryKey[0] as string;
+      const isChartQuery = firstKey === 'chart' || 
+                          firstKey?.startsWith('chart-') || 
+                          (firstKey === 'api' && queryKey[1] === 'chart');
+      
+      if (isChartQuery) {
+        // Find the ticker (last element that's not 'chart', 'data', 'chart-data', etc.)
+        const ticker = queryKey.find((key, idx) => {
+          const keyStr = String(key);
+          return idx > 0 && 
+                 keyStr !== 'chart' && 
+                 keyStr !== 'data' && 
+                 keyStr !== 'chart-data' &&
+                 keyStr.length <= 10 && // Tickers are typically 1-5 chars
+                 /^[A-Z0-9]+$/.test(keyStr.toUpperCase()); // Valid ticker format
+        }) as string | undefined;
+        
+        if (ticker) {
+          // Use the correct chart endpoint format
+          url = `http://localhost:5000/api/market/chart/${ticker.toUpperCase()}`;
+        } else {
+          // Fallback to joined path
+          const relativePath = '/' + queryKey.join("/");
+          url = import.meta.env.DEV ? `http://localhost:5000${relativePath}` : relativePath;
+        }
+      } else {
+        // For non-chart queries, use absolute URL in dev
+        const relativePath = '/' + queryKey.join("/");
+        url = import.meta.env.DEV ? `http://localhost:5000${relativePath}` : relativePath;
+      }
+    }
+    
+    const res = await fetch(url, {
       credentials: "include",
     });
 

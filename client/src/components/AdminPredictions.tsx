@@ -26,6 +26,13 @@ export default function AdminPredictions() {
   const [, setLocation] = useLocation();
   const { data, isLoading, error } = useQuery<PredictionsResponse>({
     queryKey: ["/api/predictions"],
+    queryFn: async () => {
+      const res = await fetch('http://localhost:5000/api/predictions', {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Status: ${res.status}`);
+      return res.json();
+    },
   });
 
   if (isLoading) return <div className="p-8"><Skeleton className="h-[400px] w-full" /></div>;

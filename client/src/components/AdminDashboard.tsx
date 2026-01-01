@@ -17,6 +17,13 @@ export default function AdminDashboard() {
   const [, setLocation] = useLocation();
   const { data: stats, isLoading, error } = useQuery<Stats>({
     queryKey: ["/api/admin/stats"],
+    queryFn: async () => {
+      const res = await fetch('http://localhost:5000/api/admin/stats', {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Status: ${res.status}`);
+      return res.json();
+    },
   });
 
   if (isLoading) return <div className="p-8"><Skeleton className="h-[400px] w-full" /></div>;

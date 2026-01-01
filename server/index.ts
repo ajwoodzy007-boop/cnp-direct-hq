@@ -1,57 +1,79 @@
-import express from "express";
-import session from "express-session"; // Ensure this is imported
-import { setupAuth } from "./auth";
-import path from "path";
-import { fileURLToPath } from "url";
+import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { createServer } from "http";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { setupVite, serveStatic, log } from "./vite";
+import nodeCron from "node-cron";
+import { runDailyScan } from "./lib/sentinel";
+import { refreshHistoricalData } from "./scripts/watchman";
 
 const app = express();
-
-// 1. CRITICAL: Trust Proxy for Railway
-app.set("trust proxy", 1); 
-
-// 2. CRITICAL: Body Parsers MUST come first
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// 3. Mandatory Railway Healthcheck
-app.get("/api/health", (_req, res) => res.status(200).send("OK"));
+// Logger middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let resBody: any = undefined;
+
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    resBody = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (resBody) {
+        logLine += ` :: ${JSON.stringify(resBody)}`;
+      }
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+      log(logLine);
+    }
+  });
+
+  next();
+});
 
 (async () => {
-  try {
-    const server = createServer(app);
+  const server = await registerRoutes(app);
 
-    // 4. AUTH & SESSION MUST BE INITIALIZED HERE
-    // setupAuth(app) handles the express-session and passport.session() calls
-    await setupAuth(app);
+  // Global error handler
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+    res.status(status).json({ message });
+    throw err;
+  });
 
-    // 5. API ROUTES
-    await registerRoutes(app);
-
-    // 6. Static File Handling for Production
-    if (process.env.NODE_ENV === "production") {
-      const publicPath = path.resolve(process.cwd(), "dist", "public");
-      app.use(express.static(publicPath));
-      app.get("*", (req, res) => {
-        if (req.path.startsWith('/api')) return res.status(404).json({ message: "API Not Found" });
-        res.sendFile(path.resolve(publicPath, "index.html"));
-      });
-    } else {
-      const { setupVite } = await import("./vite");
-      await setupVite(app, server);
-    }
-
-    const PORT = Number(process.env.PORT) || 5000;
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(`Sentinel OS Online: Port ${PORT}`);
-    });
-
-  } catch (error) {
-    console.error("STARTUP ERROR:", error);
-    process.exit(1);
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
   }
+
+  const PORT = 5000;
+  server.listen(PORT, "0.0.0.0", () => {
+    log(`🚀 Sentinel Systems Live on port ${PORT}`);
+  });
+
+  // --- AUTOMATION SCHEDULER ---
+  
+  // 1. Every Morning at 9:00 AM: Sync history to Neon
+  nodeCron.schedule("0 9 * * *", () => {
+    console.log("⏰ [Automator] Triggering Watchman Sync...");
+    refreshHistoricalData();
+  });
+
+  // 2. Every Hour: Run the Sentinel Technical Analysis
+  nodeCron.schedule("0 * * * *", () => {
+    console.log("⏰ [Automator] Triggering Sentinel Brain Scan...");
+    runDailyScan();
+  });
+
+  // 3. Initial Boot Scan: Run once on startup so the cache isn't empty
+  runDailyScan();
 })();

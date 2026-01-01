@@ -40,6 +40,13 @@ export default function TheSummary({ onNavigate, user }: Props) {
 
   const { data: sentinelData, isLoading: sentinelLoading } = useQuery<{ data?: MarketMover[] }>({
     queryKey: ['/api/market/sentinel'],
+    queryFn: async () => {
+      const res = await fetch('http://localhost:5000/api/market/sentinel', {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Status: ${res.status}`);
+      return res.json();
+    },
     refetchInterval: 60000,
   });
 
@@ -58,6 +65,13 @@ export default function TheSummary({ onNavigate, user }: Props) {
 
   const { data: statsData } = useQuery<{ success?: boolean; data?: PredictionStats }>({
     queryKey: ['/api/top10/stats'],
+    queryFn: async () => {
+      const res = await fetch('http://localhost:5000/api/top10/stats', {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Status: ${res.status}`);
+      return res.json();
+    },
     refetchInterval: 120000,
   });
 

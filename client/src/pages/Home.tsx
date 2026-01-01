@@ -166,7 +166,8 @@ async function fetchMarketScan(): Promise<MarketScanResponse> {
 }
 
 async function fetchChartData(ticker: string, period: string = "3m"): Promise<ChartDataPoint[]> {
-  const res = await fetch(`/api/market/chart/${ticker}?period=${period}`);
+  // ⚡ ABSOLUTE URL: Bypass Vite proxy and talk directly to backend
+  const res = await fetch(`http://localhost:5000/api/market/chart/${ticker.toUpperCase()}`);
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
   return json.data;
@@ -495,6 +496,7 @@ export default function Home() {
     queryKey: ["chart", selectedTicker],
     queryFn: () => fetchChartData(selectedTicker),
     enabled: !!selectedTicker,
+    // Explicit queryFn prevents default queryFn from constructing wrong URL
   });
 
   // Fetch news for selected ticker

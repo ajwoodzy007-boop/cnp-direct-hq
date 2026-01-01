@@ -1,31 +1,19 @@
-import pg from 'pg';
-const { Pool } = pg;
-import dotenv from 'dotenv';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-serverless';
+import ws from 'ws';
+import * as schema from "../shared/schema";
+import * as dotenv from "dotenv"; // 1. Import dotenv
+import { resolve } from "path";
 
-dotenv.config();
+// 2. Load the .env file from the root directory
+dotenv.config({ path: resolve(process.cwd(), ".env") });
 
-// Lazy pool creation - only creates connection when actually used
-let poolInstance: pg.Pool | null = null;
+neonConfig.webSocketConstructor = ws;
 
-export function getPool(): pg.Pool {
-  if (!poolInstance) {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL must be set");
-    }
-    poolInstance = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      // Don't fail on connection errors immediately
-      connectionTimeoutMillis: 5000,
-    });
-  }
-  return poolInstance;
+if (!process.env.DATABASE_URL) {
+  // This will now only throw if the .env file is missing or the key is wrong
+  throw new Error("DATABASE_URL must be set");
 }
 
-// Export pool for backward compatibility (lazy)
-export const pool = new Proxy({} as pg.Pool, {
-  get(_target, prop) {
-    return getPool()[prop as keyof pg.Pool];
-  }
-});
-
-export const query = (text: string, params?: any[]) => getPool().query(text, params);
+export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const db = drizzle(pool, { schema });
