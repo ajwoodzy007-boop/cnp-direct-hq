@@ -6,7 +6,10 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Request Logger for debugging Railway hits
+// ⚡ THE FIX FOR RAILWAY: Trust the proxy so cookies work
+app.set("trust proxy", 1);
+
+// Request Logger for debugging
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -23,10 +26,8 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
-    // This now works because registerRoutes is explicitly exported in routes.ts
     const server = await registerRoutes(app);
 
-    // Global Error Handler
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
@@ -34,14 +35,12 @@ app.use((req, res, next) => {
       throw err;
     });
 
-    // Handle Vite development vs Production static serving
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
       serveStatic(app);
     }
 
-    // ⚡ CRITICAL FOR RAILWAY: Bind to 0.0.0.0 and use process.env.PORT
     const PORT = Number(process.env.PORT) || 5000;
     server.listen(PORT, "0.0.0.0", () => {
       log(`🚀 Sentinel Systems Live on port ${PORT}`);
@@ -50,7 +49,6 @@ app.use((req, res, next) => {
     console.error("❌ CRITICAL SERVER STARTUP ERROR:");
     console.error(error);
     
-    // Emergency fallback to keep healthcheck alive if main server fails to boot
     const emergencyApp = express();
     emergencyApp.get("/api/health", (_req, res) => res.json({ status: "degraded" }));
     emergencyApp.listen(Number(process.env.PORT) || 5000, "0.0.0.0");
