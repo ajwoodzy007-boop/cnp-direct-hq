@@ -2,20 +2,25 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { runDailyScan } from "./lib/sentinel";
 import { db } from "./db";
-import { historicalPrices } from "../shared/schema";
+import { historicalPrices, users } from "../shared/schema"; // ⚡ THE FIX: Relative path instead of @ alias
 import { eq, desc } from "drizzle-orm";
+import { setupAuth } from "./auth"; 
 
-// ⚡ THE FIX: "export" must be here so index.ts can import this function
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // 1. RAILWAY HEALTHCHECK
-  // Critical for the container to be marked as "Healthy"
+  // 1. INITIALIZE AUTHENTICATION (The Login Door)
+  // This registers the POST /api/login and GET /api/user routes.
+  // It MUST be at the top to prevent 404s on login.
+  setupAuth(app);
+
+  // 2. RAILWAY HEALTHCHECK
+  // Confirms the server is breathing on Railway
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // 2. UNIVERSAL CHART ROUTE
-  // Handles /api/chart?ticker=SPY and /api/market/chart/SPY
+  // 3. UNIVERSAL CHART ROUTE
+  // Serves stock data to StockChart.tsx
   app.get(["/api/chart", "/api/market/chart/:ticker"], async (req, res) => {
     try {
       const ticker = (req.query.ticker as string || req.params.ticker)?.toUpperCase();
@@ -45,7 +50,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 3. MARKET RADAR FEED
+  // 4. MARKET RADAR FEED
+  // Provides the ticker list and price changes
   app.get("/api/market/radar", async (_req, res) => {
     try {
       const data = await runDailyScan();
@@ -59,7 +65,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // 4. ACADEMY BRIEFING
+  // 5. ACADEMY BRIEFING
+  // Serves the AI summary at the top of the Radar
   app.get(["/api/academy/briefing", "/api/briefing"], (_req, res) => {
     res.json({
       success: true,
