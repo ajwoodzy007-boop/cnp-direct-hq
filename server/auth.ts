@@ -4,7 +4,7 @@ import session from "express-session";
 import express, { type Express } from "express";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { members as users, type User } from "../drizzle/schema"; // Using 'members' table
+import { members as users, type User } from "../drizzle/schema"; 
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import MemoryStoreConfig from "memorystore";
@@ -19,15 +19,21 @@ async function hashPassword(password: string) {
 }
 
 async function comparePasswords(supplied: string, stored: string) {
-  const [hashed, salt] = stored.split(".");
-  const hashedBuf = Buffer.from(hashed, "hex");
-  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
-  return timingSafeEqual(hashedBuf, suppliedBuf);
+  try {
+    const [hashed, salt] = stored.split(".");
+    if (!hashed || !salt) return false;
+    const hashedBuf = Buffer.from(hashed, "hex");
+    const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+    return timingSafeEqual(hashedBuf, suppliedBuf);
+  } catch (err) {
+    console.error("Password Comparison Crash:", err);
+    return false;
+  }
 }
 
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "sentinel-vault-secret-v1",
+    secret: process.env.SESSION_SECRET || "sentinel-vault-v2-production",
     resave: false,
     saveUninitialized: false,
     store: new MemoryStore({
@@ -48,38 +54,55 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
       try {
+        console.log(`🔍 [Auth] Attempting lookup for email: ${email}`);
+        
         const [user] = await db.select().from(users).where(eq(users.email, email));
-        if (!user || !(await comparePasswords(password, user.passwordHash))) {
-          return done(null, false);
+        
+        if (!user) {
+          console.log("❌ [Auth] User not found in database.");
+          return done(null, false, { message: "Invalid credentials" });
         }
+
+        const isValid = await comparePasswords(password, user.passwordHash);
+        if (!isValid) {
+          console.log("❌ [Auth] Password mismatch.");
+          return done(null, false, { message: "Invalid credentials" });
+        }
+
+        console.log("✅ [Auth] Login successful for:", email);
         return done(null, user);
       } catch (err) {
+        console.error("💥 [Auth] Critical Login Error:", err);
         return done(err);
       }
     }),
   );
 
   passport.serializeUser((user: any, done) => {
-    // ⚡ Always store the ID as a string in the session
     done(null, String(user.id));
   });
   
   passport.deserializeUser(async (id: any, done) => {
     try {
-      // ⚡ THE FIX: Cast the ID to String to match the PgVarchar column type in Drizzle
-      const [user] = await db.select().from(users).where(eq(users.id, String(id)));
+      // Convert id from string (serialized) to number (database uses integer)
+      const userId = typeof id === 'string' ? parseInt(id, 10) : id;
+      if (isNaN(userId)) {
+        return done(null, null);
+      }
+      const [user] = await db.select().from(users).where(eq(users.id, userId));
       done(null, user || null);
     } catch (err) {
+      console.error("DeserializeUser error:", err);
       done(err);
     }
   });
 
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err: any, user: any) => {
-      if (err) return next(err);
+      if (err) return res.status(500).json({ message: "Internal Auth Error" });
       if (!user) return res.status(401).json({ message: "Invalid credentials" });
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) return res.status(500).json({ message: "Session Error" });
         res.status(200).json(user);
       });
     })(req, res, next);

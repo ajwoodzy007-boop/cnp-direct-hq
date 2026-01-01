@@ -1,16 +1,11 @@
-import { pgTable, varchar, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, serial } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 export const members = pgTable("members", {
-  id: varchar("id")
-    .primaryKey()
-    .default(sql`gen_random_uuid()`)
-    .notNull(),
+  id: serial("id").primaryKey().notNull(),
   email: text("email").unique().notNull(),
   passwordHash: text("password_hash").notNull(),
   membershipTier: text("membership_tier").default("free").notNull(),
-  isPremium: boolean("is_premium").default(false).notNull(),
-  isAdmin: boolean("is_admin").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
