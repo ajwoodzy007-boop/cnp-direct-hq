@@ -5,6 +5,7 @@ import { db } from "./db";
 import { historicalPrices } from "../shared/schema";
 import { eq, desc } from "drizzle-orm";
 
+// ⚡ THE FIX: "export" must be here so index.ts can import this function
 export async function registerRoutes(app: Express): Promise<Server> {
   
   // 1. RAILWAY HEALTHCHECK
