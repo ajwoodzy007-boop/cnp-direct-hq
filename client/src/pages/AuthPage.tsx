@@ -38,7 +38,10 @@ export default function AuthPage() {
           <CardContent>
             <Form {...loginForm}>
               <form 
-                onSubmit={loginForm.handleSubmit((data: any) => loginMutation.mutate(data))} 
+                onSubmit={loginForm.handleSubmit((data: any) => {
+                  console.log("🔑 ATTEMPTING LOGIN WITH:", data);
+                  loginMutation.mutate(data);
+                })} 
                 className="space-y-4"
               >
                 <FormField
@@ -48,7 +51,12 @@ export default function AuthPage() {
                     <FormItem>
                       <FormLabel className="text-slate-400 text-xs font-bold uppercase">Email Address</FormLabel>
                       <FormControl>
-                        <Input {...field} type="email" placeholder="operator@sentinel.hq" className="bg-slate-950 border-slate-800 text-cyan-50 focus:border-cyan-500 transition-all" />
+                        <Input 
+                          {...field} 
+                          type="email" 
+                          placeholder="operator@sentinel.hq" 
+                          className="bg-slate-950 border-slate-800 text-cyan-50 focus:border-cyan-500 transition-all" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -61,7 +69,12 @@ export default function AuthPage() {
                     <FormItem>
                       <FormLabel className="text-slate-400 text-xs font-bold uppercase">Security Key</FormLabel>
                       <FormControl>
-                        <Input {...field} type="password" placeholder="••••••••" className="bg-slate-950 border-slate-800 text-cyan-50 focus:border-cyan-500 transition-all" />
+                        <Input 
+                          {...field} 
+                          type="password" 
+                          placeholder="••••••••" 
+                          className="bg-slate-950 border-slate-800 text-cyan-50 focus:border-cyan-500 transition-all" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
