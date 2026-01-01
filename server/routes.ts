@@ -6,19 +6,65 @@ import marketRouter from "./routes/market.js";
 import backtestRouter from "./routes/backtest.js";
 
 export function registerRoutes(app: Express) {
-  // Register admin routes
+  // ============================================
+  // CORE MIDDLEWARE & ROUTERS
+  // ============================================
+  
+  // Register routers
   app.use("/api/admin", adminRouter);
-  // Register oracle routes
   app.use("/api/oracle", oracleRouter);
-  // Register market routes
   app.use("/api/market", marketRouter);
-  // Register backtest routes
   app.use("/api/backtest", backtestRouter);
-  // Note: setupAuth is called in index.ts before registerRoutes
-  // This prevents duplicate route registration
 
-  // API Health Check (also defined in index.ts, but kept here for backward compatibility)
-  // The one in index.ts takes precedence since it's registered first
+  // ============================================
+  // SYSTEM & AI CONTROLS (NEW FOR 2026)
+  // ============================================
+
+  // POST /api/admin/trigger-scan - Force the AI to scan the market now
+  app.post("/api/admin/trigger-scan", async (req, res) => {
+    // Cast req.user to any to bypass the TypeScript 'isAdmin' property error
+    const user = req.user as any;
+    
+    if (!req.isAuthenticated() || !user?.isAdmin) {
+      return res.status(403).json({ success: false, error: "Admin access required" });
+    }
+
+    try {
+      console.log("[Admin] Manual Sentinel Scan Triggered for 2026...");
+      
+      // We import as any to bypass the strict property check on the dynamic import
+      const sentinel = await import("./lib/sentinel.js") as any;
+      
+      // Access the function handling both named and default exports
+      const scanFn = sentinel.runDailyScan || sentinel.default?.runDailyScan;
+      
+      if (typeof scanFn !== 'function') {
+        throw new Error("runDailyScan function not found in sentinel.js");
+      }
+
+      // Run the scan in the background
+      scanFn()
+        .then(() => console.log("[Sentinel] Manual Scan Completed Successfully"))
+        .catch((err: any) => console.error("[Sentinel] Manual Scan Failed:", err));
+      
+      res.json({ 
+        success: true, 
+        message: "Sentinel scan initiated. Check the Oracle in ~60 seconds." 
+      });
+    } catch (error: any) {
+      console.error("Trigger Error:", error);
+      res.status(500).json({ success: false, error: "Could not start sentinel: " + error.message });
+    }
+  });
+
+  // Simple Health Check for Railway Deployment
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", time: new Date().toISOString(), version: "1.0.1-resilient" });
+  });
+
+  // ============================================
+  // VALUATION & PREDICTION DATA
+  // ============================================
 
   // Valuation Endpoint
   app.get("/api/valuation/:ticker", async (req, res) => {
@@ -33,11 +79,7 @@ export function registerRoutes(app: Express) {
     });
   });
 
-  // ============================================
-  // PREDICTION ROUTES - Using predictions table
-  // ============================================
-
-  // GET /api/predictions - Get all predictions from predictions table (most recent 50 by default, no date filter)
+  // GET /api/predictions - Get recent predictions
   app.get("/api/predictions", async (req, res) => {
     try {
       const storage = getStorage();
@@ -56,23 +98,16 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // GET /api/market/top10-today - Get today's top predictions from predictions table
+  // GET /api/market/top10-today - Get latest predictions
   app.get("/api/market/top10-today", async (req, res) => {
     try {
       const storage = getStorage();
       const today = new Date().toISOString().split('T')[0];
       
-      // Get today's predictions from predictions table
-      const predictions = await storage.getPredictionsByDate(today);
+      const predictions = await storage.getPredictions(20, 0);
       
-      // Sort by confidence/RSI and take top 10
       const top10 = predictions
-        .sort((a: any, b: any) => {
-          // Sort by confidence score or RSI
-          const aScore = a.confidenceScore || a.rsi || 0;
-          const bScore = b.confidenceScore || b.rsi || 0;
-          return bScore - aScore;
-        })
+        .sort((a: any, b: any) => (b.confidenceScore || 0) - (a.confidenceScore || 0))
         .slice(0, 10);
 
       res.json({
@@ -80,7 +115,7 @@ export function registerRoutes(app: Express) {
         data: {
           date: today,
           picks: top10,
-          marketOpen: true, // You may want to calculate this based on market hours
+          marketOpen: true,
           isAfterHours: false
         }
       });
@@ -90,53 +125,44 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // GET /api/top10/stats - Get prediction statistics from predictions table
+  // GET /api/top10/stats - Prediction Win/Loss Statistics
   app.get("/api/top10/stats", async (req, res) => {
     try {
       const storage = getStorage();
-      
-      // Get all resolved predictions (win/loss)
       const wins = await storage.getPredictionsByOutcome('win');
       const losses = await storage.getPredictionsByOutcome('loss');
       const total = wins.length + losses.length;
-      
       const winRate = total > 0 ? (wins.length / total) * 100 : 0;
       
       res.json({
         success: true,
         data: {
-          winRate: Math.round(winRate * 10) / 10, // Round to 1 decimal
+          winRate: Math.round(winRate * 10) / 10,
           totalPredictions: total,
           wins: wins.length,
           losses: losses.length
         }
       });
     } catch (error: any) {
-      console.error("Error fetching prediction stats:", error);
+      console.error("Error fetching stats:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
 
-  // GET /api/top10/history - Get historical prediction runs
+  // GET /api/top10/history - Historical logs grouped by date
   app.get("/api/top10/history", async (req, res) => {
     try {
       const storage = getStorage();
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 30;
+      const allPredictions = await storage.getPredictions(limit * 10, 0);
       
-      // Get recent predictions grouped by date
-      const allPredictions = await storage.getPredictions(limit * 10, 0); // Get more to group by date
-      
-      // Group by prediction date
       const groupedByDate = allPredictions.reduce((acc: any, pred: any) => {
         const date = new Date(pred.predictionDate).toISOString().split('T')[0];
-        if (!acc[date]) {
-          acc[date] = [];
-        }
+        if (!acc[date]) acc[date] = [];
         acc[date].push(pred);
         return acc;
       }, {});
 
-      // Convert to array format expected by frontend
       const history = Object.entries(groupedByDate)
         .slice(0, limit)
         .map(([date, entries]: [string, any]) => ({
@@ -144,23 +170,15 @@ export function registerRoutes(app: Express) {
           entries: entries.map((e: any) => ({
             ticker: e.ticker,
             entryPrice: e.entryPrice,
-            openPrice: e.openPrice,
-            closePrice: e.closePrice,
-            currentPrice: e.currentPrice,
-            predictedPrice: e.predictedPrice,
             signal: e.signal,
             outcome: e.outcome,
-            closePnl: e.closePnl,
-            totalPnl: e.totalPnl
+            profitPercent: e.profitPercent
           }))
         }));
 
-      res.json({
-        success: true,
-        data: history
-      });
+      res.json({ success: true, data: history });
     } catch (error: any) {
-      console.error("Error fetching prediction history:", error);
+      console.error("Error fetching history:", error);
       res.status(500).json({ success: false, error: error.message });
     }
   });
