@@ -62,7 +62,7 @@ router.get('/success', async (req, res) => {
       await query(`UPDATE members SET membership_tier = 'PREMIUM' WHERE id = $1`, [userId]);
       
       if ((req.session as any).user) {
-        (req.session as any).user.membership_tier = 'PREMIUM';
+        (req.session as any).user.membershipTier = 'PREMIUM'; // Drizzle uses camelCase
         (req.session as any).user.tier = 'PREMIUM'; // Backward compatibility
       }
 

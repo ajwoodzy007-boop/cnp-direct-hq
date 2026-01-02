@@ -4,7 +4,15 @@ import { runDailyScan } from "./lib/sentinel";
 import { db } from "./db";
 import { historicalPrices, users } from "../shared/schema"; // ⚡ THE FIX: Relative path instead of @ alias
 import { eq, desc } from "drizzle-orm";
-import { setupAuth } from "./auth"; 
+import { setupAuth } from "./auth";
+import adminRoutes from "./routes/admin";
+import oracleRoutes from "./routes/oracle";
+import strategistRoutes from "./routes/strategist";
+import vaultRoutes from "./routes/vault";
+import aiRoutes from "./routes/ai";
+import academyRoutes from "./routes/academy";
+import { requireAdmin } from "./middleware/admin";
+import { requirePremium } from "./middleware/premium"; 
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
@@ -13,10 +21,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // It MUST be at the top to prevent 404s on login.
   setupAuth(app);
 
+  // 1.4. GLOBAL ROUTE LOGGING
+  app.use((req, res, next) => {
+    console.log('--- ROUTE HIT: ' + req.path + ' ---');
+    next();
+  });
+
+  // 1.5. MOUNT ROUTE MODULES
+  // Admin routes require authentication and admin privileges
+  app.use("/api/admin", requireAdmin, adminRoutes);
+
+  // Premium routes require premium subscription
+  app.use("/api/oracle", requirePremium, oracleRoutes);
+  app.use("/api/vault", requirePremium, vaultRoutes);
+
+  // General routes (may have internal auth checks)
+  app.use("/api/strategist", strategistRoutes);
+  app.use("/api/ai", aiRoutes);
+  app.use("/api/academy", academyRoutes);
+
   // 2. RAILWAY HEALTHCHECK
   // Confirms the server is breathing on Railway
   app.get("/api/health", (_req, res) => {
+    console.log('--- HEALTH CHECK HIT ---');
     res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  // 2.1. TEST ROUTE - For debugging API connectivity
+  app.get("/api/test", (_req, res) => {
+    console.log('--- TEST ROUTE HIT ---');
+    res.json({
+      message: "API is working!",
+      timestamp: new Date().toISOString(),
+      environment: app.get("env")
+    });
   });
 
   // 3. UNIVERSAL CHART ROUTE

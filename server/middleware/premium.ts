@@ -13,13 +13,13 @@ export function requirePremium(req: Request, res: Response, next: NextFunction) 
 
   const user = req.user as any;
 
-  // 2. Admin Bypass - Check membership_tier === 'admin'
-  if (user.membership_tier === 'admin' || user.tier === 'admin') {
+  // 2. Admin Bypass - Check membershipTier === 'admin' (Drizzle uses camelCase)
+  if (user.membershipTier === 'admin' || user.tier === 'admin') {
     return next();
   }
 
-  // 3. Check for Premium Status (membership_tier can be 'PREMIUM', 'PRO', etc.)
-  if (user.membership_tier === 'PREMIUM' || user.membership_tier === 'PRO' || user.is_premium) {
+  // 3. Check for Premium Status (membershipTier can be 'PREMIUM', 'PRO', etc.)
+  if (user.membershipTier === 'PREMIUM' || user.membershipTier === 'PRO' || user.is_premium) {
     return next();
   }
 

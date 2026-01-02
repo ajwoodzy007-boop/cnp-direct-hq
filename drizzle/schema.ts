@@ -1,5 +1,4 @@
 import { pgTable, serial, text, timestamp, boolean, varchar } from "drizzle-orm/pg-core";
-import { sql } from "drizzle-orm";
 
 export const members = pgTable("members", {
   id: serial("id").primaryKey(),
@@ -18,6 +17,5 @@ export const historicalPrices = pgTable("historical_prices", {
   date: timestamp("date").defaultNow().notNull(),
 });
 
-// Type exports for the rest of the application
 export type User = typeof members.$inferSelect;
 export type InsertUser = typeof members.$inferInsert;

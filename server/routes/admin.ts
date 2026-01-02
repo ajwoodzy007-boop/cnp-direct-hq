@@ -1,5 +1,5 @@
 import express from 'express';
-import { query } from '../db';
+import { pool } from '../db';
 import { requireAdmin } from '../middleware/admin.js';
 
 const router = express.Router();
@@ -10,7 +10,7 @@ router.use(requireAdmin);
 router.get('/stats', async (req: express.Request, res: express.Response) => {
   try {
     // UPDATED: Query members table instead of users
-    const operatives = await query(
+    const operatives = await pool.query(
       "SELECT id, email, membership_tier FROM members ORDER BY membership_tier DESC, email ASC"
     );
 
@@ -44,7 +44,7 @@ router.get('/elevate', async (req: express.Request, res: express.Response) => {
 
   try {
     // UPDATED: Update members table, set membership_tier to 'admin'
-    await query(
+    await pool.query(
       "UPDATE members SET membership_tier = 'admin' WHERE email = $1",
       [email]
     );

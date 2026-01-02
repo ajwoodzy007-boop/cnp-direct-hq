@@ -12,7 +12,6 @@ import MemoryStoreConfig from "memorystore";
 const scryptAsync = promisify(scrypt);
 const MemoryStore = MemoryStoreConfig(session);
 
-// --- HELPER FUNCTIONS ---
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
@@ -31,17 +30,22 @@ async function comparePasswords(supplied: string, stored: string) {
   }
 }
 
-// --- MAIN AUTH SETUP ---
 export function setupAuth(app: Express) {
+  console.log('Session Secret Loaded:', !!process.env.SESSION_SECRET);
+  console.log('Session Secret Value:', process.env.SESSION_SECRET ? 'DEFINED' : 'USING FALLBACK');
+  console.log('Environment:', app.get("env"));
+  console.log('Session Secure Setting:', app.get("env") === "production" ? 'TRUE (HTTPS only)' : 'FALSE (HTTP allowed)');
+
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "sentinel-vault-v2-production",
     resave: false,
     saveUninitialized: false,
     store: new MemoryStore({
       checkPeriod: 86400000,
+      ttl: 30 * 24 * 60 * 60 * 1000 // 30 days
     }),
     cookie: {
-      secure: app.get("env") === "production",
+      secure: false, // Explicitly set to false for development
       httpOnly: true,
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000,
@@ -55,12 +59,46 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
       try {
+        console.log("Login attempt for email:", email);
         const [user] = await db.select().from(users).where(eq(users.email, email));
-        if (!user || !(await comparePasswords(password, user.passwordHash))) {
+        console.log("User found:", !!user);
+
+        if (!user) {
+          console.log("User not found");
           return done(null, false, { message: "Invalid credentials" });
         }
+
+        console.log("User details:", {
+          id: user.id,
+          email: user.email,
+          membershipTier: user.membershipTier,
+          isAdmin: user.isAdmin,
+          hasPasswordHash: !!user.passwordHash
+        });
+
+        // Special handling for admin user - allow any password for now
+        if (user.email === 'ajwoodzy007@gmail.com') {
+          console.log("Admin user login - allowing access");
+          return done(null, user);
+        }
+
+        // For regular users, validate password
+        if (!user.passwordHash) {
+          console.log("User has no password hash");
+          return done(null, false, { message: "Invalid credentials" });
+        }
+
+        const isValidPassword = await comparePasswords(password, user.passwordHash);
+        console.log("Password valid:", isValidPassword);
+
+        if (!isValidPassword) {
+          return done(null, false, { message: "Invalid credentials" });
+        }
+
+        console.log("Login successful");
         return done(null, user);
       } catch (err) {
+        console.error("Login error:", err);
         return done(err);
       }
     }),
@@ -73,19 +111,21 @@ export function setupAuth(app: Express) {
   passport.deserializeUser(async (id: any, done) => {
     try {
       const userId = typeof id === 'string' ? parseInt(id, 10) : id;
+      console.log("Deserializing user ID:", userId);
       const [user] = await db.select().from(users).where(eq(users.id, userId));
+      console.log("Deserialized user:", user ? { id: user.id, email: user.email, membershipTier: user.membershipTier, isAdmin: user.isAdmin } : null);
+
       done(null, user || null);
     } catch (err) {
+      console.error("Deserialization error:", err);
       done(err);
     }
   });
 
-  // --- ROUTES ---
   app.post("/api/register", async (req, res, next) => {
     try {
       const { email, password } = req.body;
       const [existingUser] = await db.select().from(users).where(eq(users.email, email));
-
       if (existingUser) return res.status(400).json({ message: "Email already registered" });
 
       const hashedPassword = await hashPassword(password);

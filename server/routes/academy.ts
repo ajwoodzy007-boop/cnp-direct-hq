@@ -2,6 +2,7 @@ import express from 'express';
 const router = express.Router();
 
 router.get('/briefing', (req, res) => {
+  console.log('ENTERING ROUTE: ', req.path);
   res.json({
     success: true,
     data: {
@@ -17,8 +18,8 @@ router.get('/briefing', (req, res) => {
 
 router.get('/full-report', (req, res) => {
   const user = req.user as any;
-  // UPDATED: Check membership_tier === 'admin' instead of tier !== 'admin'
-  if (!user || (user.membership_tier !== 'admin' && user.tier !== 'admin' && !user.is_premium)) {
+  // UPDATED: Check membershipTier === 'admin' instead of tier !== 'admin' (Drizzle uses camelCase)
+  if (!user || (user.membershipTier !== 'admin' && user.tier !== 'admin' && !user.is_premium)) {
     return res.status(403).json({ success: false, message: 'Premium Required' });
   }
   res.json({

@@ -1,18 +1,24 @@
 import express from 'express';
-import { getStorage } from '../storage.js';
+import { db } from '../db';
+import { predictions } from '../../shared/schema';
+import { desc } from 'drizzle-orm';
 
 const router = express.Router();
 
 // GET /api/oracle/daily - Get latest predictions from predictions table (no date filter)
 router.get('/daily', async (req, res) => {
+  console.log('ENTERING ROUTE: ', req.path);
   try {
-    const storage = getStorage();
     // Get the most recent 50 predictions regardless of date
-    const predictions = await storage.getPredictions(50, 0);
-    
+    const predictionData = await db
+      .select()
+      .from(predictions)
+      .orderBy(desc(predictions.created_at))
+      .limit(50);
+
     res.json({
       success: true,
-      data: predictions
+      data: predictionData || []
     });
   } catch (error: any) {
     console.error("Error fetching daily predictions:", error);
