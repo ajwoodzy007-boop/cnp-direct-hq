@@ -59,15 +59,35 @@ export function serveStatic(app: Express) {
   console.log('✅ Static directory exists. Contents:', fs.readdirSync(rootDistPath));
 
   // Configure static file serving with proper MIME types and error handling
-  app.use('/assets', express.static(path.resolve(rootDistPath, 'assets'), {
-    setHeaders: (res, path) => {
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript');
-      } else if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css');
-      }
+  app.use('/assets', (req, res, next) => {
+    console.log(`Static middleware hit: ${req.path}`);
+    const filePath = path.resolve(rootDistPath, 'assets', req.path.replace('/assets/', ''));
+    console.log(`Looking for file: ${filePath}`);
+    console.log(`File exists: ${fs.existsSync(filePath)}`);
+
+    if (!fs.existsSync(filePath)) {
+      console.error(`File not found: ${filePath}`);
+      return res.status(404).send('File not found');
     }
-  }));
+
+    // Set proper headers
+    if (req.path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    } else if (req.path.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    }
+
+    // Use express.static
+    express.static(path.resolve(rootDistPath, 'assets'), {
+      setHeaders: (res, path) => {
+        if (path.endsWith('.js')) {
+          res.setHeader('Content-Type', 'application/javascript');
+        } else if (path.endsWith('.css')) {
+          res.setHeader('Content-Type', 'text/css');
+        }
+      }
+    })(req, res, next);
+  });
 
   // Serve index.html for all other routes (SPA fallback) - exclude assets
   app.get("*", (req, res) => {
