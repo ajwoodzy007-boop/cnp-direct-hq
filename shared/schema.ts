@@ -33,6 +33,22 @@ export const predictions = pgTable("predictions", {
   learning_metadata: jsonb("learning_metadata"), // AI lessons learned from historical simulation
 });
 
+// Predictions History Table (audit trail for all graded predictions)
+export const predictionsHistory = pgTable("predictions_history", {
+  id: serial("id").primaryKey(),
+  symbol: text("symbol").notNull(),
+  prediction: text("prediction").notNull(),
+  confidence: integer("confidence").notNull(),
+  target_price: decimal("target_price", { precision: 10, scale: 2 }),
+  timeframe: text("timeframe").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+  outcome: text("outcome"), // 'WIN' or 'LOSS'
+  outcome_price: decimal("outcome_price", { precision: 10, scale: 2 }), // Price when outcome was determined
+  outcome_date: timestamp("outcome_date"), // When outcome was determined
+  learning_metadata: jsonb("learning_metadata"), // AI learning insights from historical simulations
+  moved_at: timestamp("moved_at").defaultNow(), // When record was archived
+});
+
 // Simulation Results Table (for back-testing historical predictions)
 export const simulationResults = pgTable("simulation_results", {
   id: serial("id").primaryKey(),
@@ -82,6 +98,9 @@ export const insertPredictionSchema = createInsertSchema(predictions, {
   learning_metadata: z.any().optional(),
 });
 export type Prediction = typeof predictions.$inferSelect;
+
+export const insertPredictionHistorySchema = createInsertSchema(predictionsHistory);
+export type PredictionHistory = typeof predictionsHistory.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users);
 export type User = typeof users.$inferSelect;

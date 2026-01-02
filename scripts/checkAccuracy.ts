@@ -1,6 +1,6 @@
 import { db } from '../server/db';
-import { predictions } from '../shared/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { predictions, predictionsHistory } from '../shared/schema';
+import { eq, isNull, sql } from 'drizzle-orm';
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
 
@@ -144,8 +144,57 @@ async function checkPredictionAccuracy(): Promise<void> {
       }
     }
 
+    // Archive graded predictions to history table
+    console.log(`\n📚 Starting archival process...`);
+
+    const gradedPredictions = await db
+      .select()
+      .from(predictions)
+      .where(sql`${predictions.outcome} IS NOT NULL`);
+
+    console.log(`📊 Found ${gradedPredictions.length} graded predictions to archive`);
+
+    let archivedCount = 0;
+    for (const pred of gradedPredictions) {
+      try {
+        // Insert into history table
+        await db.insert(predictionsHistory).values({
+          symbol: pred.symbol,
+          prediction: pred.prediction,
+          confidence: pred.confidence,
+          target_price: pred.target_price,
+          timeframe: pred.timeframe,
+          created_at: pred.created_at,
+          outcome: pred.outcome,
+          outcome_price: pred.outcome_price,
+          outcome_date: pred.outcome_date,
+          learning_metadata: pred.learning_metadata,
+          moved_at: new Date()
+        });
+
+        // Delete from active table
+        await db.delete(predictions).where(eq(predictions.id, pred.id));
+
+        archivedCount++;
+      } catch (error) {
+        console.error(`❌ Failed to archive prediction ${pred.id}:`, error);
+      }
+    }
+
+    console.log(`✅ Successfully archived ${archivedCount} predictions`);
+
+    // Purge old records (older than 24 hours) as additional cleanup
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const purgedResult = await db
+      .delete(predictions)
+      .where(sql`${predictions.created_at} < ${twentyFourHoursAgo}`);
+
+    console.log(`🧹 Purged ${purgedResult.rowCount || 0} additional old records`);
+
     console.log(`\n🎉 Accuracy Check Complete!`);
     console.log(`✅ Successfully graded: ${successCount}`);
+    console.log(`📚 Successfully archived: ${archivedCount}`);
+    console.log(`🧹 Additional purged: ${purgedResult.rowCount || 0}`);
     console.log(`❌ Errors: ${errorCount}`);
 
   } catch (error) {
