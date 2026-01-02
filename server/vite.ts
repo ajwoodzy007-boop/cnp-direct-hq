@@ -44,34 +44,3 @@ export async function setupVite(app: Express, server: Server) {
   });
 }
 
-export function serveStatic(app: Express) {
-  // Use absolute path from current working directory (Railway compatible)
-  const rootDistPath = path.resolve(process.cwd(), 'dist', 'public');
-  console.log('Serving static files from:', rootDistPath);
-  console.log('Current working directory:', process.cwd());
-
-  if (!fs.existsSync(rootDistPath)) {
-    console.error(`❌ Static assets not found at: ${rootDistPath}`);
-    console.error('Files in dist directory:', fs.existsSync(path.resolve(process.cwd(), 'dist')) ? fs.readdirSync(path.resolve(process.cwd(), 'dist')) : 'dist directory not found');
-    throw new Error(`Static assets not found at: ${rootDistPath}. Ensure the build step completed successfully.`);
-  }
-
-  console.log('✅ Static directory exists. Contents:', fs.readdirSync(rootDistPath));
-
-  const publicPath = path.resolve(process.cwd(), 'dist', 'public');
-  // 1. Serve assets folder directly with NO extra middleware
-  app.use('/assets', express.static(path.join(publicPath, 'assets'), {
-    fallthrough: false, // This triggers an error if the file isn't found instead of a white screen
-    setHeaders: (res) => {
-      res.set('Cache-Control', 'public, max-age=31536000, immutable');
-    }
-  }));
-
-  // 2. Serve other static root files (favicons, etc)
-  app.use(express.static(publicPath));
-
-  // 3. The Catch-all for SPA (placed at the VERY end)
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(publicPath, 'index.html'));
-  });
-}

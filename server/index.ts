@@ -1,32 +1,27 @@
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
+import path from "path";
+import fs from "fs";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { setupVite, log } from "./vite";
 import { setupAuth } from "./auth";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// ⚡ TRUST PROXY: Essential for cookies/sessions on Railway
+// 1. TRUST PROXY (Crucial for Railway/HTTPS)
 app.set("trust proxy", 1);
 
 // ⚡ CORS: Allow Railway domains and localhost for development
 const corsOptions = {
   origin: function (origin: any, callback: any) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-
-    // Allow localhost for development
     if (origin.includes('localhost')) return callback(null, true);
-
-    // Allow Railway domains (*.railway.app)
     if (origin.includes('railway.app')) return callback(null, true);
-
-    // Reject other origins
     return callback(new Error('Not allowed by CORS'));
   },
-  credentials: true, // Allow cookies/sessions
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
@@ -35,31 +30,49 @@ app.use(cors(corsOptions));
 
 (async () => {
   try {
-    // 1. Initialize Auth system
+    // 2. Initialize Auth & Register API Routes
     setupAuth(app);
-
-    // 2. Register application routes
     const server = await registerRoutes(app);
 
-    // 3. Error handling
+    // 3. Static Serving Logic
+    const rootPath = process.cwd();
+    const publicPath = path.resolve(rootPath, "dist", "public");
+
+    if (app.get("env") === "development") {
+      await setupVite(app, server);
+    } else {
+      // SERVE ASSETS FIRST (No extra middleware)
+      app.use("/assets", express.static(path.join(publicPath, "assets"), {
+        immutable: true,
+        maxAge: "1y",
+        fallthrough: false
+      }));
+
+      // SERVE OTHER STATIC FILES
+      app.use(express.static(publicPath));
+
+      // THE SPA FALLBACK (Must be last)
+      app.get("*", (req, res, next) => {
+        // Skip for API routes
+        if (req.path.startsWith('/api')) {
+          return next();
+        }
+        res.sendFile(path.join(publicPath, "index.html"));
+      });
+    }
+
+    // 4. GLOBAL ERROR HANDLER
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      console.error("🔥 Server Error:", err.message);
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
       res.status(status).json({ message });
     });
 
-    // 4. Serving logic (Vite or Static)
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
-    }
-
     const PORT = Number(process.env.PORT) || 5000;
     server.listen(PORT, "0.0.0.0", () => {
       log(`🚀 Sentinel Systems Live on port ${PORT}`);
       console.log(`🔗 API available at: http://localhost:${PORT}/api`);
-      console.log(`🔗 Test endpoint: http://localhost:${PORT}/api/test`);
       console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
     });
   } catch (error) {
