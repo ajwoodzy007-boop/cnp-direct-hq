@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { db } from "../db";
-import { historicalPrices } from "../../shared/schema";
+import { historicalPrices, portfolios } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
 
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
@@ -79,11 +79,31 @@ export async function runMarketScan() {
  */
 async function performBackgroundScan() {
   isScanning = true;
-  const tickers = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'BTC'];
+
+  // 1. Get all unique tickers from user portfolios (prioritized)
+  const userPortfolios = await db
+    .select({ ticker_symbol: portfolios.ticker_symbol })
+    .from(portfolios)
+    .groupBy(portfolios.ticker_symbol);
+
+  const portfolioTickers = userPortfolios.map(p => p.ticker_symbol);
+
+  // 2. Combine portfolio tickers (prioritized) with default tickers
+  const defaultTickers = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMD', 'BTC'];
+  const allTickers = [...new Set([...portfolioTickers, ...defaultTickers])]; // Remove duplicates
+
+  // 3. Sort to prioritize portfolio tickers first (7:30 AM deep-dive analysis)
+  const sortedTickers = [
+    ...portfolioTickers.filter(t => allTickers.includes(t)), // Portfolio tickers first
+    ...defaultTickers.filter(t => !portfolioTickers.includes(t)) // Then defaults
+  ];
+
+  console.log(`[Sentinel] Scanning ${sortedTickers.length} tickers (${portfolioTickers.length} from portfolios)`);
+
   const results: MarketData[] = [];
 
   try {
-    for (const ticker of tickers) {
+    for (const ticker of sortedTickers) {
       try {
         console.log(`[Sentinel] Analyzing ${ticker}...`);
         

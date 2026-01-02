@@ -42,8 +42,15 @@ export default function Profile() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [displayName, setDisplayName] = useState(user?.email?.split('@')[0] || '');
   const [showPasswords, setShowPasswords] = useState(false);
+
+  // Personal Information State
+  const [profile, setProfile] = useState({
+    full_name: '',
+    phone_number: '',
+    address: '',
+    subscription_tier: 'free'
+  });
 
   // Portfolio State
   const [portfolio, setPortfolio] = useState<PortfolioHolding[]>([]);
@@ -65,6 +72,13 @@ export default function Profile() {
   useEffect(() => {
     const loadUserData = async () => {
       try {
+        // Load profile
+        const profileRes = await fetch('/api/user/profile');
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          setProfile(profileData.profile || profile);
+        }
+
         // Load portfolio
         const portfolioRes = await fetch('/api/user/portfolio');
         if (portfolioRes.ok) {
@@ -154,18 +168,16 @@ export default function Profile() {
     setLoading(true);
     try {
       const response = await fetch('/api/user/profile', {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          displayName
-        })
+        body: JSON.stringify(profile)
       });
 
       if (response.ok) {
         toast({
           title: "Profile Updated",
-          description: "Your profile has been successfully updated.",
+          description: "Your personal information has been successfully updated.",
         });
       } else {
         toast({
@@ -276,59 +288,197 @@ export default function Profile() {
         <UserIcon className="h-8 w-8 text-cyan-400" />
         <div>
           <h1 className="text-3xl font-bold text-white">Profile</h1>
-          <p className="text-slate-400">Manage your account settings and personal portfolio</p>
+          <p className="text-slate-400">Manage your personal information and investment portfolio</p>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Account Settings */}
-        <Card className="bg-slate-900 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-xl text-white flex items-center gap-2">
-              <CogIcon className="h-5 w-5 text-cyan-400" />
-              Account Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Profile Update */}
-            <form onSubmit={handleProfileUpdate} className="space-y-4">
+      {/* Personal Information Form */}
+      <Card className="bg-slate-900 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-xl text-white flex items-center gap-2">
+            <UserIcon className="h-5 w-5 text-cyan-400" />
+            Personal Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleProfileUpdate} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="displayName" className="text-slate-300">Display Name</Label>
+                <Label htmlFor="full_name" className="text-slate-300">Full Name</Label>
                 <Input
-                  id="displayName"
+                  id="full_name"
                   type="text"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  value={profile.full_name}
+                  onChange={(e) => setProfile({...profile, full_name: e.target.value})}
                   className="bg-slate-800 border-slate-600 text-white mt-1"
-                  placeholder="Your display name"
+                  placeholder="John Doe"
                 />
               </div>
               <div>
-                <Label className="text-slate-300">Email Address</Label>
+                <Label htmlFor="phone_number" className="text-slate-300">Phone Number</Label>
                 <Input
-                  type="email"
-                  value={user?.email || ''}
-                  disabled
-                  className="bg-slate-800 border-slate-600 text-slate-400 mt-1"
+                  id="phone_number"
+                  type="tel"
+                  value={profile.phone_number}
+                  onChange={(e) => setProfile({...profile, phone_number: e.target.value})}
+                  className="bg-slate-800 border-slate-600 text-white mt-1"
+                  placeholder="+1 (555) 123-4567"
                 />
-                <p className="text-xs text-slate-500 mt-1">Email cannot be changed</p>
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="address" className="text-slate-300">Address</Label>
+              <Input
+                id="address"
+                type="text"
+                value={profile.address}
+                onChange={(e) => setProfile({...profile, address: e.target.value})}
+                className="bg-slate-800 border-slate-600 text-white mt-1"
+                placeholder="123 Main St, City, State, ZIP"
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-slate-300">Subscription Tier</Label>
+                <div className="mt-1">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    profile.subscription_tier === 'premium'
+                      ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                      : 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                  }`}>
+                    {profile.subscription_tier.toUpperCase()}
+                  </span>
+                </div>
               </div>
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-cyan-600 hover:bg-cyan-500"
+                className="bg-cyan-600 hover:bg-cyan-500"
               >
-                Update Profile
+                Save Changes
               </Button>
-            </form>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
-            {/* Password Change */}
-            <form onSubmit={handlePasswordChange} className="space-y-4 border-t border-slate-700 pt-4">
-              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                <KeyIcon className="h-4 w-4 text-orange-400" />
-                Change Password
-              </h3>
+      {/* My Live Portfolio - High Density Table */}
+      <Card className="bg-slate-900 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-xl text-white flex items-center gap-2">
+            <ChartBarIcon className="h-5 w-5 text-green-400" />
+            My Live Portfolio
+          </CardTitle>
+          <p className="text-sm text-slate-400">Your personal holdings with AI-powered insights</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Add New Holding Form */}
+          <form onSubmit={handleAddToPortfolio} className="flex gap-3 items-end">
+            <div className="flex-1">
+              <Label htmlFor="ticker" className="text-slate-300 text-xs">Ticker Symbol</Label>
+              <Input
+                id="ticker"
+                type="text"
+                value={newTicker}
+                onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
+                className="bg-slate-800 border-slate-600 text-white mt-1"
+                placeholder="TSLA"
+                required
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-green-600 hover:bg-green-500"
+            >
+              <PlusIcon className="h-4 w-4 mr-2" />
+              Add to Portfolio
+            </Button>
+          </form>
 
+          {/* Portfolio Table */}
+          <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-800 border-b border-slate-700">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Ticker</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Shares</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Avg Cost</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Current Price</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">AI Sentiment</th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700">
+                  {portfolio.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                        <ChartBarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No holdings in your portfolio yet.</p>
+                        <p className="text-sm">Add some stocks above to get started!</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    portfolio.map((holding) => (
+                      <tr key={holding.id} className="hover:bg-slate-800 transition-colors">
+                        <td className="px-4 py-3 text-sm font-semibold text-white">
+                          {holding.ticker}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-300">
+                          {holding.shares}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-300">
+                          ${holding.averageCost.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          <span className="text-cyan-400 font-mono">
+                            ${(holding.currentPrice || holding.averageCost).toFixed(2)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-center">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                            ANALYZING
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-center space-x-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                          >
+                            Generate Playbook
+                          </Button>
+                          <Button
+                            onClick={() => handleRemoveFromPortfolio(holding.id)}
+                            size="sm"
+                            variant="ghost"
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Account Settings - Password Change */}
+      <Card className="bg-slate-900 border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-xl text-white flex items-center gap-2">
+            <KeyIcon className="h-5 w-5 text-orange-400" />
+            Account Security
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handlePasswordChange} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="currentPassword" className="text-slate-300">Current Password</Label>
                 <div className="relative mt-1">
@@ -379,162 +529,16 @@ export default function Profile() {
                   minLength={8}
                 />
               </div>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-orange-600 hover:bg-orange-500"
-              >
-                Change Password
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* My Portfolio */}
-        <Card className="bg-slate-900 border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-xl text-white flex items-center gap-2">
-              <ChartBarIcon className="h-5 w-5 text-green-400" />
-              My Portfolio
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Add New Holding */}
-            <form onSubmit={handleAddToPortfolio} className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">Add Holding</h3>
-
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <Label htmlFor="ticker" className="text-slate-300 text-xs">Ticker</Label>
-                  <Input
-                    id="ticker"
-                    type="text"
-                    value={newTicker}
-                    onChange={(e) => setNewTicker(e.target.value.toUpperCase())}
-                    className="bg-slate-800 border-slate-600 text-white mt-1 text-sm"
-                    placeholder="AAPL"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="shares" className="text-slate-300 text-xs">Shares</Label>
-                  <Input
-                    id="shares"
-                    type="number"
-                    value={newShares}
-                    onChange={(e) => setNewShares(e.target.value)}
-                    className="bg-slate-800 border-slate-600 text-white mt-1 text-sm"
-                    placeholder="100"
-                    min="0.01"
-                    step="0.01"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="cost" className="text-slate-300 text-xs">Avg Cost</Label>
-                  <Input
-                    id="cost"
-                    type="number"
-                    value={newCost}
-                    onChange={(e) => setNewCost(e.target.value)}
-                    className="bg-slate-800 border-slate-600 text-white mt-1 text-sm"
-                    placeholder="150.00"
-                    min="0.01"
-                    step="0.01"
-                    required
-                  />
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-green-600 hover:bg-green-500"
-                size="sm"
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Add to Portfolio
-              </Button>
-            </form>
-
-            {/* Portfolio Holdings */}
-            <div className="space-y-3">
-              <h3 className="text-lg font-semibold text-white">Current Holdings</h3>
-
-              {portfolio.length === 0 ? (
-                <div className="text-center py-8 text-slate-400">
-                  <ChartBarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No holdings in your portfolio yet.</p>
-                  <p className="text-sm">Add some stocks above to get started!</p>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {portfolio.map((holding) => (
-                    <div key={holding.id} className="flex items-center justify-between bg-slate-800 p-3 rounded-lg">
-                      <div className="flex-1">
-                        <div className="font-semibold text-white">{holding.ticker}</div>
-                        <div className="text-sm text-slate-400">
-                          {holding.shares} shares @ ${holding.averageCost.toFixed(2)}
-                        </div>
-                      </div>
-                      <div className="text-right mr-3">
-                        <div className="text-sm text-slate-300">
-                          Value: ${((holding.currentPrice || holding.averageCost) * holding.shares).toFixed(2)}
-                        </div>
-                        <div className={`text-xs ${
-                          (holding.currentPrice || 0) >= holding.averageCost
-                            ? 'text-green-400'
-                            : 'text-red-400'
-                        }`}>
-                          P&L: ${(((holding.currentPrice || holding.averageCost) - holding.averageCost) * holding.shares).toFixed(2)}
-                        </div>
-                      </div>
-                      <Button
-                        onClick={() => handleRemoveFromPortfolio(holding.id)}
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Stats Summary */}
-      <Card className="bg-slate-900 border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-xl text-white">Platform Statistics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-slate-800 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-cyan-400">{userStats.totalPredictionsViewed}</div>
-              <div className="text-sm text-slate-400">Predictions Viewed</div>
-            </div>
-            <div className="bg-slate-800 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-orange-400">{userStats.favoriteTickers.length}</div>
-              <div className="text-sm text-slate-400">Favorite Tickers</div>
-            </div>
-            <div className="bg-slate-800 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-green-400">
-                {new Date(userStats.accountCreated).getFullYear()}
-              </div>
-              <div className="text-sm text-slate-400">Member Since</div>
-            </div>
-            <div className="bg-slate-800 p-4 rounded-lg text-center">
-              <div className="text-2xl font-bold text-purple-400">
-                {Math.floor((Date.now() - new Date(userStats.lastLogin).getTime()) / (1000 * 60 * 60 * 24))}
-              </div>
-              <div className="text-sm text-slate-400">Days Active</div>
-            </div>
-          </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="bg-orange-600 hover:bg-orange-500"
+            >
+              Update Password
+            </Button>
+          </form>
         </CardContent>
       </Card>
     </div>
