@@ -68,7 +68,6 @@ export function serveStatic(app: Express) {
       }
     }
   }));
-  });
 
   // Serve index.html for all other routes (SPA fallback) - exclude assets
   app.get("*", (req, res) => {
