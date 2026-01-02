@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ViewfinderCircleIcon, ArrowRightIcon, XMarkIcon, SignalIcon, ChartBarIcon, DocumentTextIcon, ExclamationTriangleIcon, LockClosedIcon, ShieldCheckIcon, FireIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, InformationCircleIcon, BoltIcon, ArrowPathIcon, ClockIcon, CheckCircleIcon, XCircleIcon, CurrencyDollarIcon, CpuChipIcon, ChevronRightIcon, TrophyIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { ViewfinderCircleIcon, ArrowRightIcon, XMarkIcon, SignalIcon, ChartBarIcon, DocumentTextIcon, ExclamationTriangleIcon, LockClosedIcon, ShieldCheckIcon, FireIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, InformationCircleIcon, BoltIcon, ArrowPathIcon, ClockIcon, CheckCircleIcon, XCircleIcon, CurrencyDollarIcon, CpuChipIcon, ChevronRightIcon, TrophyIcon, CalendarIcon, CpuChipIcon as CpuIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/outline';
+import { CpuChipIcon as SolidCpuIcon } from '@heroicons/react/24/solid';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -79,38 +80,77 @@ export default function TheOracle() {
             </div>
           </div>
 
-          {/* Oracle Accuracy Gauge */}
+          {/* Sentinel Performance Section */}
           {winRateStats.totalGraded > 0 && (
-            <div className="bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700 p-6 rounded-2xl">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-3 bg-cyan-500/20 rounded-xl">
-                    <TrophyIcon className="h-8 w-8 text-cyan-400" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Oracle Accuracy</h3>
-                    <p className="text-slate-400 text-sm">Based on {winRateStats.totalGraded} graded predictions</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-4xl font-bold text-cyan-400">{winRateStats.winRate}%</div>
-                  <div className="text-sm text-slate-400">
-                    {winRateStats.totalWins} wins / {winRateStats.totalGraded} total
-                  </div>
-                </div>
+            <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border border-slate-700 p-8 rounded-2xl relative overflow-hidden">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-5">
+                <div className="absolute top-0 left-0 w-32 h-32 bg-cyan-500 rounded-full blur-3xl"></div>
+                <div className="absolute bottom-0 right-0 w-24 h-24 bg-orange-500 rounded-full blur-2xl"></div>
               </div>
 
-              {/* Progress Bar */}
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-slate-400 mb-1">
-                  <span>Accuracy</span>
-                  <span>{winRateStats.winRate}%</span>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className="p-4 bg-gradient-to-br from-cyan-500/20 to-orange-500/20 rounded-2xl border border-cyan-500/30">
+                      <SolidCpuIcon className="h-10 w-10 text-cyan-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-white">Sentinel Performance</h3>
+                      <p className="text-slate-400 text-sm">AI Prediction Accuracy Matrix</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm text-slate-400 mb-1">Win Rate</div>
+                    <div className="text-5xl font-bold bg-gradient-to-r from-cyan-400 to-orange-400 bg-clip-text text-transparent">
+                      {winRateStats.winRate}%
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      {winRateStats.totalWins}/{winRateStats.totalGraded} predictions
+                    </div>
+                  </div>
                 </div>
-                <div className="w-full bg-slate-700 rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-cyan-500 to-cyan-400 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${winRateStats.winRate}%` }}
-                  ></div>
+
+                {/* Circular Gauge */}
+                <div className="flex items-center justify-center mb-6">
+                  <div className="relative">
+                    {/* Background Circle */}
+                    <div className="w-40 h-40 rounded-full border-8 border-slate-700"></div>
+
+                    {/* Progress Circle */}
+                    <div
+                      className="absolute inset-0 rounded-full border-8 border-transparent"
+                      style={{
+                        background: `conic-gradient(from 0deg, rgb(34 211 238) 0%, rgb(249 115 22) ${winRateStats.winRate}%, transparent ${winRateStats.winRate}%)`,
+                        mask: 'radial-gradient(farthest-side, transparent calc(100% - 32px), black calc(100% - 32px))',
+                        WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 32px), black calc(100% - 32px))'
+                      }}
+                    ></div>
+
+                    {/* Center Content */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="text-3xl font-bold text-white">{winRateStats.winRate}%</div>
+                        <div className="text-xs text-slate-400">Accuracy</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Performance Stats */}
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="bg-slate-800/50 rounded-lg p-3">
+                    <div className="text-2xl font-bold text-green-400">{winRateStats.totalWins}</div>
+                    <div className="text-xs text-slate-400">Wins</div>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-3">
+                    <div className="text-2xl font-bold text-red-400">{winRateStats.totalGraded - winRateStats.totalWins}</div>
+                    <div className="text-xs text-slate-400">Losses</div>
+                  </div>
+                  <div className="bg-slate-800/50 rounded-lg p-3">
+                    <div className="text-2xl font-bold text-cyan-400">{winRateStats.totalGraded}</div>
+                    <div className="text-xs text-slate-400">Total</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -122,23 +162,61 @@ export default function TheOracle() {
             ) : safePicks.length === 0 ? (
               <p className="text-slate-500">No active signals found.</p>
             ) : (
-              safePicks.map((pick, idx) => (
-                <div key={`${pick?.ticker || idx}-${idx}`} className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
-                  <div className="flex justify-between items-start mb-4">
-                    <TickerInfo ticker={pick?.ticker || '??'} isCrypto={activeTab === 'crypto'} />
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-xs font-bold text-cyan-500">{pick?.confidenceScore || 0}% Conf.</span>
-                      {pick?.outcome && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                          pick.outcome === 'WIN'
-                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                        }`}>
-                          {pick.outcome === 'WIN' ? '✓ Verified' : '✗ Missed'}
-                        </span>
-                      )}
+              safePicks.map((pick, idx) => {
+                // Determine card styling based on outcome
+                const cardStyles = pick?.outcome === 'WIN'
+                  ? 'bg-slate-900 border-2 border-green-500/50 shadow-lg shadow-green-500/10'
+                  : pick?.outcome === 'LOSS'
+                    ? 'bg-slate-900 border border-slate-700'
+                    : 'bg-slate-900 border border-slate-800';
+
+                const badgeStyles = pick?.outcome === 'WIN'
+                  ? 'bg-green-500 text-white border-green-600'
+                  : pick?.outcome === 'LOSS'
+                    ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                    : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30 animate-pulse';
+
+                const badgeText = pick?.outcome === 'WIN'
+                  ? '🎯 TARGET ACHIEVED'
+                  : pick?.outcome === 'LOSS'
+                    ? '📉 TARGET MISSED'
+                    : '🔄 LIVE EVALUATION';
+
+                const badgeIcon = pick?.outcome === 'WIN'
+                  ? '✅'
+                  : pick?.outcome === 'LOSS'
+                    ? '❌'
+                    : '⚡';
+
+                return (
+                  <div key={`${pick?.ticker || idx}-${idx}`} className={`${cardStyles} p-6 rounded-xl relative overflow-hidden`}>
+                    {/* Outcome-specific background effect */}
+                    {pick?.outcome === 'WIN' && (
+                      <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none"></div>
+                    )}
+
+                    {/* Status Badge */}
+                    <div className="absolute top-4 left-4">
+                      <span className={`text-xs px-3 py-1 rounded-full font-bold border ${badgeStyles} flex items-center gap-1`}>
+                        {pick?.outcome === null ? (
+                          <>
+                            <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                            LIVE EVALUATION
+                          </>
+                        ) : (
+                          <>
+                            {badgeIcon} {pick.outcome === 'WIN' ? 'TARGET ACHIEVED' : 'TARGET MISSED'}
+                          </>
+                        )}
+                      </span>
                     </div>
-                  </div>
+
+                    <div className="flex justify-between items-start mb-4 pt-12">
+                      <TickerInfo ticker={pick?.ticker || '??'} isCrypto={activeTab === 'crypto'} />
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-xs font-bold text-cyan-500">{pick?.confidenceScore || 0}% Conf.</span>
+                      </div>
+                    </div>
                   <div className="space-y-2 text-sm text-slate-400">
                     <div className="flex justify-between">
                       <span>Signal:</span>
@@ -149,14 +227,23 @@ export default function TheOracle() {
                       <span className="text-green-400 font-mono">${pick?.predictedPrice?.toFixed(2) || '0.00'}</span>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => setSelectedPick(pick)}
-                    className="w-full mt-4 py-2 bg-slate-800 hover:bg-cyan-700 rounded-lg text-white text-xs transition-all"
-                  >
-                    View Analysis
-                  </button>
-                </div>
-              ))
+                    <button
+                      onClick={() => setSelectedPick(pick)}
+                      className={`w-full mt-4 py-2 rounded-lg text-white text-xs transition-all ${
+                        pick?.outcome === 'WIN'
+                          ? 'bg-green-600 hover:bg-green-500'
+                          : pick?.outcome === 'LOSS'
+                            ? 'bg-red-600 hover:bg-red-500'
+                            : 'bg-slate-800 hover:bg-cyan-700'
+                      }`}
+                    >
+                      {pick?.outcome === 'WIN' ? '🎯 Analysis Complete' :
+                       pick?.outcome === 'LOSS' ? '📊 Review Analysis' :
+                       '🔍 View Analysis'}
+                    </button>
+                  </div>
+                );
+              })
             )}
           </div>
 
