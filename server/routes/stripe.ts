@@ -11,6 +11,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2025-11-17.clover',
 });
 
+const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
 const DOMAIN = process.env.REPLIT_DEV_DOMAIN 
   ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
   : process.env.REPLIT_DOMAINS 
@@ -87,7 +89,7 @@ router.post('/create-portal-session', async (req, res) => {
 
   try {
     const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    
+
     if (customers.data.length === 0) {
       return res.status(404).json({ error: "No billing history found." });
     }
@@ -105,6 +107,50 @@ router.post('/create-portal-session', async (req, res) => {
     console.error("Portal Error:", e);
     res.status(500).json({ error: "Could not access billing portal" });
   }
+});
+
+// Stripe Webhook Endpoint
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'] as string;
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret!);
+  } catch (err: any) {
+    console.log(`❌ Webhook signature verification failed.`, err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  console.log('💰 Stripe Webhook Received:', event.type);
+
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object;
+      const userId = session.metadata?.userId;
+
+      if (userId) {
+        try {
+          // Update membership_tier to 'PREMIUM' using Drizzle
+          await db
+            .update(members)
+            .set({ membershipTier: 'PREMIUM' })
+            .where(eq(members.id, parseInt(userId)));
+
+          console.log(`✅ User ${userId} upgraded to PREMIUM via webhook`);
+        } catch (error) {
+          console.error('❌ Failed to update user membership:', error);
+          return res.status(500).json({ error: 'Failed to update membership' });
+        }
+      }
+      break;
+
+    default:
+      console.log(`ℹ️  Unhandled event type: ${event.type}`);
+  }
+
+  res.json({ received: true });
 });
 
 export default router;
