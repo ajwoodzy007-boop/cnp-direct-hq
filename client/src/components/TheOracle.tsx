@@ -152,13 +152,25 @@ export default function TheOracle() {
       try {
         const res = await fetch('/api/oracle/daily');
         const json = await res.json();
-        if (json.success) setPicks(json.data);
-        
+        if (json.success && Array.isArray(json.data)) {
+          setPicks(json.data);
+        } else {
+          console.warn('Oracle API returned invalid data:', json);
+          setPicks([]);
+        }
+
         const hRes = await fetch('/api/oracle/history');
         const hJson = await hRes.json();
-        if (hJson.success) setHistoryData(hJson.history);
+        if (hJson.success && Array.isArray(hJson.history)) {
+          setHistoryData(hJson.history);
+        } else {
+          console.warn('Oracle history API returned invalid data:', hJson);
+          setHistoryData([]);
+        }
       } catch (e) {
         console.error("Fetch error", e);
+        setPicks([]);
+        setHistoryData([]);
       } finally {
         setLoading(false);
       }

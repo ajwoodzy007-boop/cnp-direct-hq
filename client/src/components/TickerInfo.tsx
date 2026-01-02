@@ -86,6 +86,7 @@ const STOCK_NAMES: Record<string, string> = {
 
 function getFullName(ticker: string, isCrypto: boolean, providedName?: string): string {
   if (providedName) return providedName;
+  if (!ticker) return 'Unknown Asset';
   const cleanTicker = ticker.replace('-USD', '').toUpperCase();
   if (isCrypto) {
     return CRYPTO_NAMES[cleanTicker] || `${cleanTicker} Cryptocurrency`;
@@ -110,7 +111,7 @@ const iconSizes = {
 export default function TickerInfo({ ticker, name, isCrypto = false, className = '', size = 'md' }: TickerInfoProps) {
   const [showModal, setShowModal] = useState(false);
   const fullName = getFullName(ticker, isCrypto, name);
-  const cleanTicker = ticker.replace('-USD', '').toUpperCase();
+  const cleanTicker = (ticker || 'UNKNOWN').replace('-USD', '').toUpperCase();
 
   return (
     <>
