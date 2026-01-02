@@ -4,10 +4,11 @@ This script automatically populates the Sentinel Oracle with AI-generated market
 
 ## What It Does
 
-1. **Scans Top Tickers**: SPY, QQQ, AAPL, NVDA, TSLA
-2. **Fetches Market Data**: Uses Finnhub API for current price, RSI, and Relative Volume
-3. **AI Analysis**: Sends data to OpenAI GPT-4o with structured JSON prompts for institutional-grade predictions
-4. **Database Storage**: Saves predictions to the Neon PostgreSQL database
+1. **Scans Expanded Universe**: 30+ most liquid stocks across all major sectors (Tech, Financials, Healthcare, Consumer, Energy, Industrials, ETFs)
+2. **Rate-Limited Batching**: Processes in batches of 5 with 2-second delays to respect Finnhub's 60 calls/minute limit
+3. **Recursive AI Learning**: Incorporates historical performance data and simulation insights for improved accuracy
+4. **Institutional Analysis**: Combines technical indicators with macro-economic awareness and sector-specific patterns
+5. **Database Storage**: Saves predictions with learning metadata to the Neon PostgreSQL database
 
 ## Usage
 
@@ -41,34 +42,46 @@ The script populates the `predictions` table with:
 }
 ```
 
+## Expanded Universe
+
+**Technology (8)**: AAPL, MSFT, NVDA, GOOGL, META, AMZN, TSLA, AMD
+**Financials (8)**: JPM, BAC, WFC, GS, MS, V, MA, AXP
+**Healthcare (8)**: UNH, JNJ, PFE, ABT, TMO, CVS, CI, MDT
+**Consumer (8)**: WMT, HD, MCD, KO, PEP, COST, NKE, SBUX
+**Energy & Industrials (8)**: XOM, CVX, COP, BA, CAT, HON, UPS, RTX
+**ETFs & Communications (7)**: SPY, QQQ, IWM, VTI, BND, GLD, T, VZ, CMCSA, NFLX, DIS
+
+## AI Learning Features
+
+- **Historical Context**: Analyzes past prediction performance for each ticker
+- **Simulation Insights**: Incorporates back-testing results to identify biases
+- **Sector Awareness**: Adjusts analysis based on sector-specific patterns
+- **Macro Integration**: Considers broader market trends and economic indicators
+
 ## Example Output
 
 ```
 🚀 Starting Oracle Population Script...
-📈 Analyzing tickers: SPY, QQQ, AAPL, NVDA, TSLA
+📈 Analyzing tickers: AAPL, MSFT, NVDA, GOOGL, META, AMZN, TSLA, AMD, JPM, BAC...
+📊 Processing 30 tickers in batches of 5
+⏱️  Rate limiting: 2000ms between tickers, 12000ms between batches
 
-🔄 Processing SPY...
-📊 Fetching market data for SPY...
-📊 SPY real data: Price=$681.92, RSI=50, RVol=1
-🤖 Getting AI prediction for SPY...
-🤖 SPY Prediction: The SPY is expected to trade sideways given the neutral RSI...
-🎯 Confidence: 65%, Target: $685.50
-💾 Saving prediction for SPY to database...
-✅ Saved prediction for SPY
+🎯 Processing batch 1/6: AAPL, MSFT, NVDA, GOOGL, META
 
-🔄 Processing QQQ...
-📊 Fetching market data for QQQ...
-📊 QQQ real data: Price=$614.31, RSI=50, RVol=1
-🤖 Getting AI prediction for QQQ...
-🤖 QQQ Prediction: Given that the RSI is neutral at 50 and the RVol is average...
-🎯 Confidence: 65%, Target: $616.50
-💾 Saving prediction for QQQ to database...
-✅ Saved prediction for QQQ
+🔄 Processing AAPL...
+🧠 Fetching historical learning data for AAPL...
+📚 Historical learning: SIMULATION INSIGHTS: High RSI signals are unreliable (7 failures)
+📊 AAPL: RSI=68.5, RVol=1.2, Price=$185.50
+🤖 Getting AI prediction for AAPL...
+📝 Learning Note: Reduced confidence due to high RSI failure pattern in simulations
+🎯 Confidence: 72%, Target: $188.25
+
+⏳ Waiting 2000ms before next ticker...
 
 🎉 Oracle Population Complete!
-✅ Successful: 5
-❌ Errors: 0
-📊 Total predictions added to database: 5
+✅ Successful: 28
+❌ Errors: 2
+📊 Total predictions added to database: 28
 ```
 
 ## Integration

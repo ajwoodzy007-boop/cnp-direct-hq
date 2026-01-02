@@ -15,8 +15,30 @@ const openai = new OpenAI({
   apiKey: getOpenAIKey(),
 });
 
-// Top tickers to simulate
-const TOP_TICKERS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA'];
+// Expanded universe of most liquid stocks for comprehensive training
+// Same universe as populateOracle.ts for consistency
+const TOP_TICKERS = [
+  // Tech Giants (High volume, market leaders)
+  'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'AMZN', 'TSLA', 'AMD',
+
+  // Financials (Banks, payments, insurance)
+  'JPM', 'BAC', 'WFC', 'GS', 'MS', 'V', 'MA', 'AXP',
+
+  // Healthcare (Pharma, biotech, insurance)
+  'UNH', 'JNJ', 'PFE', 'ABT', 'TMO', 'CVS', 'CI', 'MDT',
+
+  // Consumer (Retail, staples, discretionary)
+  'WMT', 'HD', 'MCD', 'KO', 'PEP', 'COST', 'NKE', 'SBUX',
+
+  // Energy & Industrials
+  'XOM', 'CVX', 'COP', 'BA', 'CAT', 'HON', 'UPS', 'RTX',
+
+  // ETFs & Market Benchmarks
+  'SPY', 'QQQ', 'IWM', 'VTI', 'BND', 'GLD',
+
+  // Communication Services
+  'T', 'VZ', 'CMCSA', 'NFLX', 'DIS'
+];
 
 interface HistoricalDataPoint {
   date: Date;
@@ -41,7 +63,7 @@ interface SimulationResult {
   biasAdjustments?: any;
 }
 
-async function fetchHistoricalData(symbol: string, days: number = 60): Promise<HistoricalDataPoint[]> {
+async function fetchHistoricalData(symbol: string, days: number = 365): Promise<HistoricalDataPoint[]> {
   try {
     console.log(`📊 Fetching ${days} days of historical data for ${symbol}...`);
 
@@ -50,7 +72,7 @@ async function fetchHistoricalData(symbol: string, days: number = 60): Promise<H
       throw new Error('FINNHUB_API_KEY not configured');
     }
 
-    // Calculate date range (last 60 days)
+    // Calculate date range (last year for deep learning)
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
@@ -335,7 +357,8 @@ async function analyzeBiasAdjustments(): Promise<void> {
 
 async function runHistoricalSimulation(): Promise<void> {
   console.log('🚀 Starting Historical Simulation Training Camp...');
-  console.log('📈 Simulating predictions for the last 60 days');
+  console.log('📈 Simulating predictions across 1 year of data for comprehensive AI training');
+  console.log(`🎯 Processing ${TOP_TICKERS.length} tickers for institutional-grade learning`);
 
   if (!getOpenAIKey()) {
     console.error('❌ OPENAI_API_KEY not found in environment variables');
@@ -345,48 +368,75 @@ async function runHistoricalSimulation(): Promise<void> {
   let totalSimulations = 0;
   let successfulSimulations = 0;
 
-  // For each ticker
-  for (const ticker of TOP_TICKERS) {
-    try {
-      console.log(`\n🔄 Processing ${ticker}...`);
+  // Batching configuration for API rate limiting
+  const BATCH_SIZE = 3; // Process 3 tickers at a time (very conservative)
+  const DELAY_BETWEEN_BATCHES = 20000; // 20 seconds between batches
+  const DELAY_BETWEEN_SIMULATIONS = 3000; // 3 seconds between individual simulations
 
-      // Fetch 60 days of historical data
-      const historicalData = await fetchHistoricalData(ticker, 60);
-      if (historicalData.length < 30) {
-        console.log(`⚠️ Insufficient historical data for ${ticker}, skipping`);
-        continue;
-      }
+  console.log(`📊 Batching strategy: ${BATCH_SIZE} tickers per batch`);
+  console.log(`⏱️  Rate limiting: ${DELAY_BETWEEN_SIMULATIONS}ms between simulations, ${DELAY_BETWEEN_BATCHES}ms between batches`);
 
-      // Simulate predictions for every Monday in the dataset
-      const mondays = historicalData.filter(dataPoint => {
-        const dayOfWeek = dataPoint.date.getDay(); // 0 = Sunday, 1 = Monday
-        return dayOfWeek === 1; // Only Mondays
-      });
+  // Process tickers in batches
+  for (let i = 0; i < TOP_TICKERS.length; i += BATCH_SIZE) {
+    const batch = TOP_TICKERS.slice(i, i + BATCH_SIZE);
+    console.log(`\n🎯 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(TOP_TICKERS.length / BATCH_SIZE)}: ${batch.join(', ')}`);
 
-      console.log(`📅 Found ${mondays.length} Mondays to simulate for ${ticker}`);
+    for (const ticker of batch) {
+      try {
+        console.log(`\n🔄 Deep training on ${ticker}...`);
 
-      for (const monday of mondays) {
-        totalSimulations++;
-
-        // Skip if we don't have enough future data
-        const mondayIndex = historicalData.findIndex(d => d.date.getTime() === monday.date.getTime());
-        if (mondayIndex === -1 || mondayIndex >= historicalData.length - 7) {
-          console.log(`⚠️ Not enough future data for ${monday.date.toDateString()}, skipping`);
+        // Fetch 1 year of historical data for comprehensive learning
+        const historicalData = await fetchHistoricalData(ticker, 365);
+        if (historicalData.length < 100) {
+          console.log(`⚠️ Insufficient historical data for ${ticker} (${historicalData.length} days), skipping`);
           continue;
         }
 
-        const simulationResult = await generateHistoricalPrediction(ticker, historicalData, monday.date);
-        if (simulationResult) {
-          await saveSimulationResult(simulationResult);
-          successfulSimulations++;
+        // Simulate predictions for every Monday in the dataset (weekly signals)
+        const mondays = historicalData.filter(dataPoint => {
+          const dayOfWeek = dataPoint.date.getDay(); // 0 = Sunday, 1 = Monday
+          return dayOfWeek === 1; // Only Mondays
+        });
+
+        console.log(`📅 Found ${mondays.length} Mondays to simulate for ${ticker} (${historicalData.length} total days)`);
+
+        let tickerSimulations = 0;
+        let tickerSuccesses = 0;
+
+        for (const monday of mondays) {
+          totalSimulations++;
+          tickerSimulations++;
+
+          // Skip if we don't have enough future data (need at least 7 days ahead)
+          const mondayIndex = historicalData.findIndex(d => d.date.getTime() === monday.date.getTime());
+          if (mondayIndex === -1 || mondayIndex >= historicalData.length - 7) {
+            continue; // Skip silently - not enough future data
+          }
+
+          const simulationResult = await generateHistoricalPrediction(ticker, historicalData, monday.date);
+          if (simulationResult) {
+            await saveSimulationResult(simulationResult);
+            successfulSimulations++;
+            tickerSuccesses++;
+          }
+
+          // Rate limiting between simulations
+          if (monday !== mondays[mondays.length - 1]) {
+            await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_SIMULATIONS));
+          }
         }
 
-        // Rate limiting
-        await new Promise(resolve => setTimeout(resolve, 2000));
-      }
+        console.log(`✅ ${ticker}: ${tickerSuccesses}/${tickerSimulations} simulations completed`);
 
-    } catch (error) {
-      console.error(`❌ Failed to process ${ticker}:`, error);
+      } catch (error) {
+        console.error(`❌ Failed to process ${ticker}:`, error);
+      }
+    }
+
+    // Rate limiting delay between batches (except for the last batch)
+    if (i + BATCH_SIZE < TOP_TICKERS.length) {
+      console.log(`⏳ Batch complete. Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
+      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
     }
   }
 

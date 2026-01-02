@@ -16,8 +16,30 @@ const openai = new OpenAI({
   apiKey: getOpenAIKey(),
 });
 
-// Top tickers to analyze
-const TOP_TICKERS = ['SPY', 'QQQ', 'AAPL', 'NVDA', 'TSLA'];
+// Expanded universe of most liquid stocks (Nasdaq-100, S&P 500 constituents)
+// Selected for high volume, market cap, and sector diversity
+const TOP_TICKERS = [
+  // Tech Giants (High volume, market leaders)
+  'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'AMZN', 'TSLA', 'AMD',
+
+  // Financials (Banks, payments, insurance)
+  'JPM', 'BAC', 'WFC', 'GS', 'MS', 'V', 'MA', 'AXP',
+
+  // Healthcare (Pharma, biotech, insurance)
+  'UNH', 'JNJ', 'PFE', 'ABT', 'TMO', 'CVS', 'CI', 'MDT',
+
+  // Consumer (Retail, staples, discretionary)
+  'WMT', 'HD', 'MCD', 'KO', 'PEP', 'COST', 'NKE', 'SBUX',
+
+  // Energy & Industrials
+  'XOM', 'CVX', 'COP', 'BA', 'CAT', 'HON', 'UPS', 'RTX',
+
+  // ETFs & Market Benchmarks
+  'SPY', 'QQQ', 'IWM', 'VTI', 'BND', 'GLD',
+
+  // Communication Services
+  'T', 'VZ', 'CMCSA', 'NFLX', 'DIS'
+];
 
 interface MarketAnalysis {
   ticker: string;
@@ -423,39 +445,62 @@ async function populateOracle(): Promise<void> {
   let successCount = 0;
   let errorCount = 0;
 
-  for (const ticker of TOP_TICKERS) {
-    try {
-      console.log(`\n🔄 Processing ${ticker}...`);
+  // Process tickers in batches to respect API rate limits
+  // Finnhub free tier: 60 calls/minute = ~1 call/second
+  const BATCH_SIZE = 5; // Process 5 tickers at a time
+  const DELAY_BETWEEN_BATCHES = 12000; // 12 seconds between batches (5 calls/minute rate)
+  const DELAY_BETWEEN_TICKERS = 2000; // 2 seconds between individual tickers
 
-      // Step 1: Get market data
-      const marketData = await getMarketDataForTicker(ticker);
-      if (!marketData) {
-        console.log(`⏭️  Skipping ${ticker} - no market data`);
+  console.log(`📊 Processing ${TOP_TICKERS.length} tickers in batches of ${BATCH_SIZE}`);
+  console.log(`⏱️  Rate limiting: ${DELAY_BETWEEN_TICKERS}ms between tickers, ${DELAY_BETWEEN_BATCHES}ms between batches`);
+
+  for (let i = 0; i < TOP_TICKERS.length; i += BATCH_SIZE) {
+    const batch = TOP_TICKERS.slice(i, i + BATCH_SIZE);
+    console.log(`\n🎯 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(TOP_TICKERS.length / BATCH_SIZE)}: ${batch.join(', ')}`);
+
+    for (const ticker of batch) {
+      try {
+        console.log(`\n🔄 Processing ${ticker}...`);
+
+        // Step 1: Get market data
+        const marketData = await getMarketDataForTicker(ticker);
+        if (!marketData) {
+          console.log(`⏭️  Skipping ${ticker} - no market data`);
+          errorCount++;
+          continue;
+        }
+
+        console.log(`📊 ${ticker}: RSI=${marketData.rsi}, RVol=${marketData.rvol}, Price=$${marketData.currentPrice}`);
+
+        // Step 2: Get AI prediction
+        const aiPrediction = await getAIPrediction(marketData);
+        console.log(`🤖 ${ticker} Prediction: ${aiPrediction.prediction.substring(0, 100)}...`);
+        console.log(`🎯 Confidence: ${aiPrediction.confidence}%, Target: $${aiPrediction.targetPrice}`);
+        if (aiPrediction.learningNote) {
+          console.log(`📝 Learning: ${aiPrediction.learningNote}`);
+        }
+
+        // Step 3: Save to database
+        const learningData = await getHistoricalLearning(ticker);
+        await savePredictionToDatabase(ticker, marketData, aiPrediction, learningData);
+        successCount++;
+
+        // Rate limiting delay between tickers
+        if (ticker !== batch[batch.length - 1]) {
+          console.log(`⏳ Waiting ${DELAY_BETWEEN_TICKERS}ms before next ticker...`);
+          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_TICKERS));
+        }
+
+      } catch (error) {
+        console.error(`❌ Failed to process ${ticker}:`, error);
         errorCount++;
-        continue;
       }
+    }
 
-      console.log(`📊 ${ticker}: RSI=${marketData.rsi}, RVol=${marketData.rvol}, Price=$${marketData.currentPrice}`);
-
-      // Step 2: Get AI prediction
-      const aiPrediction = await getAIPrediction(marketData);
-      console.log(`🤖 ${ticker} Prediction: ${aiPrediction.prediction.substring(0, 100)}...`);
-      console.log(`🎯 Confidence: ${aiPrediction.confidence}%, Target: $${aiPrediction.targetPrice}`);
-      if (aiPrediction.learningNote) {
-        console.log(`📝 Learning: ${aiPrediction.learningNote}`);
-      }
-
-      // Step 3: Save to database
-      const learningData = await getHistoricalLearning(ticker);
-      await savePredictionToDatabase(ticker, marketData, aiPrediction, learningData);
-      successCount++;
-
-      // Small delay to avoid rate limits
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-    } catch (error) {
-      console.error(`❌ Failed to process ${ticker}:`, error);
-      errorCount++;
+    // Rate limiting delay between batches (except for the last batch)
+    if (i + BATCH_SIZE < TOP_TICKERS.length) {
+      console.log(`⏳ Batch complete. Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
+      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
     }
   }
 
