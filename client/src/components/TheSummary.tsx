@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import TickerInfo from './TickerInfo';
-import { 
-  ArrowTrendingUpIcon, ArrowTrendingDownIcon, ViewfinderCircleIcon, CpuChipIcon, 
+import {
+  ArrowTrendingUpIcon, ArrowTrendingDownIcon, ViewfinderCircleIcon, CpuChipIcon,
   ArrowUpRightIcon, ArrowDownRightIcon, ClockIcon, BoltIcon, TrophyIcon,
   ChevronRightIcon, ArrowPathIcon, ExclamationTriangleIcon, ShieldCheckIcon, FireIcon,
-  XMarkIcon, InformationCircleIcon
+  XMarkIcon, InformationCircleIcon, BriefcaseIcon
 } from '@heroicons/react/24/outline';
 
 interface MarketMover {
@@ -248,8 +248,18 @@ export default function TheSummary({ onNavigate, user }: Props) {
             </div>
           ) : (
             <div className="text-center py-3">
-              <ExclamationTriangleIcon className="h-5 w-5 text-amber-500/50 mx-auto mb-1" />
-              <p className="text-slate-500 text-[10px]">Predictions at 7:30 AM ET</p>
+              {!portfolioData?.portfolio || portfolioData.portfolio.length === 0 ? (
+                <>
+                  <BriefcaseIcon className="h-5 w-5 text-amber-500/50 mx-auto mb-1" />
+                  <p className="text-slate-500 text-[10px] mb-1">Add Tickers to your Portfolio</p>
+                  <p className="text-slate-500 text-[9px]">to start tracking personalized signals</p>
+                </>
+              ) : (
+                <>
+                  <ExclamationTriangleIcon className="h-5 w-5 text-amber-500/50 mx-auto mb-1" />
+                  <p className="text-slate-500 text-[10px]">Predictions at 7:30 AM ET</p>
+                </>
+              )}
             </div>
           )}
         </div>
