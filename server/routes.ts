@@ -24,6 +24,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 1.4. GLOBAL ROUTE LOGGING
   app.use((req, res, next) => {
     console.log('--- ROUTE HIT: ' + req.path + ' ---');
+    if (req.path.startsWith('/assets/')) {
+      console.log('*** ASSET REQUEST: ' + req.path + ' ***');
+      console.log('User-Agent:', req.get('User-Agent'));
+      console.log('Accept:', req.get('Accept'));
+    }
     next();
   });
 
