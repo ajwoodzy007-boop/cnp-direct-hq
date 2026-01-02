@@ -63,14 +63,16 @@ router.get('/daily', async (req, res) => {
   }
 });
 
-// GET /api/oracle/vault - Get all historical predictions for The Vault
+        // GET /api/oracle/vault - Get all historical predictions for The Vault
 router.get('/vault', async (req, res) => {
   try {
-    console.log('[Oracle] Fetching vault (historical predictions)');
+    console.log('[Oracle] Fetching vault (historical predictions - previous days only)');
 
+    // Only show predictions from previous days (market has closed)
     const historicalData = await db
       .select()
       .from(predictionsHistory)
+      .where(sql`${predictionsHistory.created_at} < CURRENT_DATE`)
       .orderBy(desc(predictionsHistory.created_at))
       .limit(500); // Allow viewing up to 500 historical predictions
 

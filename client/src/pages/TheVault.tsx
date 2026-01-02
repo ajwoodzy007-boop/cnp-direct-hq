@@ -132,88 +132,73 @@ export default function TheVault() {
           </div>
         </div>
 
-        {/* Prediction Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredData.map((prediction, idx) => {
-            const cardStyles = prediction.outcome === 'WIN'
-              ? 'bg-slate-900 border-2 border-green-500/50 shadow-lg shadow-green-500/10'
-              : prediction.outcome === 'LOSS'
-                ? 'bg-slate-900 border border-slate-700'
-                : 'bg-slate-900 border border-slate-800';
+        {/* High-Density List View */}
+        <div className="bg-slate-900 border border-slate-700 rounded-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-slate-800 border-b border-slate-700">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Ticker</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">Signal</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Confidence</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">Outcome</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700">
+                {filteredData.map((prediction, idx) => {
+                  const outcomeBadge = prediction.outcome === 'WIN'
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                    : prediction.outcome === 'LOSS'
+                      ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                      : 'bg-slate-500/20 text-slate-400 border-slate-500/30';
 
-            const badgeStyles = prediction.outcome === 'WIN'
-              ? 'bg-green-500 text-white border-green-600'
-              : prediction.outcome === 'LOSS'
-                ? 'bg-red-500/20 text-red-400 border-red-500/30'
-                : 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+                  const outcomeText = prediction.outcome === 'WIN'
+                    ? 'ACHIEVED'
+                    : prediction.outcome === 'LOSS'
+                      ? 'MISSED'
+                      : 'PENDING';
 
-            const badgeText = prediction.outcome === 'WIN'
-              ? '🎯 TARGET ACHIEVED'
-              : prediction.outcome === 'LOSS'
-                ? '📉 TARGET MISSED'
-                : '❓ UNGRADED';
+                  return (
+                    <tr
+                      key={`vault-${prediction.id}-${idx}`}
+                      onClick={() => setSelectedPrediction(prediction)}
+                      className="hover:bg-slate-800 cursor-pointer transition-colors"
+                    >
+                      <td className="px-4 py-3 text-sm text-slate-300 font-mono">
+                        {prediction.displayDate}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-semibold text-white">
+                        {prediction.ticker}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-400 max-w-xs truncate">
+                        {prediction.signal?.substring(0, 60)}...
+                      </td>
+                      <td className="px-4 py-3 text-sm text-center">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                          {prediction.confidenceScore}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-center">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border ${outcomeBadge}`}>
+                          {prediction.outcome === 'WIN' && '🎯 '}
+                          {prediction.outcome === 'LOSS' && '📉 '}
+                          {outcomeText}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-            return (
-              <div key={`vault-${prediction.id}-${idx}`} className={`${cardStyles} p-6 rounded-xl relative overflow-hidden`}>
-                {/* Outcome-specific background effect */}
-                {prediction.outcome === 'WIN' && (
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent pointer-events-none"></div>
-                )}
-
-                {/* Status Badge */}
-                <div className="absolute top-4 left-4">
-                  <span className={`text-xs px-3 py-1 rounded-full font-bold border ${badgeStyles} flex items-center gap-1`}>
-                    {badgeText}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-start mb-4 pt-12">
-                  <TickerInfo ticker={prediction.ticker} isCrypto={false} />
-                  <div className="flex flex-col items-end gap-1">
-                    <span className="text-xs font-bold text-cyan-500">{prediction.confidenceScore}% Conf.</span>
-                    <div className="flex items-center gap-1 text-xs text-slate-500">
-                      <ClockIcon className="h-3 w-3" />
-                      {prediction.displayDate}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm text-slate-400">
-                  <div className="flex justify-between">
-                    <span>Signal:</span>
-                    <span className="text-white font-bold text-xs">
-                      {prediction.signal.substring(0, 30)}...
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Target:</span>
-                    <span className="text-green-400 font-mono">${prediction.predictedPrice?.toFixed(2) || '0.00'}</span>
-                  </div>
-                  {prediction.outcome_price && (
-                    <div className="flex justify-between">
-                      <span>Actual:</span>
-                      <span className="text-orange-400 font-mono">${prediction.outcome_price?.toFixed(2)}</span>
-                    </div>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => setSelectedPrediction(prediction)}
-                  className={`w-full mt-4 py-2 rounded-lg text-white text-xs transition-all ${
-                    prediction.outcome === 'WIN'
-                      ? 'bg-green-600 hover:bg-green-500'
-                      : prediction.outcome === 'LOSS'
-                        ? 'bg-red-600 hover:bg-red-500'
-                        : 'bg-slate-800 hover:bg-cyan-700'
-                  }`}
-                >
-                  {prediction.outcome === 'WIN' ? '🎯 View Success Analysis' :
-                   prediction.outcome === 'LOSS' ? '📊 Review Failure Analysis' :
-                   '🔍 View Analysis'}
-                </button>
-              </div>
-            );
-          })}
+          {filteredData.length === 0 && (
+            <div className="px-4 py-8 text-center">
+              <DocumentTextIcon className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+              <p className="text-slate-400">No predictions found for the selected filter.</p>
+            </div>
+          )}
         </div>
 
         {/* Detail Modal */}
@@ -234,54 +219,119 @@ export default function TheVault() {
                   </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-6">
+                  {/* Key Metrics */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-slate-800 p-4 rounded-lg">
                       <div className="text-sm text-slate-400 mb-1">Target Price</div>
                       <div className="text-lg font-bold text-green-400">${selectedPrediction.predictedPrice?.toFixed(2)}</div>
                     </div>
                     <div className="bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm text-slate-400 mb-1">Confidence</div>
-                      <div className="text-lg font-bold text-cyan-400">{selectedPrediction.confidenceScore}%</div>
-                    </div>
-                    <div className="bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm text-slate-400 mb-1">Outcome</div>
-                      <div className={`text-lg font-bold ${selectedPrediction.outcome === 'WIN' ? 'text-green-400' : 'text-red-400'}`}>
-                        {selectedPrediction.outcome === 'WIN' ? '🎯 ACHIEVED' : selectedPrediction.outcome === 'LOSS' ? '📉 MISSED' : '❓ UNKNOWN'}
-                      </div>
-                    </div>
-                    <div className="bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm text-slate-400 mb-1">Actual Price</div>
+                      <div className="text-sm text-slate-400 mb-1">Actual Close</div>
                       <div className="text-lg font-bold text-orange-400">
                         {selectedPrediction.outcome_price ? `$${selectedPrediction.outcome_price.toFixed(2)}` : 'N/A'}
                       </div>
                     </div>
+                    <div className="bg-slate-800 p-4 rounded-lg">
+                      <div className="text-sm text-slate-400 mb-1">Price Delta</div>
+                      <div className={`text-lg font-bold ${
+                        selectedPrediction.outcome_price && selectedPrediction.predictedPrice
+                          ? (selectedPrediction.outcome_price >= selectedPrediction.predictedPrice ? 'text-green-400' : 'text-red-400')
+                          : 'text-slate-400'
+                      }`}>
+                        {selectedPrediction.outcome_price && selectedPrediction.predictedPrice
+                          ? `${selectedPrediction.outcome_price >= selectedPrediction.predictedPrice ? '+' : ''}${(selectedPrediction.outcome_price - selectedPrediction.predictedPrice).toFixed(2)}`
+                          : 'N/A'
+                        }
+                      </div>
+                    </div>
+                    <div className="bg-slate-800 p-4 rounded-lg">
+                      <div className="text-sm text-slate-400 mb-1">Confidence</div>
+                      <div className="text-lg font-bold text-cyan-400">{selectedPrediction.confidenceScore}%</div>
+                    </div>
                   </div>
 
+                  {/* Full AI Signal */}
                   <div className="bg-slate-800 p-4 rounded-lg">
-                    <div className="text-sm text-slate-400 mb-2">AI Signal</div>
-                    <div className="text-white text-sm leading-relaxed">{selectedPrediction.signal}</div>
+                    <div className="text-sm text-slate-400 mb-2 font-semibold">Complete AI Signal</div>
+                    <div className="text-white text-sm leading-relaxed whitespace-pre-wrap">{selectedPrediction.signal}</div>
                   </div>
 
+                  {/* Performance Analysis */}
+                  <div className="bg-slate-800 p-4 rounded-lg">
+                    <div className="text-sm text-slate-400 mb-2 font-semibold">Performance Analysis</div>
+                    <div className={`text-sm ${
+                      selectedPrediction.outcome === 'WIN'
+                        ? 'text-green-400'
+                        : selectedPrediction.outcome === 'LOSS'
+                          ? 'text-red-400'
+                          : 'text-slate-400'
+                    }`}>
+                      {selectedPrediction.outcome === 'WIN' && selectedPrediction.outcome_price && selectedPrediction.predictedPrice && (
+                        <div>
+                          <strong>🎯 TARGET ACHIEVED:</strong> Price reached ${selectedPrediction.outcome_price.toFixed(2)}, exceeding the target of ${selectedPrediction.predictedPrice.toFixed(2)} by ${(selectedPrediction.outcome_price - selectedPrediction.predictedPrice).toFixed(2)}.
+                        </div>
+                      )}
+                      {selectedPrediction.outcome === 'LOSS' && selectedPrediction.outcome_price && selectedPrediction.predictedPrice && (
+                        <div>
+                          <strong>📉 TARGET MISSED:</strong> Price closed at ${selectedPrediction.outcome_price.toFixed(2)}, falling short of the target of ${selectedPrediction.predictedPrice.toFixed(2)} by ${(selectedPrediction.predictedPrice - selectedPrediction.outcome_price).toFixed(2)}.
+                        </div>
+                      )}
+                      {!selectedPrediction.outcome && (
+                        <div>
+                          <strong>⏳ EVALUATION PENDING:</strong> This prediction is still being evaluated.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* AI Learning Metadata */}
                   {selectedPrediction.learning_metadata && (
                     <div className="bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm text-slate-400 mb-2">AI Learning Notes</div>
+                      <div className="text-sm text-slate-400 mb-2 font-semibold">AI Learning & Strategy Notes</div>
                       <div className="text-cyan-400 text-sm space-y-2">
                         {selectedPrediction.learning_metadata.strategy_note && (
-                          <div><strong>Strategy:</strong> {selectedPrediction.learning_metadata.strategy_note}</div>
+                          <div>
+                            <strong>Strategy Applied:</strong> {selectedPrediction.learning_metadata.strategy_note}
+                          </div>
                         )}
-                        {selectedPrediction.learning_metadata.bias_adjustments && (
-                          <div><strong>Bias Adjustments:</strong> {JSON.stringify(selectedPrediction.learning_metadata.bias_adjustments, null, 2)}</div>
+                        {selectedPrediction.learning_metadata.learning_note && (
+                          <div>
+                            <strong>AI Reflection:</strong> {selectedPrediction.learning_metadata.learning_note}
+                          </div>
+                        )}
+                        {selectedPrediction.learning_metadata.momentum_indicators && (
+                          <div>
+                            <strong>Market Context:</strong> RSI {selectedPrediction.learning_metadata.momentum_indicators.rsi}, RVol {selectedPrediction.learning_metadata.momentum_indicators.rvol}
+                          </div>
                         )}
                       </div>
                     </div>
                   )}
 
+                  {/* Audit Timestamps */}
                   <div className="bg-slate-800 p-4 rounded-lg">
-                    <div className="text-sm text-slate-400 mb-2">Timestamps</div>
-                    <div className="text-slate-300 text-sm space-y-1">
-                      <div><strong>Generated:</strong> {new Date(selectedPrediction.created_at).toLocaleString()}</div>
-                      <div><strong>Archived:</strong> {new Date(selectedPrediction.moved_at).toLocaleString()}</div>
+                    <div className="text-sm text-slate-400 mb-2 font-semibold">Audit Trail</div>
+                    <div className="text-slate-300 text-sm space-y-1 font-mono">
+                      <div><strong>🧠 Generated At:</strong> {new Date(selectedPrediction.created_at).toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        timeZoneName: 'short'
+                      })}</div>
+                      <div><strong>📦 Archived At:</strong> {new Date(selectedPrediction.moved_at).toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        timeZoneName: 'short'
+                      })}</div>
+                      <div><strong>🏷️ Record ID:</strong> {selectedPrediction.id}</div>
                     </div>
                   </div>
                 </div>

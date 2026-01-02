@@ -71,6 +71,23 @@ function determineOutcome(prediction: string, currentPrice: number, targetPrice:
 async function checkPredictionAccuracy(): Promise<void> {
   console.log('🎯 Starting Prediction Accuracy Check...');
 
+  // Check if market has closed (4:15 PM ET minimum)
+  const now = new Date();
+  const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+  const marketCloseHour = 16; // 4:00 PM ET
+  const marketCloseMinute = 15; // 4:15 PM ET buffer
+
+  const isMarketClosed = easternTime.getHours() > marketCloseHour ||
+    (easternTime.getHours() === marketCloseHour && easternTime.getMinutes() >= marketCloseMinute);
+
+  if (!isMarketClosed) {
+    console.log('⏰ Market still open - accuracy check will only run after 4:15 PM ET');
+    console.log(`📅 Current ET time: ${easternTime.toLocaleTimeString('en-US')}`);
+    return;
+  }
+
+  console.log('✅ Market closed - proceeding with accuracy check');
+
   try {
     // Get all predictions (we'll filter client-side since outcome column might not exist yet)
     const allPredictions = await db
