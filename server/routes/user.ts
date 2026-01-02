@@ -1,8 +1,8 @@
 import express from 'express';
-import { db } from '../db';
-import { users } from '../../shared/schema';
+import { db } from '../db.js';
+import { users } from '../../shared/schema.js';
 import { eq } from 'drizzle-orm';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth.js';
 
 const router = express.Router();
 

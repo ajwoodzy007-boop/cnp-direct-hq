@@ -1,7 +1,7 @@
 import express from 'express';
 import * as StripeModule from 'stripe';
-import { db } from '../db';
-import { members } from '../../drizzle/schema';
+import { db } from '../db.js';
+import { members } from '../../drizzle/schema.js';
 import { eq } from 'drizzle-orm';
 
 const Stripe = (StripeModule as any).default || StripeModule;

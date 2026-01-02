@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db } from '../db.js';
 import { predictions } from '@shared/schema';
 import { eq, and, gte, isNotNull, sql } from 'drizzle-orm';
 

@@ -1,21 +1,21 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { runDailyScan } from "./lib/sentinel";
-import { db } from "./db";
-import { historicalPrices, users } from "../shared/schema"; // ⚡ THE FIX: Relative path instead of @ alias
+import { runDailyScan } from "./lib/sentinel.js";
+import { db } from "./db.js";
+import { historicalPrices, users } from "../shared/schema.js"; // ⚡ THE FIX: Relative path instead of @ alias
 import { eq, desc } from "drizzle-orm";
-import { setupAuth } from "./auth";
-import adminRoutes from "./routes/admin";
-import oracleRoutes from "./routes/oracle";
-import strategistRoutes from "./routes/strategist";
-import vaultRoutes from "./routes/vault";
-import marketRoutes from "./routes/market";
-import top10Routes from "./routes/top10";
-import userRoutes from "./routes/user";
-import aiRoutes from "./routes/ai";
-import academyRoutes from "./routes/academy";
-import { requireAdmin } from "./middleware/admin";
-import { requirePremium } from "./middleware/premium"; 
+import { setupAuth } from "./auth.js";
+import adminRoutes from "./routes/admin.js";
+import oracleRoutes from "./routes/oracle.js";
+import strategistRoutes from "./routes/strategist.js";
+import vaultRoutes from "./routes/vault.js";
+import marketRoutes from "./routes/market.js";
+import top10Routes from "./routes/top10.js";
+import userRoutes from "./routes/user.js";
+import aiRoutes from "./routes/ai.js";
+import academyRoutes from "./routes/academy.js";
+import { requireAdmin } from "./middleware/admin.js";
+import { requirePremium } from "./middleware/premium.js"; 
 
 export async function registerRoutes(app: Express): Promise<Server> {
   

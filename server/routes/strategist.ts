@@ -1,6 +1,6 @@
 import express from 'express';
 import OpenAI from 'openai';
-import { requirePremium } from '../middleware/premium';
+import { requirePremium } from '../middleware/premium.js';
 // REMOVED Yahoo Finance imports
 
 const router = express.Router();

@@ -1,9 +1,9 @@
 import express from 'express';
 import OpenAI from 'openai';
-import { db } from '../db';
-import { playbookSections } from '../../shared/schema';
-import { requirePremium } from '../middleware/premium';
-import { runMarketScan } from '../lib/sentinel';
+import { db } from '../db.js';
+import { playbookSections } from '../../shared/schema.js';
+import { requirePremium } from '../middleware/premium.js';
+import { runMarketScan } from '../lib/sentinel.js';
 
 // 1. REMOVED Yahoo Finance import to stop build errors
 const router = express.Router();

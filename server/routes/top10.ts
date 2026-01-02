@@ -1,6 +1,6 @@
 import express from 'express';
-import { db } from '../db';
-import { historicalPrices } from '../../shared/schema';
+import { db } from '../db.js';
+import { historicalPrices } from '../../shared/schema.js';
 import { desc, sql } from 'drizzle-orm';
 
 const router = express.Router();

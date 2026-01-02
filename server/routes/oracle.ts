@@ -1,6 +1,6 @@
 import express from 'express';
-import { db } from '../db';
-import { predictions, predictionsHistory } from '../../shared/schema';
+import { db } from '../db.js';
+import { predictions, predictionsHistory } from '../../shared/schema.js';
 import { desc, sql, eq } from 'drizzle-orm';
 
 const router = express.Router();
@@ -59,6 +59,56 @@ router.get('/daily', async (req, res) => {
       success: true,
       data: [],
       error: 'Database temporarily unavailable'
+    });
+  }
+});
+
+// GET /api/oracle/vault - Get all historical predictions for The Vault
+router.get('/vault', async (req, res) => {
+  try {
+    console.log('[Oracle] Fetching vault (historical predictions)');
+
+    const historicalData = await db
+      .select()
+      .from(predictionsHistory)
+      .orderBy(desc(predictionsHistory.created_at))
+      .limit(500); // Allow viewing up to 500 historical predictions
+
+    console.log(`[Oracle] Found ${historicalData?.length || 0} historical predictions in vault`);
+
+    // Transform database fields to frontend-expected format
+    const transformedData = (historicalData || []).map(pred => ({
+      id: pred.id,
+      ticker: pred.symbol,
+      predictedPrice: parseFloat(pred.target_price),
+      confidenceScore: pred.confidence,
+      signal: pred.prediction,
+      entryPrice: 0,
+      outcome: pred.outcome,
+      outcome_price: pred.outcome_price ? parseFloat(pred.outcome_price) : null,
+      learning_metadata: pred.learning_metadata,
+      created_at: pred.created_at,
+      displayDate: new Date(pred.created_at).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      }),
+      moved_at: pred.moved_at,
+      isArchived: true
+    }));
+
+    res.json({
+      success: true,
+      data: transformedData,
+      total: transformedData.length
+    });
+
+  } catch (error: any) {
+    console.error("🔥 Server Error: Oracle vault fetch failed:", error.message);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch vault data'
     });
   }
 });

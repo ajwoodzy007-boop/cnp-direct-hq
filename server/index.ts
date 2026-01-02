@@ -2,9 +2,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
-import { registerRoutes } from "./routes";
-import { setupVite, log } from "./vite";
-import { setupAuth } from "./auth";
+import { registerRoutes } from "./routes.js";
+import { setupVite, log } from "./vite.js";
+import { setupAuth } from "./auth.js";
 
 const app = express();
 app.use(express.json());
