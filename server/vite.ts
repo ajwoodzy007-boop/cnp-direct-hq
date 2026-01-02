@@ -58,7 +58,7 @@ export function serveStatic(app: Express) {
 
   console.log('✅ Static directory exists. Contents:', fs.readdirSync(rootDistPath));
 
-  // Configure static file serving with proper MIME types
+  // Configure static file serving with proper MIME types and error handling
   app.use('/assets', express.static(path.resolve(rootDistPath, 'assets'), {
     setHeaders: (res, path) => {
       if (path.endsWith('.js')) {
@@ -68,27 +68,6 @@ export function serveStatic(app: Express) {
       }
     }
   }));
-
-  // Enhanced logging for asset requests
-  app.use('/assets', (req, res, next) => {
-    const fullAssetPath = path.resolve(rootDistPath, req.path);
-    console.log(`Asset request: ${req.path}`);
-    console.log(`Attempting to serve asset from: ${fullAssetPath}`);
-    console.log(`Asset exists: ${fs.existsSync(fullAssetPath)}`);
-
-    // Override the response to add error handling
-    const originalSend = res.send;
-    res.send = function(data) {
-      if (res.statusCode >= 400) {
-        console.error(`❌ Asset serving failed for ${req.path}: Status ${res.statusCode}`);
-      } else {
-        console.log(`✅ Asset served successfully: ${req.path}`);
-      }
-      return originalSend.call(this, data);
-    };
-
-    next();
-  });
 
   // Serve index.html for all other routes (SPA fallback)
   app.get("*", (req, res) => {
