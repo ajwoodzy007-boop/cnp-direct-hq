@@ -9,6 +9,7 @@ const router = express.Router();
 router.get('/daily', async (req, res) => {
   console.log('ENTERING ROUTE: ', req.path);
   try {
+    console.log('--- Querying Predictions Table ---');
     console.log('[Oracle] Checking database connection...');
 
     // Get the most recent 50 predictions regardless of date

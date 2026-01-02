@@ -68,6 +68,7 @@ app.use(cors({
 
       // THE SPA FALLBACK (Must be last - API routes are handled above)
       app.get("*", (req, res) => {
+        console.log('*** CATCH-ALL ROUTE HIT:', req.path, '- This should NOT happen for API routes! ***');
         res.sendFile(path.join(publicPath, "index.html"));
       });
     }

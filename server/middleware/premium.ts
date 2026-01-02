@@ -6,8 +6,10 @@ import { Request, Response, NextFunction } from "express";
  * Added an 'Admin Bypass' to prevent "Access Denied" for the owner.
  */
 export function requirePremium(req: Request, res: Response, next: NextFunction) {
+  console.log('*** REQUIRE PREMIUM MIDDLEWARE HIT:', req.path);
   // 1. Check if user is even logged in
   if (!req.isAuthenticated()) {
+    console.log('*** REQUIRE PREMIUM: User not authenticated');
     return res.status(401).json({ message: "Please log in to access this feature." });
   }
 
