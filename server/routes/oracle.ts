@@ -12,12 +12,27 @@ router.get('/daily', async (req, res) => {
     console.log('--- Querying Predictions Table ---');
     console.log('[Oracle] Checking database connection...');
 
-    // Get the most recent 50 predictions regardless of date
-    const predictionData = await db
-      .select()
-      .from(predictions)
-      .orderBy(desc(predictions.created_at))
-      .limit(50);
+    // Try to get predictions with full schema first
+    let predictionData;
+    try {
+      predictionData = await db
+        .select()
+        .from(predictions)
+        .orderBy(desc(predictions.created_at))
+        .limit(50);
+    } catch (error) {
+      console.log('[Oracle] Full schema failed, trying basic columns only');
+      // Fallback: select only known columns
+      predictionData = await db
+        .select({
+          id: predictions.id,
+          symbol: predictions.symbol,
+          created_at: predictions.created_at
+        })
+        .from(predictions)
+        .orderBy(desc(predictions.created_at))
+        .limit(50);
+    }
 
     console.log(`[Oracle] Found ${predictionData?.length || 0} predictions`);
 
