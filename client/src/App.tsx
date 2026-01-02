@@ -10,6 +10,8 @@ import AdminUsers from "./components/AdminUsers";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/not-found";
 import TheVault from "./pages/TheVault";
+import Profile from "./pages/Profile";
+import Portfolio from "./pages/Portfolio";
 import { isAdmin } from "./lib/permissions";
 
 function Router() {
@@ -38,6 +40,16 @@ function Router() {
       {/* Vault Route - Historical Proof Logs */}
       <Route path="/the-vault">
         {!user ? <Redirect to="/auth" /> : <TheVault />}
+      </Route>
+
+      {/* Portfolio Route - Personal Holdings */}
+      <Route path="/portfolio">
+        {!user ? <Redirect to="/auth" /> : <Portfolio />}
+      </Route>
+
+      {/* Profile Route - Personal Management */}
+      <Route path="/profile">
+        {!user ? <Redirect to="/auth" /> : <Profile />}
       </Route>
 
       {/* Auth Route */}

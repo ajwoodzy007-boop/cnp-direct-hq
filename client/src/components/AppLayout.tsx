@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { 
-  SignalIcon, 
-  CpuChipIcon, 
-  ViewfinderCircleIcon, 
-  BookOpenIcon, 
-  Squares2X2Icon, 
+import {
+  SignalIcon,
+  CpuChipIcon,
+  ViewfinderCircleIcon,
+  BookOpenIcon,
+  Squares2X2Icon,
   Bars3Icon,
   ArrowLeftOnRectangleIcon,
   HomeIcon,
   InformationCircleIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  UserIcon,
+  BriefcaseIcon
 } from '@heroicons/react/24/outline';
 import logoImage from '@/assets/cnp-eagle-logo.jpg';
 import { isAdmin } from '@/lib/permissions';
@@ -37,6 +39,8 @@ export default function AppLayout({
     { id: 'oracle', label: 'The Oracle', icon: ViewfinderCircleIcon, desc: 'Daily Predictions' },
     { id: 'strategist', label: 'The Strategist', icon: CpuChipIcon, desc: 'AI Playbooks' },
     { id: 'vault', label: 'The Vault', icon: Squares2X2Icon, desc: 'History & Proof Logs' },
+    { id: 'portfolio', label: 'My Portfolio', icon: BriefcaseIcon, desc: 'Personal Holdings' },
+    { id: 'profile', label: 'Profile', icon: UserIcon, desc: 'Account Settings' },
     { id: 'academy', label: 'The Academy', icon: BookOpenIcon, desc: 'Education' },
   ];
 

@@ -63,6 +63,19 @@ export default function TheSummary({ onNavigate, user }: Props) {
     refetchInterval: 60000,
   });
 
+  const { data: portfolioData } = useQuery<{ portfolio?: any[] }>({
+    queryKey: ['/api/user/portfolio'],
+    queryFn: async () => {
+      const res = await fetch('/api/user/portfolio', {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error(`Status: ${res.status}`);
+      return res.json();
+    },
+    refetchInterval: 300000, // 5 minutes
+    enabled: !!user,
+  });
+
   const { data: statsData } = useQuery<{ success?: boolean; data?: PredictionStats }>({
     queryKey: ['/api/top10/stats'],
     queryFn: async () => {
@@ -76,7 +89,22 @@ export default function TheSummary({ onNavigate, user }: Props) {
   });
 
   const marketMovers: MarketMover[] = sentinelData?.data?.slice(0, 4) || [];
-  const topPredictions: Prediction[] = predictionsData?.data?.slice(0, 3) || [];
+
+  // Prioritize portfolio holdings in Today's Picks
+  const allPredictions: Prediction[] = predictionsData?.data || [];
+  const portfolioTickers = portfolioData?.portfolio?.map((h: any) => h.ticker) || [];
+
+  // Sort predictions to prioritize portfolio holdings
+  const sortedPredictions = [...allPredictions].sort((a, b) => {
+    const aIsPortfolio = portfolioTickers.includes(a.ticker);
+    const bIsPortfolio = portfolioTickers.includes(b.ticker);
+
+    if (aIsPortfolio && !bIsPortfolio) return -1;
+    if (!aIsPortfolio && bIsPortfolio) return 1;
+    return 0;
+  });
+
+  const topPredictions: Prediction[] = sortedPredictions.slice(0, 3);
   // Safety check: Ensure stats object exists before accessing properties
   const signalAccuracy = statsData?.data?.winRate ?? 0;
   const systemHeat = -14.2;

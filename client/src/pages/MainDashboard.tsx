@@ -4,6 +4,8 @@ import MarketRadar from '@/components/MarketRadar';
 import TheOracle from '@/components/TheOracle';
 import TheStrategist from '@/components/TheStrategist';
 import TheVault from '@/pages/TheVault';
+import Profile from '@/pages/Profile';
+import Portfolio from '@/pages/Portfolio';
 import TheAcademy from '@/components/TheAcademy';
 import TheSummary from '@/components/TheSummary';
 import PremiumLock from '@/components/PremiumLock';
@@ -65,6 +67,18 @@ export default function MainDashboard() {
           return <AuthLock featureName="The Vault" onLoginClick={() => setLocation('/auth')} />;
         }
         return <TheVault />;
+
+      case 'portfolio':
+        if (!user) {
+          return <AuthLock featureName="Portfolio" onLoginClick={() => setLocation('/auth')} />;
+        }
+        return <Portfolio />;
+
+      case 'profile':
+        if (!user) {
+          return <AuthLock featureName="Profile" onLoginClick={() => setLocation('/auth')} />;
+        }
+        return <Profile />;
 
       default:
         return <TheSummary onNavigate={handleNavClick} user={user} />;
