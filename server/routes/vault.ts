@@ -1,6 +1,7 @@
 import express from 'express';
 import OpenAI from 'openai';
-import { query } from '../db';
+import { db } from '../db';
+import { playbookSections } from '../../shared/schema';
 import { requirePremium } from '../middleware/premium';
 import { runMarketScan } from '../lib/sentinel';
 
@@ -32,12 +33,16 @@ router.post('/generate-briefing', requirePremium, async (req, res) => {
 
     const content = response.choices[0].message.content;
 
-    // 4. Save to DB (Using your active Run ID)
+    // 4. Save to DB
     const runId = 'b6163ff8-ddd0-4f59-bb9a-08aac1006743';
-    await query(
-      "INSERT INTO playbook_sections (run_id, title, content, section_type) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING",
-      [runId, 'Daily Intelligence', content, 'market_briefing']
-    );
+    await db.insert(playbookSections).values({
+      run_id: runId,
+      title: 'Daily Intelligence',
+      content: content,
+      section_type: 'market_briefing'
+    });
+
+    console.log('[Vault] Generated and saved briefing to database');
 
     res.json({ success: true, content });
   } catch (error) {

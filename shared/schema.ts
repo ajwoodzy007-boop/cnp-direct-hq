@@ -29,6 +29,16 @@ export const predictions = pgTable("predictions", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
+// Playbook Sections Table
+export const playbookSections = pgTable("playbook_sections", {
+  id: serial("id").primaryKey(),
+  run_id: text("run_id").notNull(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  section_type: text("section_type").notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
 // Users Table
 export const users = pgTable("users", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -49,3 +59,7 @@ export type Prediction = typeof predictions.$inferSelect;
 export const insertUserSchema = createInsertSchema(users);
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+export const insertPlaybookSectionSchema = createInsertSchema(playbookSections);
+export type PlaybookSection = typeof playbookSections.$inferSelect;
+export type InsertPlaybookSection = typeof playbookSections.$inferInsert;

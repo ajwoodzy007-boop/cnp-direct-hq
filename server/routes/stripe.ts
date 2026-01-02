@@ -1,6 +1,8 @@
 import express from 'express';
 import * as StripeModule from 'stripe';
-import { query } from '../db';
+import { db } from '../db';
+import { members } from '../../drizzle/schema';
+import { eq } from 'drizzle-orm';
 
 const Stripe = (StripeModule as any).default || StripeModule;
 const router = express.Router();
@@ -58,8 +60,11 @@ router.get('/success', async (req, res) => {
     if (session.payment_status === 'paid' || session.status === 'open') {
       const userId = session.metadata?.userId;
       
-      // Update members table, set membership_tier to 'PREMIUM'
-      await query(`UPDATE members SET membership_tier = 'PREMIUM' WHERE id = $1`, [userId]);
+      // Update members table, set membershipTier to 'PREMIUM'
+      await db
+        .update(members)
+        .set({ membershipTier: 'PREMIUM' })
+        .where(eq(members.id, userId));
       
       if ((req.session as any).user) {
         (req.session as any).user.membershipTier = 'PREMIUM'; // Drizzle uses camelCase
