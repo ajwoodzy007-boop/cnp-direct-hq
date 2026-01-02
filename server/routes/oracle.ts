@@ -9,6 +9,8 @@ const router = express.Router();
 router.get('/daily', async (req, res) => {
   console.log('ENTERING ROUTE: ', req.path);
   try {
+    console.log('[Oracle] Checking database connection...');
+
     // Get the most recent 50 predictions regardless of date
     const predictionData = await db
       .select()
@@ -16,13 +18,16 @@ router.get('/daily', async (req, res) => {
       .orderBy(desc(predictions.created_at))
       .limit(50);
 
+    console.log(`[Oracle] Found ${predictionData?.length || 0} predictions`);
+
     res.json({
       success: true,
       data: predictionData || []
     });
   } catch (error: any) {
-    console.error("Error fetching daily predictions:", error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("🔥 Server Error: Oracle daily fetch failed:", error.message);
+    console.error("🔥 Full error:", error);
+    res.status(500).json({ error: 'AI Generation Failed', details: error.message });
   }
 });
 
