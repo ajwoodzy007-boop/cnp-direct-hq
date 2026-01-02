@@ -46,6 +46,7 @@ export async function setupVite(app: Express, server: Server) {
 
 export function serveStatic(app: Express) {
   const rootDistPath = path.resolve(__dirname, "..", "dist", "public");
+  console.log('Serving static files from:', rootDistPath);
 
   if (!fs.existsSync(rootDistPath)) {
     throw new Error(`Static assets not found at: ${rootDistPath}. Ensure the build step completed successfully.`);
@@ -53,6 +54,7 @@ export function serveStatic(app: Express) {
 
   app.use(express.static(rootDistPath));
   app.get("*", (req, res) => {
+    console.log(`Serving frontend for route: ${req.path}`);
     res.sendFile(path.resolve(rootDistPath, "index.html"));
   });
 }

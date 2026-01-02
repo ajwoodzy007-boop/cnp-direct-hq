@@ -45,7 +45,7 @@ export function setupAuth(app: Express) {
       ttl: 30 * 24 * 60 * 60 * 1000 // 30 days
     }),
     cookie: {
-      secure: false, // Explicitly set to false for development
+      secure: app.get("env") === "production", // HTTPS only in production
       httpOnly: true,
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000,
