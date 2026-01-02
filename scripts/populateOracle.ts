@@ -500,15 +500,34 @@ async function populateOracle(): Promise<void> {
           console.log(`📝 Learning: ${aiPrediction.learningNote}`);
         }
 
-        // Step 2.5: Quality Validation Filter (Institutional Standards)
-        if (!aiPrediction.targetPrice || aiPrediction.targetPrice <= 0) {
-          console.log(`🚫 DISCARDED ${ticker}: Invalid target price ($${aiPrediction.targetPrice})`);
+        // Step 2.5: Strict Quality Validation Filter (Institutional Standards)
+        // Filter 1: Target Price Validation
+        if (!aiPrediction.targetPrice ||
+            aiPrediction.targetPrice === null ||
+            aiPrediction.targetPrice === undefined ||
+            aiPrediction.targetPrice <= 0 ||
+            isNaN(aiPrediction.targetPrice) ||
+            !isFinite(aiPrediction.targetPrice)) {
+          console.log(`🚫 DISCARDED ${ticker}: Invalid/null/zero target price ($${aiPrediction.targetPrice})`);
           errorCount++;
           continue;
         }
 
-        if (aiPrediction.confidence < 70) {
-          console.log(`🚫 DISCARDED ${ticker}: Confidence too low (${aiPrediction.confidence}%) - institutional minimum is 70%`);
+        // Filter 2: Confidence Validation
+        if (!aiPrediction.confidence ||
+            aiPrediction.confidence < 70 ||
+            aiPrediction.confidence > 100 ||
+            isNaN(aiPrediction.confidence)) {
+          console.log(`🚫 DISCARDED ${ticker}: Invalid confidence (${aiPrediction.confidence}%) - must be 70-100`);
+          errorCount++;
+          continue;
+        }
+
+        // Filter 3: Prediction Text Validation
+        if (!aiPrediction.prediction ||
+            aiPrediction.prediction.trim().length < 10 ||
+            aiPrediction.prediction.includes('Unable to generate')) {
+          console.log(`🚫 DISCARDED ${ticker}: Invalid prediction text`);
           errorCount++;
           continue;
         }

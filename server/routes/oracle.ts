@@ -21,9 +21,23 @@ router.get('/daily', async (req, res) => {
 
     console.log(`[Oracle] Found ${predictionData?.length || 0} predictions`);
 
+    // Transform database fields to frontend-expected format
+    const transformedData = (predictionData || []).map(pred => ({
+      ticker: pred.symbol, // Map symbol -> ticker
+      predictedPrice: parseFloat(pred.target_price), // Map target_price -> predictedPrice
+      confidenceScore: pred.confidence, // Map confidence -> confidenceScore
+      signal: pred.prediction, // Map prediction -> signal
+      entryPrice: 0, // Default value, can be enhanced later
+      outcome: pred.outcome,
+      learning_metadata: pred.learning_metadata,
+      created_at: pred.created_at
+    }));
+
+    console.log(`[Oracle] Transformed ${transformedData.length} predictions for frontend`);
+
     res.json({
       success: true,
-      data: predictionData || []
+      data: transformedData
     });
   } catch (error: any) {
     console.error("🔥 Server Error: Oracle daily fetch failed:", error.message);
