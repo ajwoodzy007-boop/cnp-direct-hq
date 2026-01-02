@@ -27,6 +27,9 @@ export const predictions = pgTable("predictions", {
   target_price: decimal("target_price", { precision: 10, scale: 2 }),
   timeframe: text("timeframe").notNull(),
   created_at: timestamp("created_at").defaultNow(),
+  outcome: text("outcome"), // 'WIN' or 'LOSS'
+  outcome_price: decimal("outcome_price", { precision: 10, scale: 2 }), // Price when outcome was determined
+  outcome_date: timestamp("outcome_date"), // When outcome was determined
 });
 
 // Playbook Sections Table
@@ -53,7 +56,11 @@ export const users = pgTable("users", {
 export const insertHistoricalPriceSchema = createInsertSchema(historicalPrices);
 export type HistoricalPrice = typeof historicalPrices.$inferSelect;
 
-export const insertPredictionSchema = createInsertSchema(predictions);
+export const insertPredictionSchema = createInsertSchema(predictions, {
+  outcome: (schema) => schema.optional(), // Allow null/undefined for ungraded predictions
+  outcome_price: (schema) => schema.optional(),
+  outcome_date: (schema) => schema.optional(),
+});
 export type Prediction = typeof predictions.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users);
