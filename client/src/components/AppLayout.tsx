@@ -36,7 +36,7 @@ export default function AppLayout({
     { id: 'radar', label: 'The Radar', icon: SignalIcon, desc: 'Scanner & News' },
     { id: 'oracle', label: 'The Oracle', icon: ViewfinderCircleIcon, desc: 'Daily Predictions' },
     { id: 'strategist', label: 'The Strategist', icon: CpuChipIcon, desc: 'AI Playbooks' },
-    { id: 'vault', label: 'The Vault', icon: Squares2X2Icon, desc: 'Portfolio' },
+    { id: 'vault', label: 'The Vault', icon: Squares2X2Icon, desc: 'History & Proof Logs' },
     { id: 'academy', label: 'The Academy', icon: BookOpenIcon, desc: 'Education' },
   ];
 

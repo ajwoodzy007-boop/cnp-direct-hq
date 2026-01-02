@@ -9,6 +9,7 @@ import AdminPredictions from "./components/AdminPredictions";
 import AdminUsers from "./components/AdminUsers";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/not-found";
+import TheVault from "./pages/TheVault";
 import { isAdmin } from "./lib/permissions";
 
 function Router() {
@@ -34,11 +35,16 @@ function Router() {
         {!user ? <Redirect to="/auth" /> : isAdmin(user) ? <AdminUsers /> : <Redirect to="/" />}
       </Route>
       
+      {/* Vault Route - Historical Proof Logs */}
+      <Route path="/the-vault">
+        {!user ? <Redirect to="/auth" /> : <TheVault />}
+      </Route>
+
       {/* Auth Route */}
       <Route path="/auth">
         {user ? <Redirect to="/" /> : <AuthPage />}
       </Route>
-      
+
       <Route component={NotFound} />
     </Switch>
   );

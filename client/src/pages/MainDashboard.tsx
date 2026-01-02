@@ -3,7 +3,7 @@ import AppLayout from '@/components/AppLayout';
 import MarketRadar from '@/components/MarketRadar';
 import TheOracle from '@/components/TheOracle';
 import TheStrategist from '@/components/TheStrategist';
-import TheVault from '@/components/TheVault';
+import TheVault from '@/pages/TheVault';
 import TheAcademy from '@/components/TheAcademy';
 import TheSummary from '@/components/TheSummary';
 import PremiumLock from '@/components/PremiumLock';
