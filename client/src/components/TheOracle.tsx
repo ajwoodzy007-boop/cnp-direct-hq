@@ -83,21 +83,21 @@ export default function TheOracle() {
               </div>
               <button
                 onClick={async () => {
-                  // Load audit history
+                  // Load recent audit history (last 10 results)
                   try {
-                    const res = await fetch('/api/oracle/vault?limit=50');
+                    const res = await fetch('/api/oracle/vault?limit=10');
                     const json = await res.json();
                     if (json.success && Array.isArray(json.data)) {
-                      setAuditHistory(json.data.slice(0, 50));
+                      setAuditHistory(json.data.slice(0, 10));
                       setShowAuditModal(true);
                     }
                   } catch (error) {
-                    console.error('Failed to load audit history:', error);
+                    console.error('Failed to load recent audit:', error);
                   }
                 }}
                 className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                View Audit Log
+                View Recent Audit
               </button>
             </div>
           </div>
@@ -379,7 +379,7 @@ export default function TheOracle() {
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-bold text-white flex items-center gap-2">
                   <DocumentTextIcon className="h-6 w-6 text-orange-400" />
-                  Audit Log - Last 50 Predictions
+                  Recent Audit - Last 10 Predictions
                 </h3>
                 <button
                   onClick={() => setShowAuditModal(false)}
@@ -388,7 +388,7 @@ export default function TheOracle() {
                   ✕
                 </button>
               </div>
-              <p className="text-slate-400 mt-2">Complete historical record of AI predictions and outcomes</p>
+              <p className="text-slate-400 mt-2">Quick reference of recent AI predictions and outcomes</p>
             </div>
 
             <div className="overflow-y-auto max-h-[60vh]">
