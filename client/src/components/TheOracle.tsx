@@ -161,8 +161,8 @@ export default function TheOracle() {
 
         const hRes = await fetch('/api/oracle/history');
         const hJson = await hRes.json();
-        if (hJson.success && Array.isArray(hJson.history)) {
-          setHistoryData(hJson.history);
+        if (hJson.success && Array.isArray(hJson.data)) {
+          setHistoryData(hJson.data);
         } else {
           console.warn('Oracle history API returned invalid data:', hJson);
           setHistoryData([]);

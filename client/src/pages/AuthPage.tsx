@@ -39,7 +39,6 @@ export default function AuthPage() {
             <Form {...loginForm}>
               <form 
                 onSubmit={loginForm.handleSubmit((data: any) => {
-                  console.log("🔑 ATTEMPTING LOGIN WITH:", data);
                   loginMutation.mutate(data);
                 })} 
                 className="space-y-4"
