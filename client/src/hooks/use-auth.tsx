@@ -21,11 +21,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: user, error, isLoading } = useQuery<User | null, Error>({
     queryKey: ["/api/user"],
     queryFn: async () => {
-      const res = await fetch("/api/user");
-      if (res.status === 401) return null;
-      if (!res.ok) throw new Error("Could not fetch user");
-      return res.json();
+      try {
+        const res = await fetch("/api/user", {
+          credentials: "include",
+        });
+        if (res.status === 401) return null;
+        if (!res.ok) throw new Error("Could not fetch user");
+        return res.json();
+      } catch (err) {
+        console.error("Auth check failed:", err);
+        return null; // Return null on any error to allow app to load
+      }
     },
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   const loginMutation = useMutation({
