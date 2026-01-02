@@ -226,9 +226,32 @@ export default function TheOracle() {
                       <span>Target:</span>
                       <span className="text-green-400 font-mono">${pick?.predictedPrice?.toFixed(2) || '0.00'}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span>Generated:</span>
+                      <span className="text-cyan-400 font-mono text-xs">{pick?.displayDate || 'N/A'}</span>
+                    </div>
                   </div>
                     <button
-                      onClick={() => setSelectedPick(pick)}
+                      onClick={async () => {
+                        if (pick?.outcome === 'LOSS' && pick?.id) {
+                          // For LOSS outcomes, fetch from history endpoint
+                          try {
+                            const res = await fetch(`/api/oracle/history/${pick.id}`);
+                            const json = await res.json();
+                            if (json.success) {
+                              setSelectedPick(json.data);
+                            } else {
+                              console.error('Failed to fetch historical data:', json.error);
+                              setSelectedPick(pick); // Fallback to current data
+                            }
+                          } catch (error) {
+                            console.error('Error fetching historical prediction:', error);
+                            setSelectedPick(pick); // Fallback to current data
+                          }
+                        } else {
+                          setSelectedPick(pick);
+                        }
+                      }}
                       className={`w-full mt-4 py-2 rounded-lg text-white text-xs transition-all ${
                         pick?.outcome === 'WIN'
                           ? 'bg-green-600 hover:bg-green-500'
