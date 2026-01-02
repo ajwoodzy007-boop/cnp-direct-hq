@@ -69,8 +69,13 @@ export function serveStatic(app: Express) {
     }
   }));
 
-  // Serve index.html for all other routes (SPA fallback)
+  // Serve index.html for all other routes (SPA fallback) - exclude assets
   app.get("*", (req, res) => {
+    // Don't serve HTML for asset requests
+    if (req.path.startsWith('/assets/')) {
+      return res.status(404).send('Asset not found');
+    }
+
     console.log(`Serving frontend for route: ${req.path}`);
     const indexPath = path.resolve(rootDistPath, "index.html");
 
