@@ -66,12 +66,8 @@ app.use(cors({
       // SERVE OTHER STATIC FILES
       app.use(express.static(publicPath));
 
-      // THE SPA FALLBACK (Must be last)
-      app.get("*", (req, res, next) => {
-        // Skip for API routes
-        if (req.path.startsWith('/api')) {
-          return next();
-        }
+      // THE SPA FALLBACK (Must be last - API routes are handled above)
+      app.get("*", (req, res) => {
         res.sendFile(path.join(publicPath, "index.html"));
       });
     }

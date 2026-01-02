@@ -9,6 +9,8 @@ import adminRoutes from "./routes/admin";
 import oracleRoutes from "./routes/oracle";
 import strategistRoutes from "./routes/strategist";
 import vaultRoutes from "./routes/vault";
+import marketRoutes from "./routes/market";
+import top10Routes from "./routes/top10";
 import aiRoutes from "./routes/ai";
 import academyRoutes from "./routes/academy";
 import { requireAdmin } from "./middleware/admin";
@@ -36,6 +38,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/vault", requirePremium, vaultRoutes);
 
   // General routes (may have internal auth checks)
+  app.use("/api/market", marketRoutes);
+  app.use("/api/top10", top10Routes);
   app.use("/api/strategist", strategistRoutes);
   app.use("/api/ai", aiRoutes);
   app.use("/api/academy", academyRoutes);
