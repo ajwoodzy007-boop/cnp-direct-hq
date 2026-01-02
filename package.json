@@ -6,7 +6,10 @@
     "dev": "tsx server/index.ts",
     "build": "tsx script/build.ts",
     "start": "NODE_ENV=production tsx server/index.ts",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "populate-oracle": "tsx scripts/populateOracle.ts",
+    "check-accuracy": "tsx scripts/checkAccuracy.ts",
+    "run-simulation": "tsx scripts/runHistoricalSimulation.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.1",

@@ -30,6 +30,25 @@ export const predictions = pgTable("predictions", {
   outcome: text("outcome"), // 'WIN' or 'LOSS'
   outcome_price: decimal("outcome_price", { precision: 10, scale: 2 }), // Price when outcome was determined
   outcome_date: timestamp("outcome_date"), // When outcome was determined
+  learning_metadata: jsonb("learning_metadata"), // AI lessons learned from historical simulation
+});
+
+// Simulation Results Table (for back-testing historical predictions)
+export const simulationResults = pgTable("simulation_results", {
+  id: serial("id").primaryKey(),
+  symbol: text("symbol").notNull(),
+  simulation_date: timestamp("simulation_date").notNull(), // Date when simulation was run
+  historical_date: timestamp("historical_date").notNull(), // Historical date being simulated
+  price_at_prediction: decimal("price_at_prediction", { precision: 10, scale: 2 }),
+  rsi_at_prediction: decimal("rsi_at_prediction", { precision: 5, scale: 2 }),
+  rvol_at_prediction: decimal("rvol_at_prediction", { precision: 5, scale: 2 }),
+  predicted_target: decimal("predicted_target", { precision: 10, scale: 2 }),
+  confidence_score: integer("confidence_score"),
+  actual_price_7_days: decimal("actual_price_7_days", { precision: 10, scale: 2 }), // Price 7 days later
+  outcome: text("outcome"), // 'WIN' or 'LOSS' based on simulation
+  error_percentage: decimal("error_percentage", { precision: 5, scale: 2 }), // |predicted - actual| / actual * 100
+  bias_adjustments: jsonb("bias_adjustments"), // AI analysis of what went wrong/right
+  created_at: timestamp("created_at").defaultNow(),
 });
 
 // Playbook Sections Table
@@ -69,4 +88,7 @@ export type InsertUser = typeof users.$inferInsert;
 
 export const insertPlaybookSectionSchema = createInsertSchema(playbookSections);
 export type PlaybookSection = typeof playbookSections.$inferSelect;
+
+export const insertSimulationResultSchema = createInsertSchema(simulationResults);
+export type SimulationResult = typeof simulationResults.$inferSelect;
 export type InsertPlaybookSection = typeof playbookSections.$inferInsert;

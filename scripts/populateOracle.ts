@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { db } from '../server/db';
-import { predictions } from '../shared/schema';
+import { predictions, simulationResults } from '../shared/schema';
 import { runMarketScan } from '../server/lib/sentinel';
 import { desc, eq } from 'drizzle-orm';
 
@@ -181,34 +181,79 @@ async function getHistoricalLearning(ticker: string): Promise<string> {
       .orderBy(desc(predictions.created_at))
       .limit(5);
 
+    // Get simulation results for bias adjustments
+    const simulationResults = await db
+      .select()
+      .from(simulationResults)
+      .where(eq(simulationResults.symbol, ticker))
+      .orderBy(desc(simulationResults.created_at))
+      .limit(20);
+
+    let learningString = '';
+
     if (historicalPredictions.length === 0) {
-      return `No historical predictions found for ${ticker}. This is the first analysis.`;
+      learningString = `No historical predictions found for ${ticker}. This is the first analysis.`;
+    } else {
+      // Calculate win rate and outcomes
+      const outcomes = historicalPredictions.map(p => p.outcome).filter(Boolean);
+      const wins = outcomes.filter(o => o === 'WIN').length;
+      const losses = outcomes.filter(o => o === 'LOSS').length;
+      const winRate = outcomes.length > 0 ? Math.round((wins / outcomes.length) * 100) : 0;
+
+      // Calculate average error (difference between target and outcome price)
+      const errors = historicalPredictions
+        .filter(p => p.outcome_price && p.target_price)
+        .map(p => {
+          const targetPrice = parseFloat(p.target_price!);
+          const outcomePrice = parseFloat(p.outcome_price!);
+          return Math.abs((outcomePrice - targetPrice) / targetPrice) * 100;
+        });
+
+      const avgError = errors.length > 0 ? (errors.reduce((sum, err) => sum + err, 0) / errors.length).toFixed(1) : 'N/A';
+
+      // Create outcome sequence string
+      const outcomeSequence = historicalPredictions
+        .slice(0, 5)
+        .map(p => p.outcome || 'PENDING')
+        .join(', ');
+
+      learningString = `Last ${historicalPredictions.length} ${ticker} predictions: ${outcomeSequence}. Win rate: ${winRate}%. Average error: ${avgError}%. Recent pattern shows ${wins} wins vs ${losses} losses.`;
     }
 
-    // Calculate win rate and outcomes
-    const outcomes = historicalPredictions.map(p => p.outcome).filter(Boolean);
-    const wins = outcomes.filter(o => o === 'WIN').length;
-    const losses = outcomes.filter(o => o === 'LOSS').length;
-    const winRate = outcomes.length > 0 ? Math.round((wins / outcomes.length) * 100) : 0;
+    // Add simulation-based bias adjustments if available
+    if (simulationResults.length > 0) {
+      const simWins = simulationResults.filter(r => r.outcome === 'WIN').length;
+      const simTotal = simulationResults.length;
+      const simWinRate = simTotal > 0 ? Math.round((simWins / simTotal) * 100) : 0;
 
-    // Calculate average error (difference between target and outcome price)
-    const errors = historicalPredictions
-      .filter(p => p.outcome_price && p.target_price)
-      .map(p => {
-        const targetPrice = parseFloat(p.target_price!);
-        const outcomePrice = parseFloat(p.outcome_price!);
-        return Math.abs((outcomePrice - targetPrice) / targetPrice) * 100;
-      });
+      const highRsiFailures = simulationResults.filter(r =>
+        r.outcome === 'LOSS' && parseFloat(r.rsi_at_prediction) > 70
+      ).length;
 
-    const avgError = errors.length > 0 ? (errors.reduce((sum, err) => sum + err, 0) / errors.length).toFixed(1) : 'N/A';
+      const lowRvolFailures = simulationResults.filter(r =>
+        r.outcome === 'LOSS' && parseFloat(r.rvol_at_prediction) < 0.8
+      ).length;
 
-    // Create outcome sequence string
-    const outcomeSequence = historicalPredictions
-      .slice(0, 5)
-      .map(p => p.outcome || 'PENDING')
-      .join(', ');
+      let biasAdjustments = '';
 
-    return `Last ${historicalPredictions.length} ${ticker} predictions: ${outcomeSequence}. Win rate: ${winRate}%. Average error: ${avgError}%. Recent pattern shows ${wins} wins vs ${losses} losses.`;
+      if (highRsiFailures > simTotal * 0.3) {
+        biasAdjustments += ` High RSI signals are unreliable (${highRsiFailures} failures).`;
+      }
+
+      if (lowRvolFailures > simTotal * 0.3) {
+        biasAdjustments += ` Low volume conditions show increased failure risk (${lowRvolFailures} failures).`;
+      }
+
+      if (simWinRate < 50) {
+        biasAdjustments += ` Overall simulation win rate (${simWinRate}%) suggests conservative approach needed.`;
+      }
+
+      if (biasAdjustments) {
+        learningString += ` SIMULATION INSIGHTS: Based on ${simTotal} historical simulations.${biasAdjustments}`;
+      }
+    }
+
+    return learningString;
 
   } catch (error) {
     console.error(`❌ Error fetching historical data for ${ticker}:`, error);
@@ -326,20 +371,41 @@ function getMockPrediction(marketData: MarketAnalysis): AIPrediction {
 async function savePredictionToDatabase(
   ticker: string,
   marketData: MarketAnalysis,
-  aiPrediction: AIPrediction
+  aiPrediction: AIPrediction,
+  learningData?: string
 ): Promise<void> {
   try {
     console.log(`💾 Saving prediction for ${ticker} to database...`);
+
+    // Get simulation insights for learning metadata
+    let learningMetadata = null;
+    if (learningData && learningData.includes('SIMULATION INSIGHTS')) {
+      // Extract simulation insights from the learning data
+      const simulationMatch = learningData.match(/SIMULATION INSIGHTS: (.+)/);
+      if (simulationMatch) {
+        learningMetadata = {
+          historical_context: learningData,
+          simulation_insights: simulationMatch[1],
+          generated_at: new Date().toISOString(),
+          market_conditions: {
+            rsi: marketData.rsi,
+            rvol: marketData.rvol,
+            price: marketData.currentPrice
+          }
+        };
+      }
+    }
 
     await db.insert(predictions).values({
       symbol: ticker,
       prediction: aiPrediction.prediction,
       confidence: aiPrediction.confidence,
       target_price: aiPrediction.targetPrice.toString(),
-      timeframe: '1W' // 1 week as requested
+      timeframe: '1W', // 1 week as requested
+      learning_metadata: learningMetadata
     });
 
-    console.log(`✅ Saved prediction for ${ticker}`);
+    console.log(`✅ Saved prediction for ${ticker} with learning metadata`);
   } catch (error) {
     console.error(`❌ Error saving prediction for ${ticker}:`, error);
   }
@@ -380,7 +446,8 @@ async function populateOracle(): Promise<void> {
       }
 
       // Step 3: Save to database
-      await savePredictionToDatabase(ticker, marketData, aiPrediction);
+      const learningData = await getHistoricalLearning(ticker);
+      await savePredictionToDatabase(ticker, marketData, aiPrediction, learningData);
       successCount++;
 
       // Small delay to avoid rate limits
