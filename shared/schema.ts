@@ -75,10 +75,12 @@ export const users = pgTable("users", {
 export const insertHistoricalPriceSchema = createInsertSchema(historicalPrices);
 export type HistoricalPrice = typeof historicalPrices.$inferSelect;
 
+import { z } from "zod";
+
 export const insertPredictionSchema = createInsertSchema(predictions, {
-  outcome: (schema) => schema.optional(), // Allow null/undefined for ungraded predictions
-  outcome_price: (schema) => schema.optional(),
-  outcome_date: (schema) => schema.optional(),
+  outcome: z.string().optional(),
+  outcome_price: z.string().optional(),
+  outcome_date: z.date().optional(),
 });
 export type Prediction = typeof predictions.$inferSelect;
 

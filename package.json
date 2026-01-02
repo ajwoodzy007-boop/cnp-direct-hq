@@ -3,9 +3,11 @@
   "version": "1.0.1",
   "type": "module",
   "scripts": {
-    "dev": "tsx server/index.ts",
+    "start": "tsx server/index.ts",
     "build": "tsx script/build.ts",
-    "start": "NODE_ENV=production tsx server/index.ts",
+    "oracle:judge": "tsx scripts/checkAccuracy.ts",
+    "oracle:scan": "tsx scripts/populateOracle.ts",
+    "dev": "tsx server/index.ts",
     "db:push": "drizzle-kit push",
     "populate-oracle": "tsx scripts/populateOracle.ts",
     "check-accuracy": "tsx scripts/checkAccuracy.ts",
