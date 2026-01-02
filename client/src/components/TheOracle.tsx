@@ -41,6 +41,15 @@ export default function TheOracle() {
   const [show30DayModal, setShow30DayModal] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
+  // Calculate win rate from all predictions
+  const winRateStats = useMemo(() => {
+    const allPicks = [...picks, ...cryptoPicks];
+    const totalGraded = allPicks.filter(p => p.outcome !== null && p.outcome !== undefined).length;
+    const totalWins = allPicks.filter(p => p.outcome === 'WIN').length;
+    const winRate = totalGraded > 0 ? Math.round((totalWins / totalGraded) * 100) : 0;
+    return { totalGraded, totalWins, winRate };
+  }, [picks, cryptoPicks]);
+
   // Use a try-catch inside the render to prevent the whole page from dying
   const renderContent = () => {
     try {
@@ -70,6 +79,43 @@ export default function TheOracle() {
             </div>
           </div>
 
+          {/* Oracle Accuracy Gauge */}
+          {winRateStats.totalGraded > 0 && (
+            <div className="bg-gradient-to-r from-slate-900 to-slate-800 border border-slate-700 p-6 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-cyan-500/20 rounded-xl">
+                    <TrophyIcon className="h-8 w-8 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">Oracle Accuracy</h3>
+                    <p className="text-slate-400 text-sm">Based on {winRateStats.totalGraded} graded predictions</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-4xl font-bold text-cyan-400">{winRateStats.winRate}%</div>
+                  <div className="text-sm text-slate-400">
+                    {winRateStats.totalWins} wins / {winRateStats.totalGraded} total
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mt-4">
+                <div className="flex justify-between text-xs text-slate-400 mb-1">
+                  <span>Accuracy</span>
+                  <span>{winRateStats.winRate}%</span>
+                </div>
+                <div className="w-full bg-slate-700 rounded-full h-2">
+                  <div
+                    className="bg-gradient-to-r from-cyan-500 to-cyan-400 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${winRateStats.winRate}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {loading ? (
               <p className="text-slate-500">Scanning Markets...</p>
@@ -80,7 +126,18 @@ export default function TheOracle() {
                 <div key={`${pick?.ticker || idx}-${idx}`} className="bg-slate-900 border border-slate-800 p-6 rounded-xl">
                   <div className="flex justify-between items-start mb-4">
                     <TickerInfo ticker={pick?.ticker || '??'} isCrypto={activeTab === 'crypto'} />
-                    <span className="text-xs font-bold text-cyan-500">{pick?.confidenceScore || 0}% Conf.</span>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-xs font-bold text-cyan-500">{pick?.confidenceScore || 0}% Conf.</span>
+                      {pick?.outcome && (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                          pick.outcome === 'WIN'
+                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                            : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                        }`}>
+                          {pick.outcome === 'WIN' ? '✓ Verified' : '✗ Missed'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="space-y-2 text-sm text-slate-400">
                     <div className="flex justify-between">
