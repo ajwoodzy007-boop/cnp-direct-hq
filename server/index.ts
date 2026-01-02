@@ -13,20 +13,35 @@ app.use(express.urlencoded({ extended: false }));
 // 1. TRUST PROXY (Crucial for Railway/HTTPS)
 app.set("trust proxy", 1);
 
-// ⚡ CORS: Allow Railway domains and localhost for development
-const corsOptions = {
-  origin: function (origin: any, callback: any) {
+// ⚡ CORS: Allow production domains and Railway subdomains
+const allowedOrigins = [
+  'https://www.cnpdirect.com',
+  'https://cnpdirect.com',
+  'http://localhost:5000',
+  'http://localhost:3000',
+  /\.railway\.app$/
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
-    if (origin.includes('localhost')) return callback(null, true);
-    if (origin.includes('railway.app')) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
+
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (allowed instanceof RegExp) return allowed.test(origin);
+      return allowed === origin || origin.includes('localhost');
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-};
-
-app.use(cors(corsOptions));
+}));
 
 (async () => {
   try {
