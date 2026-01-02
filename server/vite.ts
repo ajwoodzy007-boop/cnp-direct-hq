@@ -52,7 +52,16 @@ export function serveStatic(app: Express) {
     throw new Error(`Static assets not found at: ${rootDistPath}. Ensure the build step completed successfully.`);
   }
 
+  // Serve static assets
   app.use(express.static(rootDistPath));
+
+  // Log static file requests
+  app.use('/assets', (req, res, next) => {
+    console.log(`Asset request: ${req.path}`);
+    next();
+  });
+
+  // Serve index.html for all other routes (SPA fallback)
   app.get("*", (req, res) => {
     console.log(`Serving frontend for route: ${req.path}`);
     res.sendFile(path.resolve(rootDistPath, "index.html"));
