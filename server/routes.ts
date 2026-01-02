@@ -26,9 +26,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // 1.4. GLOBAL ROUTE LOGGING
   app.use((req, res, next) => {
     console.log('--- ROUTE HIT: ' + req.path + ' ---');
-    if (req.path.startsWith('/api/market') || req.path.startsWith('/api/top10')) {
-      console.log('*** MARKET/TOP10 ROUTE HIT ***');
-    }
     next();
   });
 

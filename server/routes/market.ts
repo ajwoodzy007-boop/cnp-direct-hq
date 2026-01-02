@@ -5,7 +5,6 @@ const router = express.Router();
 
 // GET /api/market/sentinel - Market scanner endpoint
 router.get('/sentinel', async (req, res) => {
-  console.log('*** MARKET SENTINEL ROUTE CALLED ***');
   try {
     const rawData = await runMarketScan().catch(() => []);
     const marketArray = Array.isArray(rawData) ? rawData : Object.values(rawData);
