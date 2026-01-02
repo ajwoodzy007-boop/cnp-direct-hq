@@ -68,10 +68,11 @@ router.get('/vault', async (req, res) => {
   try {
     console.log('[Oracle] Fetching vault (all historical predictions)');
 
-    // Fetch all historical predictions from the archive
+    // Fetch proven-only historical predictions (exclude today's predictions)
     const historicalData = await db
       .select()
       .from(predictionsHistory)
+      .where(sql`${predictionsHistory.created_at} < CURRENT_DATE`)
       .orderBy(desc(predictionsHistory.created_at))
       .limit(1000); // Allow viewing up to 1000 historical predictions
 

@@ -97,7 +97,7 @@ export default function TheOracle() {
                 }}
                 className="px-4 py-2 bg-orange-600 hover:bg-orange-500 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                View Recent Audit
+                Quick Audit
               </button>
             </div>
           </div>

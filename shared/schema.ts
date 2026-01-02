@@ -49,6 +49,16 @@ export const predictionsHistory = pgTable("predictions_history", {
   moved_at: timestamp("moved_at").defaultNow(), // When record was archived
 });
 
+// Portfolios Table (personal watchlists)
+export const portfolios = pgTable("portfolios", {
+  id: serial("id").primaryKey(),
+  user_id: integer("user_id").notNull(), // References users.id
+  ticker_symbol: text("ticker_symbol").notNull(),
+  added_at: timestamp("added_at").defaultNow(),
+}, (t) => ({
+  unq: unique().on(t.user_id, t.ticker_symbol), // Prevent duplicate tickers per user
+}));
+
 // Simulation Results Table (for back-testing historical predictions)
 export const simulationResults = pgTable("simulation_results", {
   id: serial("id").primaryKey(),
@@ -105,6 +115,10 @@ export type PredictionHistory = typeof predictionsHistory.$inferSelect;
 export const insertUserSchema = createInsertSchema(users);
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+export const insertPortfolioSchema = createInsertSchema(portfolios);
+export type Portfolio = typeof portfolios.$inferSelect;
+export type InsertPortfolio = typeof portfolios.$inferInsert;
 
 export const insertPlaybookSectionSchema = createInsertSchema(playbookSections);
 export type PlaybookSection = typeof playbookSections.$inferSelect;
