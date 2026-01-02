@@ -29,9 +29,9 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-2 bg-slate-950 font-sans">
       <div className="flex items-center justify-center p-8">
-        <Card className="w-full max-w-md bg-slate-900 border-slate-800 shadow-2xl">
-          <CardHeader>
-            <CardTitle className="text-2xl font-black text-cyan-500 uppercase tracking-tighter">
+        <Card className="w-full max-w-md bg-slate-950/90 backdrop-blur-xl border-slate-700/50 shadow-2xl shadow-cyan-500/10">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-2xl font-black text-cyan-400 uppercase tracking-tighter text-center">
               Sentinel Access
             </CardTitle>
           </CardHeader>
@@ -79,9 +79,9 @@ export default function AuthPage() {
                     </FormItem>
                   )}
                 />
-                <Button 
-                  type="submit" 
-                  className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black uppercase tracking-widest py-6 mt-4"
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-cyan-600 to-orange-600 hover:from-cyan-500 hover:to-orange-500 text-white font-black uppercase tracking-widest py-6 mt-4 shadow-lg shadow-cyan-500/25"
                   disabled={loginMutation.isPending}
                 >
                   {loginMutation.isPending ? <Loader2 className="animate-spin" /> : "Authorize Entry"}
@@ -100,10 +100,17 @@ export default function AuthPage() {
       
       <div className="hidden lg:flex flex-col justify-center p-12 bg-slate-900/50 border-l border-slate-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl -mr-32 -mt-32" />
-        <h1 className="text-7xl font-black text-slate-100 leading-[0.9] mb-6 relative text-left">
-          QUANTUM<br /><span className="text-cyan-500 italic">INTELLIGENCE.</span>
-        </h1>
-        <p className="text-slate-400 text-lg max-w-sm font-medium leading-relaxed relative border-l-2 border-cyan-900 pl-6 text-left">
+        <div className="relative text-center mb-8">
+          <img
+            src="/assets/cnp-eagle-logo-CwJxS6d6.jpg"
+            alt="CNP Direct Logo"
+            className="h-32 w-auto mx-auto mb-4"
+          />
+          <h2 className="text-2xl font-bold text-slate-100 tracking-wide">
+            Sentinel OS | Proprietary Intelligence Terminal
+          </h2>
+        </div>
+        <p className="text-slate-400 text-lg max-w-sm font-medium leading-relaxed relative border-l-2 border-cyan-900 pl-6 text-left mx-auto">
           System operational. Accessing high-frequency market radar and historical data vaults.
         </p>
       </div>
