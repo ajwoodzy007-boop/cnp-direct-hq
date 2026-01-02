@@ -59,34 +59,15 @@ export function serveStatic(app: Express) {
   console.log('✅ Static directory exists. Contents:', fs.readdirSync(rootDistPath));
 
   // Configure static file serving with proper MIME types and error handling
-  app.use('/assets', (req, res, next) => {
-    console.log(`🔍 Static request: ${req.path}`);
-    const filePath = path.resolve(rootDistPath, 'assets', req.path.replace(/^\/+/, ''));
-    console.log(`📁 Looking for file: ${filePath}`);
-    console.log(`✅ File exists: ${fs.existsSync(filePath)}`);
-    console.log(`📊 File size: ${fs.existsSync(filePath) ? fs.statSync(filePath).size : 'N/A'}`);
-
-    if (fs.existsSync(filePath)) {
-      // Set proper content type
-      if (filePath.endsWith('.js')) {
+  app.use('/assets', express.static(path.resolve(rootDistPath, 'assets'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript');
-      } else if (filePath.endsWith('.css')) {
+      } else if (path.endsWith('.css')) {
         res.setHeader('Content-Type', 'text/css');
       }
-
-      console.log(`📤 Serving file: ${filePath}`);
-      res.sendFile(filePath, (err) => {
-        if (err) {
-          console.error(`❌ Error serving file: ${err.message}`);
-          res.status(500).json({ error: 'Error serving file', details: err.message });
-        } else {
-          console.log(`✅ File served successfully: ${filePath}`);
-        }
-      });
-    } else {
-      console.error(`❌ File not found: ${filePath}`);
-      res.status(404).json({ error: 'File not found', path: req.path });
     }
+  }));
   });
 
   // Serve index.html for all other routes (SPA fallback) - exclude assets
