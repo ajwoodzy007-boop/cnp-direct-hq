@@ -58,8 +58,10 @@ export function serveStatic(app: Express) {
 
   console.log('✅ Static directory exists. Contents:', fs.readdirSync(rootDistPath));
 
-  // Configure static file serving with proper MIME types and error handling
+  // Configure static file serving with proper MIME types and caching headers
   app.use('/assets', express.static(path.resolve(rootDistPath, 'assets'), {
+    immutable: true,
+    maxAge: '1y',
     setHeaders: (res, path) => {
       if (path.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript');
