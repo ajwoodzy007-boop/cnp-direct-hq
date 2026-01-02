@@ -12,6 +12,7 @@ import MemoryStoreConfig from "memorystore";
 const scryptAsync = promisify(scrypt);
 const MemoryStore = MemoryStoreConfig(session);
 
+// --- HELPER FUNCTIONS ---
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
   const buf = (await scryptAsync(password, salt, 64)) as Buffer;
@@ -26,11 +27,11 @@ async function comparePasswords(supplied: string, stored: string) {
     const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
     return timingSafeEqual(hashedBuf, suppliedBuf);
   } catch (err) {
-    console.error("Password Comparison Crash:", err);
     return false;
   }
 }
 
+// --- MAIN AUTH SETUP ---
 export function setupAuth(app: Express) {
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "sentinel-vault-v2-production",
@@ -54,25 +55,12 @@ export function setupAuth(app: Express) {
   passport.use(
     new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
       try {
-        console.log(`🔍 [Auth] Attempting lookup for email: ${email}`);
-        
         const [user] = await db.select().from(users).where(eq(users.email, email));
-        
-        if (!user) {
-          console.log("❌ [Auth] User not found in database.");
+        if (!user || !(await comparePasswords(password, user.passwordHash))) {
           return done(null, false, { message: "Invalid credentials" });
         }
-
-        const isValid = await comparePasswords(password, user.passwordHash);
-        if (!isValid) {
-          console.log("❌ [Auth] Password mismatch.");
-          return done(null, false, { message: "Invalid credentials" });
-        }
-
-        console.log("✅ [Auth] Login successful for:", email);
         return done(null, user);
       } catch (err) {
-        console.error("💥 [Auth] Critical Login Error:", err);
         return done(err);
       }
     }),
@@ -84,61 +72,36 @@ export function setupAuth(app: Express) {
   
   passport.deserializeUser(async (id: any, done) => {
     try {
-      // Convert id from string (serialized) to number (database uses integer)
       const userId = typeof id === 'string' ? parseInt(id, 10) : id;
-      if (isNaN(userId)) {
-        return done(null, null);
-      }
       const [user] = await db.select().from(users).where(eq(users.id, userId));
       done(null, user || null);
     } catch (err) {
-      console.error("DeserializeUser error:", err);
       done(err);
     }
   });
 
+  // --- ROUTES ---
   app.post("/api/register", async (req, res, next) => {
     try {
       const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
-      }
+      const [existingUser] = await db.select().from(users).where(eq(users.email, email));
 
-      // Check if email already exists
-      const [existingUser] = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, email));
+      if (existingUser) return res.status(400).json({ message: "Email already registered" });
 
-      if (existingUser) {
-        return res.status(400).json({ message: "Email already registered" });
-      }
-
-      // Generate hashed password
       const hashedPassword = await hashPassword(password);
-      
-      // ⚡ TEMPORARY: Log the hashed password for database format reference
-      console.log("🔑 [Register] Generated hashedPassword:", hashedPassword);
-      console.log("🔑 [Register] Format: <hex_hash>.<hex_salt>");
-      console.log("🔑 [Register] This is what should be stored in password_hash column");
-
-      // Insert new user into members table
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          email: email,
-          passwordHash: hashedPassword,
-          membershipTier: 'FREE'
-        })
-        .returning();
+      const [newUser] = await db.insert(users).values({
+        email,
+        passwordHash: hashedPassword,
+        membershipTier: 'free',
+        isPremium: false,
+        isAdmin: false
+      }).returning();
 
       req.login(newUser, (err) => {
         if (err) return next(err);
         res.status(201).json(newUser);
       });
     } catch (err) {
-      console.error("Register error:", err);
       next(err);
     }
   });
