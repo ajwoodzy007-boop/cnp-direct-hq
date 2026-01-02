@@ -204,7 +204,7 @@ async function getHistoricalLearning(ticker: string): Promise<string> {
       .limit(5);
 
     // Get simulation results for bias adjustments
-    const simulationResults = await db
+    const simResults = await db
       .select()
       .from(simulationResults)
       .where(eq(simulationResults.symbol, ticker))
@@ -243,16 +243,16 @@ async function getHistoricalLearning(ticker: string): Promise<string> {
     }
 
     // Add simulation-based bias adjustments if available
-    if (simulationResults.length > 0) {
-      const simWins = simulationResults.filter(r => r.outcome === 'WIN').length;
-      const simTotal = simulationResults.length;
+    if (simResults.length > 0) {
+      const simWins = simResults.filter(r => r.outcome === 'WIN').length;
+      const simTotal = simResults.length;
       const simWinRate = simTotal > 0 ? Math.round((simWins / simTotal) * 100) : 0;
 
-      const highRsiFailures = simulationResults.filter(r =>
+      const highRsiFailures = simResults.filter(r =>
         r.outcome === 'LOSS' && parseFloat(r.rsi_at_prediction) > 70
       ).length;
 
-      const lowRvolFailures = simulationResults.filter(r =>
+      const lowRvolFailures = simResults.filter(r =>
         r.outcome === 'LOSS' && parseFloat(r.rvol_at_prediction) < 0.8
       ).length;
 
@@ -305,6 +305,12 @@ Historical Performance Review: ${learningData}
 
 Current Technicals: Price $${marketData.currentPrice}, RSI ${marketData.rsi}, RVol ${marketData.rvol}
 
+CRITICAL TARGET SETTING GUIDELINES:
+- If RVol > 1.2 OR price shows strong momentum: Apply MOMENTUM MULTIPLIER
+- Extend targets to capture at least 60% of the stock's Average True Range (ATR)
+- Do NOT anchor targets solely to recent averages - high momentum stocks deserve aggressive targets
+- For high-flyers (TSLA, NVDA, AMZN): Scale targets UPWARD by 1.5-2x normal range
+
 Step 1: Historical Review (Learning):
 Analyze the historical performance data provided above. Identify patterns where previous predictions were LOSS. Adjust your current logic to avoid repeating those specific biases.
 
@@ -319,7 +325,7 @@ Output Format (Pure JSON):
   "prediction": "Reasoning incorporating both technicals and lessons learned from past accuracy.",
   "target_price": "0.00",
   "confidence": 0-100,
-  "learning_note": "A brief internal note on how this prediction was adjusted based on past performance."
+  "learning_note": "A brief internal note on how this prediction was adjusted based on past performance and momentum scaling."
 }`;
 
     const response = await openai.chat.completions.create({
@@ -399,22 +405,36 @@ async function savePredictionToDatabase(
   try {
     console.log(`💾 Saving prediction for ${ticker} to database...`);
 
+    // Generate strategy note for learning metadata
+    let strategyNote = "Standard technical analysis applied.";
+    const priceChange = ((aiPrediction.targetPrice - marketData.currentPrice) / marketData.currentPrice) * 100;
+
+    if (marketData.rvol > 1.2) {
+      strategyNote = `Target adjusted upward by ${priceChange.toFixed(1)}% to account for high momentum (RVol: ${marketData.rvol}). Momentum multiplier applied.`;
+    } else if (priceChange > 5) {
+      strategyNote = `Target extended by ${priceChange.toFixed(1)}% to capture strong upside potential based on technical momentum.`;
+    } else if (priceChange < -3) {
+      strategyNote = `Conservative target set at ${priceChange.toFixed(1)}% below current price due to technical weakness.`;
+    }
+
     // Get simulation insights for learning metadata
-    let learningMetadata = null;
+    let learningMetadata = {
+      strategy_note: strategyNote,
+      target_adjustment_percentage: priceChange.toFixed(2),
+      momentum_indicators: {
+        rsi: marketData.rsi,
+        rvol: marketData.rvol,
+        price: marketData.currentPrice
+      },
+      generated_at: new Date().toISOString()
+    };
+
     if (learningData && learningData.includes('SIMULATION INSIGHTS')) {
-      // Extract simulation insights from the learning data
+      // Add simulation insights if available
       const simulationMatch = learningData.match(/SIMULATION INSIGHTS: (.+)/);
       if (simulationMatch) {
-        learningMetadata = {
-          historical_context: learningData,
-          simulation_insights: simulationMatch[1],
-          generated_at: new Date().toISOString(),
-          market_conditions: {
-            rsi: marketData.rsi,
-            rvol: marketData.rvol,
-            price: marketData.currentPrice
-          }
-        };
+        learningMetadata.simulation_insights = simulationMatch[1];
+        learningMetadata.historical_context = learningData;
       }
     }
 
@@ -427,7 +447,7 @@ async function savePredictionToDatabase(
       learning_metadata: learningMetadata
     });
 
-    console.log(`✅ Saved prediction for ${ticker} with learning metadata`);
+    console.log(`✅ Saved prediction for ${ticker} with strategy note: ${strategyNote}`);
   } catch (error) {
     console.error(`❌ Error saving prediction for ${ticker}:`, error);
   }
@@ -479,6 +499,21 @@ async function populateOracle(): Promise<void> {
         if (aiPrediction.learningNote) {
           console.log(`📝 Learning: ${aiPrediction.learningNote}`);
         }
+
+        // Step 2.5: Quality Validation Filter (Institutional Standards)
+        if (!aiPrediction.targetPrice || aiPrediction.targetPrice <= 0) {
+          console.log(`🚫 DISCARDED ${ticker}: Invalid target price ($${aiPrediction.targetPrice})`);
+          errorCount++;
+          continue;
+        }
+
+        if (aiPrediction.confidence < 70) {
+          console.log(`🚫 DISCARDED ${ticker}: Confidence too low (${aiPrediction.confidence}%) - institutional minimum is 70%`);
+          errorCount++;
+          continue;
+        }
+
+        console.log(`✅ PASSED VALIDATION ${ticker}: Target=$${aiPrediction.targetPrice}, Confidence=${aiPrediction.confidence}%`);
 
         // Step 3: Save to database
         const learningData = await getHistoricalLearning(ticker);
