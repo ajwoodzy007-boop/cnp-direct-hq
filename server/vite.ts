@@ -59,31 +59,20 @@ export function serveStatic(app: Express) {
   console.log('✅ Static directory exists. Contents:', fs.readdirSync(rootDistPath));
 
   // Configure static file serving with proper MIME types and error handling
-  app.use('/assets', (req, res, next) => {
-    console.log(`Static middleware hit: ${req.path}`);
-    const filePath = path.resolve(rootDistPath, 'assets', req.path.replace(/^\/+/, ''));
-    console.log(`Looking for file: ${filePath}, exists: ${fs.existsSync(filePath)}`);
-
-    if (fs.existsSync(filePath)) {
-      // Set proper content type
-      if (filePath.endsWith('.js')) {
+  app.use('/assets', express.static(path.resolve(rootDistPath, 'assets'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript');
-      } else if (filePath.endsWith('.css')) {
+      } else if (path.endsWith('.css')) {
         res.setHeader('Content-Type', 'text/css');
       }
-      console.log(`Serving static file: ${filePath}`);
-      res.sendFile(filePath);
-    } else {
-      console.log(`File not found: ${filePath}`);
-      res.status(404).send('File not found');
     }
-  });
+  }));
 
   // Serve index.html for all other routes (SPA fallback) - exclude assets
   app.get("*", (req, res) => {
-    // Don't serve HTML for asset requests - let static middleware handle them
+    // Don't serve HTML for asset requests
     if (req.path.startsWith('/assets/')) {
-      console.log(`Asset request intercepted by catch-all: ${req.path} - this should not happen!`);
       return res.status(404).send('Asset not found');
     }
 

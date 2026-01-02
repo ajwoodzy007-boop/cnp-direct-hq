@@ -14,12 +14,7 @@ import { isAdmin } from "./lib/permissions";
 function Router() {
   const { user, isLoading } = useAuth();
 
-  console.log("🔄 Router rendering - user:", user, "isLoading:", isLoading);
-
-  if (isLoading) {
-    console.log("⏳ Showing loading screen...");
-    return <div className="flex items-center justify-center min-h-screen font-mono">LOADING_SENTINEL_OS...</div>;
-  }
+  if (isLoading) return <div className="flex items-center justify-center min-h-screen font-mono">LOADING_SENTINEL_OS...</div>;
 
   return (
     <Switch>
@@ -50,8 +45,6 @@ function Router() {
 }
 
 export default function App() {
-  console.log("🎯 App component rendering...");
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
