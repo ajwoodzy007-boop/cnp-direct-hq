@@ -58,39 +58,20 @@ export function serveStatic(app: Express) {
 
   console.log('✅ Static directory exists. Contents:', fs.readdirSync(rootDistPath));
 
-  // Configure static file serving with proper MIME types and caching headers
-  app.use('/assets', express.static(path.resolve(rootDistPath, 'assets'), {
-    immutable: true,
-    maxAge: '1y',
-    setHeaders: (res, path) => {
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript');
-      } else if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css');
-      }
+  const publicPath = path.resolve(process.cwd(), 'dist', 'public');
+  // 1. Serve assets folder directly with NO extra middleware
+  app.use('/assets', express.static(path.join(publicPath, 'assets'), {
+    fallthrough: false, // This triggers an error if the file isn't found instead of a white screen
+    setHeaders: (res) => {
+      res.set('Cache-Control', 'public, max-age=31536000, immutable');
     }
   }));
 
-  // Serve index.html for all other routes (SPA fallback) - exclude assets
-  app.get("*", (req, res) => {
-    // Don't serve HTML for asset requests
-    if (req.path.startsWith('/assets/')) {
-      return res.status(404).send('Asset not found');
-    }
+  // 2. Serve other static root files (favicons, etc)
+  app.use(express.static(publicPath));
 
-    console.log(`Serving frontend for route: ${req.path}`);
-    const indexPath = path.resolve(rootDistPath, "index.html");
-
-    if (!fs.existsSync(indexPath)) {
-      console.error(`❌ index.html not found at: ${indexPath}`);
-      return res.status(500).send('Frontend not built properly');
-    }
-
-    res.sendFile(indexPath, (err) => {
-      if (err) {
-        console.error(`❌ Error serving index.html:`, err);
-        res.status(500).send('Error loading frontend');
-      }
-    });
+  // 3. The Catch-all for SPA (placed at the VERY end)
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
   });
 }
