@@ -13,11 +13,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-const DOMAIN = process.env.REPLIT_DEV_DOMAIN 
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-  : process.env.REPLIT_DOMAINS 
-    ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}` 
-    : 'http://localhost:5000';
+const DOMAIN = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : process.env.REPLIT_DEV_DOMAIN
+    ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+    : process.env.REPLIT_DOMAINS
+      ? `https://${process.env.REPLIT_DOMAINS.split(',')[0]}`
+      : 'http://localhost:5000';
 
 router.post('/create-checkout-session', async (req, res) => {
   const { priceId } = req.body;

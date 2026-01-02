@@ -45,10 +45,8 @@ export const getQueryFn: <T>(options: {
       if (queryKey.length > 1) {
         url += '/' + queryKey.slice(1).join('/');
       }
-      // Use absolute URL in development to bypass Vite proxy issues
-      if (import.meta.env.DEV) {
-        url = `http://localhost:5000${url}`;
-      }
+      // Use relative paths in production, absolute in development
+      // No localhost prefix needed - browser handles relative paths correctly
     } else {
       // Array parts like ['api', 'chart', 'SPY'] or ['chart', 'SPY'] or ['chart-data', 'SPY']
       // Special handling for chart queries - redirect to correct endpoint
@@ -71,16 +69,16 @@ export const getQueryFn: <T>(options: {
         
         if (ticker) {
           // Use the correct chart endpoint format
-          url = `http://localhost:5000/api/market/chart/${ticker.toUpperCase()}`;
+          url = `/api/market/chart/${ticker.toUpperCase()}`;
         } else {
           // Fallback to joined path
           const relativePath = '/' + queryKey.join("/");
-          url = import.meta.env.DEV ? `http://localhost:5000${relativePath}` : relativePath;
+          url = relativePath;
         }
       } else {
-        // For non-chart queries, use absolute URL in dev
+        // Use relative paths - browser handles correctly in both dev and prod
         const relativePath = '/' + queryKey.join("/");
-        url = import.meta.env.DEV ? `http://localhost:5000${relativePath}` : relativePath;
+        url = relativePath;
       }
     }
     

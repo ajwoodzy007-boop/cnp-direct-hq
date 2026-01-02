@@ -166,8 +166,8 @@ async function fetchMarketScan(): Promise<MarketScanResponse> {
 }
 
 async function fetchChartData(ticker: string, period: string = "3m"): Promise<ChartDataPoint[]> {
-  // ⚡ ABSOLUTE URL: Bypass Vite proxy and talk directly to backend
-  const res = await fetch(`http://localhost:5000/api/market/chart/${ticker.toUpperCase()}`);
+  // Use relative path - browser handles correctly in both dev and prod
+  const res = await fetch(`/api/market/chart/${ticker.toUpperCase()}`);
   const json = await res.json();
   if (!json.success) throw new Error(json.error);
   return json.data;

@@ -27,7 +27,7 @@ export default function AdminPredictions() {
   const { data, isLoading, error } = useQuery<PredictionsResponse>({
     queryKey: ["/api/predictions"],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/predictions', {
+      const res = await fetch('/api/predictions', {
         credentials: 'include',
       });
       if (!res.ok) throw new Error(`Status: ${res.status}`);

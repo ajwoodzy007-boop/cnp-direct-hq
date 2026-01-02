@@ -24,7 +24,7 @@ export default function AdminUsers() {
   const { data: stats, isLoading, error } = useQuery<Stats>({
     queryKey: ["/api/admin/stats"],
     queryFn: async () => {
-      const res = await fetch('http://localhost:5000/api/admin/stats', {
+      const res = await fetch('/api/admin/stats', {
         credentials: 'include',
       });
       if (!res.ok) throw new Error(`Status: ${res.status}`);
