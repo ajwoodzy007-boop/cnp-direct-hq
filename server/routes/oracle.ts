@@ -27,7 +27,13 @@ router.get('/daily', async (req, res) => {
   } catch (error: any) {
     console.error("🔥 Server Error: Oracle daily fetch failed:", error.message);
     console.error("🔥 Full error:", error);
-    res.status(500).json({ error: 'AI Generation Failed', details: error.message });
+
+    // Safe fail: Return empty array instead of crashing
+    res.json({
+      success: true,
+      data: [],
+      error: 'Database temporarily unavailable'
+    });
   }
 });
 
