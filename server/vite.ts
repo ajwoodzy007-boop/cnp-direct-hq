@@ -45,25 +45,66 @@ export async function setupVite(app: Express, server: Server) {
 }
 
 export function serveStatic(app: Express) {
-  const rootDistPath = path.resolve(__dirname, "..", "dist", "public");
+  // Use absolute path from current working directory (Railway compatible)
+  const rootDistPath = path.resolve(process.cwd(), 'dist', 'public');
   console.log('Serving static files from:', rootDistPath);
+  console.log('Current working directory:', process.cwd());
 
   if (!fs.existsSync(rootDistPath)) {
+    console.error(`❌ Static assets not found at: ${rootDistPath}`);
+    console.error('Files in dist directory:', fs.existsSync(path.resolve(process.cwd(), 'dist')) ? fs.readdirSync(path.resolve(process.cwd(), 'dist')) : 'dist directory not found');
     throw new Error(`Static assets not found at: ${rootDistPath}. Ensure the build step completed successfully.`);
   }
 
-  // Serve static assets
-  app.use(express.static(rootDistPath));
+  console.log('✅ Static directory exists. Contents:', fs.readdirSync(rootDistPath));
 
-  // Log static file requests
+  // Configure static file serving with proper MIME types
+  app.use('/assets', express.static(path.resolve(rootDistPath, 'assets'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (path.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css');
+      }
+    }
+  }));
+
+  // Enhanced logging for asset requests
   app.use('/assets', (req, res, next) => {
+    const fullAssetPath = path.resolve(rootDistPath, req.path);
     console.log(`Asset request: ${req.path}`);
+    console.log(`Attempting to serve asset from: ${fullAssetPath}`);
+    console.log(`Asset exists: ${fs.existsSync(fullAssetPath)}`);
+
+    // Override the response to add error handling
+    const originalSend = res.send;
+    res.send = function(data) {
+      if (res.statusCode >= 400) {
+        console.error(`❌ Asset serving failed for ${req.path}: Status ${res.statusCode}`);
+      } else {
+        console.log(`✅ Asset served successfully: ${req.path}`);
+      }
+      return originalSend.call(this, data);
+    };
+
     next();
   });
 
   // Serve index.html for all other routes (SPA fallback)
   app.get("*", (req, res) => {
     console.log(`Serving frontend for route: ${req.path}`);
-    res.sendFile(path.resolve(rootDistPath, "index.html"));
+    const indexPath = path.resolve(rootDistPath, "index.html");
+
+    if (!fs.existsSync(indexPath)) {
+      console.error(`❌ index.html not found at: ${indexPath}`);
+      return res.status(500).send('Frontend not built properly');
+    }
+
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error(`❌ Error serving index.html:`, err);
+        res.status(500).send('Error loading frontend');
+      }
+    });
   });
 }
