@@ -3,6 +3,7 @@
   "version": "1.0.1",
   "type": "module",
   "scripts": {
+    "prestart": "chmod +x start.sh",
     "start": "tsx server/index.ts",
     "build": "tsx script/build.ts",
     "oracle:judge": "tsx scripts/checkAccuracy.ts",
