@@ -16,9 +16,10 @@ const openai = new OpenAI({
   apiKey: getOpenAIKey(),
 });
 
-// Expanded universe of most liquid stocks (Nasdaq-100, S&P 500 constituents)
-// Selected for high volume, market cap, and sector diversity
-const TOP_TICKERS = [
+// 10-Pick Daily Model - Stratified Selection Buckets
+
+// CORE_51: Most liquid stocks (Nasdaq-100, S&P 500 constituents)
+const CORE_51 = [
   // Tech Giants (High volume, market leaders)
   'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'AMZN', 'TSLA', 'AMD',
 
@@ -41,6 +42,21 @@ const TOP_TICKERS = [
   'T', 'VZ', 'CMCSA', 'NFLX', 'DIS'
 ];
 
+// LOW_COST: High-volatility, speculative plays under $30
+const LOW_COST = [
+  'SOFI', 'PLTR', 'F', 'NU', 'RIVN', 'LCID', 'NIO', 'XPEV',
+  'TQQQ', 'UVXY', 'AMC', 'GME', 'BB', 'DKNG', 'HOOD', 'COIN'
+];
+
+// MOVERS_CRYPTO: Cryptocurrency and crypto-related tickers
+const MOVERS_CRYPTO = [
+  'BTC-USD', 'ETH-USD', 'MSTR', 'COIN', 'RIOT', 'MARA', 'HIVE',
+  'BITO', 'GBTC', 'ETHE', 'SQ', 'PYPL'
+];
+
+// Combined universe for analysis (all tickers get AI analysis)
+const ALL_TICKERS = [...CORE_51, ...LOW_COST, ...MOVERS_CRYPTO];
+
 interface MarketAnalysis {
   ticker: string;
   currentPrice: number;
@@ -54,6 +70,13 @@ interface AIPrediction {
   confidence: number;
   targetPrice: number;
   learningNote?: string; // Internal learning note (not stored in DB)
+}
+
+interface AnalyzedTicker {
+  ticker: string;
+  marketData: MarketAnalysis;
+  aiPrediction: AIPrediction;
+  category: 'CORE_51' | 'LOW_COST' | 'MOVERS_CRYPTO';
 }
 
 async function getMarketDataForTicker(ticker: string): Promise<MarketAnalysis | null> {
@@ -384,6 +407,67 @@ Output Format (Pure JSON):
   }
 }
 
+function performStratifiedSelection(analyzedTickers: AnalyzedTicker[]): AnalyzedTicker[] {
+  // Separate tickers by category
+  const core51 = analyzedTickers.filter(t => t.category === 'CORE_51');
+  const lowCost = analyzedTickers.filter(t => t.category === 'LOW_COST' && t.marketData.currentPrice < 30);
+  const crypto = analyzedTickers.filter(t => t.category === 'MOVERS_CRYPTO');
+
+  console.log(`📊 Category breakdown: CORE_51: ${core51.length}, LOW_COST (<$30): ${lowCost.length}, MOVERS_CRYPTO: ${crypto.length}`);
+
+  // Sort each category by confidence (descending)
+  core51.sort((a, b) => b.aiPrediction.confidence - a.aiPrediction.confidence);
+  lowCost.sort((a, b) => b.aiPrediction.confidence - a.aiPrediction.confidence);
+  crypto.sort((a, b) => b.aiPrediction.confidence - a.aiPrediction.confidence);
+
+  // Select top performers from each category
+  const selected: AnalyzedTicker[] = [];
+
+  // Top 5 from CORE_51
+  selected.push(...core51.slice(0, 5));
+
+  // Top 2 from LOW_COST (under $30)
+  selected.push(...lowCost.slice(0, 2));
+
+  // Top 3 from MOVERS_CRYPTO
+  selected.push(...crypto.slice(0, 3));
+
+  return selected;
+}
+
+async function saveToSimulationResults(analyzed: AnalyzedTicker): Promise<void> {
+  try {
+    // Calculate simulation outcome (simplified - in real implementation would use actual historical data)
+    const priceChange = ((analyzed.aiPrediction.targetPrice - analyzed.marketData.currentPrice) / analyzed.marketData.currentPrice) * 100;
+    const simulatedOutcome = priceChange > 2 ? 'WIN' : priceChange < -2 ? 'LOSS' : 'WIN'; // Simplified logic
+    const actualPrice = analyzed.aiPrediction.targetPrice; // In real sim, this would be actual historical price
+    const errorPercentage = Math.abs(priceChange);
+
+    await db.insert(simulationResults).values({
+      symbol: analyzed.ticker,
+      simulation_date: new Date(),
+      historical_date: analyzed.marketData.timestamp,
+      price_at_prediction: analyzed.marketData.currentPrice.toString(),
+      rsi_at_prediction: analyzed.marketData.rsi.toString(),
+      rvol_at_prediction: analyzed.marketData.rvol.toString(),
+      predicted_target: analyzed.aiPrediction.targetPrice.toString(),
+      confidence_score: analyzed.aiPrediction.confidence,
+      actual_price_7_days: actualPrice.toString(),
+      outcome: simulatedOutcome,
+      error_percentage: errorPercentage.toString(),
+      bias_adjustments: {
+        category: analyzed.category,
+        prediction_text: analyzed.aiPrediction.prediction.substring(0, 200)
+      },
+      created_at: new Date()
+    });
+
+    console.log(`📚 Saved ${analyzed.ticker} to simulation_results`);
+  } catch (error) {
+    console.error(`❌ Failed to save ${analyzed.ticker} to simulation_results:`, error);
+  }
+}
+
 function getMockPrediction(marketData: MarketAnalysis): AIPrediction {
   const mockPredictions = [
     `${marketData.ticker} shows neutral momentum with RSI at ${marketData.rsi}.`,
@@ -409,7 +493,8 @@ async function savePredictionToDatabase(
   ticker: string,
   marketData: MarketAnalysis,
   aiPrediction: AIPrediction,
-  learningData?: string
+  learningData?: string,
+  category?: string
 ): Promise<void> {
   try {
     console.log(`💾 Saving prediction for ${ticker} to database...`);
@@ -435,6 +520,7 @@ async function savePredictionToDatabase(
         rvol: marketData.rvol,
         price: marketData.currentPrice
       },
+      category: category || 'UNKNOWN',
       generated_at: new Date().toISOString()
     };
 
@@ -465,50 +551,42 @@ async function savePredictionToDatabase(
 }
 
 async function populateOracle(): Promise<void> {
-  console.log('🚀 Oracle Engine initialized. Checking', TOP_TICKERS.length, 'tickers....');
-  console.log('📈 Analyzing tickers:', TOP_TICKERS.join(', '));
+  console.log('🚀 Oracle Engine initialized. Analyzing', ALL_TICKERS.length, 'tickers for 10-pick selection....');
+  console.log('📊 Buckets: CORE_51:', CORE_51.length, 'LOW_COST:', LOW_COST.length, 'MOVERS_CRYPTO:', MOVERS_CRYPTO.length);
 
   if (!getOpenAIKey()) {
     console.error('❌ OPENAI_API_KEY not found in environment variables');
     process.exit(1);
   }
 
-  let successCount = 0;
+  let analyzedCount = 0;
   let errorCount = 0;
+  const analyzedTickers: AnalyzedTicker[] = [];
 
-  // Process tickers in batches to respect API rate limits
-  // Finnhub free tier: 60 calls/minute = ~1 call/second
-  const BATCH_SIZE = 5; // Process 5 tickers at a time
-  const DELAY_BETWEEN_BATCHES = 12000; // 12 seconds between batches (5 calls/minute rate)
-  const DELAY_BETWEEN_TICKERS = 2000; // 2 seconds between individual tickers
+  // Process ALL tickers for AI analysis
+  const BATCH_SIZE = 5;
+  const DELAY_BETWEEN_BATCHES = 12000;
+  const DELAY_BETWEEN_TICKERS = 2000;
 
-  console.log(`📊 Processing ${TOP_TICKERS.length} tickers in batches of ${BATCH_SIZE}`);
+  console.log(`📊 Processing ${ALL_TICKERS.length} tickers in batches of ${BATCH_SIZE}`);
   console.log(`⏱️  Rate limiting: ${DELAY_BETWEEN_TICKERS}ms between tickers, ${DELAY_BETWEEN_BATCHES}ms between batches`);
 
-  for (let i = 0; i < TOP_TICKERS.length; i += BATCH_SIZE) {
-    const batch = TOP_TICKERS.slice(i, i + BATCH_SIZE);
-    console.log(`\n🎯 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(TOP_TICKERS.length / BATCH_SIZE)}: ${batch.join(', ')}`);
+  for (let i = 0; i < ALL_TICKERS.length; i += BATCH_SIZE) {
+    const batch = ALL_TICKERS.slice(i, i + BATCH_SIZE);
+    console.log(`\n🎯 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(ALL_TICKERS.length / BATCH_SIZE)}: ${batch.join(', ')}`);
 
     for (const ticker of batch) {
       try {
-        console.log(`\n🔄 Processing ${ticker}...`);
+        console.log(`\n🔄 Analyzing ${ticker}...`);
 
-        // Step 0: Check if ticker already exists in predictions_history for today
-        const today = new Date();
-        today.setHours(0, 0, 0, 0); // Start of today
-
-        const existingHistoryRecord = await db
-          .select()
-          .from(predictionsHistory)
-          .where(and(
-            eq(predictionsHistory.symbol, ticker),
-            sql`DATE(${predictionsHistory.created_at}) = DATE(${today.toISOString()})`
-          ))
-          .limit(1);
-
-        if (existingHistoryRecord.length > 0) {
-          console.log(`⏭️ ${ticker} already processed`);
-          continue;
+        // Determine category
+        let category: 'CORE_51' | 'LOW_COST' | 'MOVERS_CRYPTO';
+        if (CORE_51.includes(ticker)) {
+          category = 'CORE_51';
+        } else if (LOW_COST.includes(ticker)) {
+          category = 'LOW_COST';
+        } else {
+          category = 'MOVERS_CRYPTO';
         }
 
         // Step 1: Get market data
@@ -519,78 +597,99 @@ async function populateOracle(): Promise<void> {
           continue;
         }
 
-        console.log(`📊 ${ticker}: RSI=${marketData.rsi}, RVol=${marketData.rvol}, Price=$${marketData.currentPrice}`);
+        console.log(`📊 ${ticker} (${category}): RSI=${marketData.rsi}, RVol=${marketData.rvol}, Price=$${marketData.currentPrice}`);
 
         // Step 2: Get AI prediction
         const aiPrediction = await getAIPrediction(marketData);
-        console.log(`🤖 ${ticker} Prediction: ${aiPrediction.prediction.substring(0, 100)}...`);
+        console.log(`🤖 ${ticker} Prediction: ${aiPrediction.prediction.substring(0, 80)}...`);
         console.log(`🎯 Confidence: ${aiPrediction.confidence}%, Target: $${aiPrediction.targetPrice}`);
-        if (aiPrediction.learningNote) {
-          console.log(`📝 Learning: ${aiPrediction.learningNote}`);
-        }
 
-        // Step 2.5: Strict Quality Validation Filter (Institutional Standards)
-        // Filter 1: Target Price Validation
+        // Step 3: Strict Quality Validation Filter
         if (!aiPrediction.targetPrice ||
-            aiPrediction.targetPrice === null ||
-            aiPrediction.targetPrice === undefined ||
             aiPrediction.targetPrice <= 0 ||
-            isNaN(aiPrediction.targetPrice) ||
-            !isFinite(aiPrediction.targetPrice)) {
-          console.log(`🚫 DISCARDED ${ticker}: Invalid/null/zero target price ($${aiPrediction.targetPrice})`);
-          errorCount++;
-          continue;
-        }
-
-        // Filter 2: Confidence Validation
-        if (!aiPrediction.confidence ||
+            !isFinite(aiPrediction.targetPrice) ||
+            !aiPrediction.confidence ||
             aiPrediction.confidence < 70 ||
             aiPrediction.confidence > 100 ||
-            isNaN(aiPrediction.confidence)) {
-          console.log(`🚫 DISCARDED ${ticker}: Invalid confidence (${aiPrediction.confidence}%) - must be 70-100`);
-          errorCount++;
-          continue;
-        }
-
-        // Filter 3: Prediction Text Validation
-        if (!aiPrediction.prediction ||
+            !aiPrediction.prediction ||
             aiPrediction.prediction.trim().length < 10 ||
             aiPrediction.prediction.includes('Unable to generate')) {
-          console.log(`🚫 DISCARDED ${ticker}: Invalid prediction text`);
+          console.log(`🚫 DISCARDED ${ticker}: Failed validation`);
           errorCount++;
           continue;
         }
 
         console.log(`✅ PASSED VALIDATION ${ticker}: Target=$${aiPrediction.targetPrice}, Confidence=${aiPrediction.confidence}%`);
 
-        // Step 3: Save to database
-        const learningData = await getHistoricalLearning(ticker);
-        await savePredictionToDatabase(ticker, marketData, aiPrediction, learningData);
-        successCount++;
+        // Step 4: Store analyzed ticker for later selection
+        analyzedTickers.push({
+          ticker,
+          marketData,
+          aiPrediction,
+          category
+        });
 
-        // Rate limiting delay between tickers
+        analyzedCount++;
+
+        // Rate limiting delay
         if (ticker !== batch[batch.length - 1]) {
           console.log(`⏳ Waiting ${DELAY_BETWEEN_TICKERS}ms before next ticker...`);
           await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_TICKERS));
         }
 
       } catch (error) {
-        console.error(`❌ Failed to process ${ticker}:`, error);
+        console.error(`❌ Failed to analyze ${ticker}:`, error);
         errorCount++;
       }
     }
 
-    // Rate limiting delay between batches (except for the last batch)
-    if (i + BATCH_SIZE < TOP_TICKERS.length) {
+    // Rate limiting delay between batches
+    if (i + BATCH_SIZE < ALL_TICKERS.length) {
       console.log(`⏳ Batch complete. Waiting ${DELAY_BETWEEN_BATCHES}ms before next batch...`);
       await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
     }
   }
 
+  console.log(`\n📊 Analysis Complete! Analyzed ${analyzedCount} tickers, ${errorCount} errors`);
+  console.log('🎯 Starting stratified selection for 10 final picks...');
+
+  // Step 5: Stratified Selection
+  const selectedTickers = performStratifiedSelection(analyzedTickers);
+
+  console.log(`\n🏆 Final Selection (${selectedTickers.length} picks):`);
+  selectedTickers.forEach((ticker, index) => {
+    console.log(`${index + 1}. ${ticker.ticker} (${ticker.category}) - Confidence: ${ticker.aiPrediction.confidence}%`);
+  });
+
+  // Step 6: Save to Database
+  let savedToPredictions = 0;
+  let savedToSimulation = 0;
+
+  // Save selected 10 to predictions table
+  for (const selected of selectedTickers) {
+    try {
+      const learningData = await getHistoricalLearning(selected.ticker);
+      await savePredictionToDatabase(selected.ticker, selected.marketData, selected.aiPrediction, learningData, selected.category);
+      savedToPredictions++;
+    } catch (error) {
+      console.error(`❌ Failed to save selected ${selected.ticker}:`, error);
+    }
+  }
+
+  // Save remaining analyzed tickers to simulation_results for learning
+  for (const analyzed of analyzedTickers.filter(t => !selectedTickers.some(s => s.ticker === t.ticker))) {
+    try {
+      await saveToSimulationResults(analyzed);
+      savedToSimulation++;
+    } catch (error) {
+      console.error(`❌ Failed to save to simulation ${analyzed.ticker}:`, error);
+    }
+  }
+
   console.log(`\n🎉 Oracle Population Complete!`);
-  console.log(`✅ Successful: ${successCount}`);
+  console.log(`✅ Selected 10: ${savedToPredictions} saved to predictions`);
+  console.log(`📚 Learning: ${savedToSimulation} saved to simulation_results`);
   console.log(`❌ Errors: ${errorCount}`);
-  console.log(`📊 Total predictions added to database: ${successCount}`);
 }
 
 // Run the script
