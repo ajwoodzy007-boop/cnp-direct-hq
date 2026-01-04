@@ -6,6 +6,7 @@ import {
   BoltIcon,
   CalendarIcon,
   ChevronRightIcon,
+  ClockIcon,
   CpuChipIcon,
   ExclamationTriangleIcon,
   FireIcon,
