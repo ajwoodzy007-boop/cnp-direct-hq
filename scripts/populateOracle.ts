@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import { db } from '../server/db.js';
-import { predictions, simulationResults } from '../shared/schema.js';
+import { predictions, predictionsHistory, simulationResults } from '../shared/schema.js';
 import { runMarketScan } from '../server/lib/sentinel.js';
 import { desc, eq, and, sql } from 'drizzle-orm';
 
@@ -473,7 +473,7 @@ async function savePredictionToDatabase(
 }
 
 async function populateOracle(): Promise<void> {
-  console.log('🚀 Starting Oracle Population Script...');
+  console.log('🚀 Oracle Engine initialized. Checking', TOP_TICKERS.length, 'tickers....');
   console.log('📈 Analyzing tickers:', TOP_TICKERS.join(', '));
 
   if (!getOpenAIKey()) {

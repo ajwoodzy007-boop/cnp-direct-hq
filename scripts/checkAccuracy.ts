@@ -1,5 +1,5 @@
-import { db } from '../server/db';
-import { predictions, predictionsHistory } from '../shared/schema';
+import { db } from '../server/db.js';
+import { predictions, predictionsHistory } from '../shared/schema.js';
 import { eq, isNull, sql } from 'drizzle-orm';
 
 const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY;
