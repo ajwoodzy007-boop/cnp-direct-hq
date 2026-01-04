@@ -7,6 +7,7 @@ const router = express.Router();
 
 // GET /api/top10/stats - Get top 10 performers by price change percentage
 router.get('/stats', async (req, res) => {
+  console.log('📊 [API] Fetching Top 10 Stats...');
   try {
     // Get the most recent data for each ticker, calculate price changes
     const recentData = await db
