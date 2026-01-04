@@ -12,7 +12,8 @@
     "populate-oracle": "tsx scripts/populateOracle.ts",
     "check-accuracy": "tsx scripts/checkAccuracy.ts",
     "run-simulation": "tsx scripts/runHistoricalSimulation.ts",
-    "mass-training": "tsx scripts/massTraining.ts"
+    "mass-training": "tsx scripts/massTraining.ts",
+    "daily-predictions": "node scripts/daily-predictions-cron.js"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.1",

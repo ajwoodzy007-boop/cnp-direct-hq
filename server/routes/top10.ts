@@ -1,6 +1,6 @@
 import express from 'express';
 import { db } from '../db.js';
-import { historicalPrices } from '../../shared/schema.js';
+import { historicalPrices, predictionsHistory } from '../../shared/schema.js';
 import { desc, sql } from 'drizzle-orm';
 
 const router = express.Router();
@@ -31,6 +31,39 @@ router.get('/stats', async (req, res) => {
       }
     }
 
+    // Calculate prediction accuracy stats from last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const predictionStats = await db
+      .select({
+        outcome: predictionsHistory.outcome,
+        count: sql<number>`count(*)`
+      })
+      .from(predictionsHistory)
+      .where(sql`${predictionsHistory.created_at} >= ${thirtyDaysAgo}`)
+      .groupBy(predictionsHistory.outcome);
+
+    let wins = 0;
+    let losses = 0;
+    predictionStats.forEach(stat => {
+      if (stat.outcome === 'WIN') wins = stat.count;
+      if (stat.outcome === 'LOSS') losses = stat.count;
+    });
+
+    const total = wins + losses;
+    const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
+
+    // Check if today's session is still active (has ungraded predictions)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const activePredictions = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(predictionsHistory)
+      .where(sql`${predictionsHistory.created_at} >= ${today} AND ${predictionsHistory.outcome} IS NULL`);
+
+    const sessionActive = activePredictions[0]?.count > 0;
+
     // Calculate price changes and sort by performance
     const topPerformers = Object.entries(tickerData)
       .filter(([_, data]) => data.length >= 2)
@@ -53,7 +86,13 @@ router.get('/stats', async (req, res) => {
 
     res.json({
       success: true,
-      data: topPerformers
+      data: {
+        topPerformers,
+        winRate: sessionActive ? null : winRate, // Show null if session active
+        wins,
+        losses,
+        sessionActive
+      }
     });
   } catch (error) {
     console.error("Top10 stats error:", error);
