@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { db } from '../server/db.js';
 import { predictions, simulationResults } from '../shared/schema.js';
 import { runMarketScan } from '../server/lib/sentinel.js';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, and } from 'drizzle-orm';
 
 // OpenAI configuration (reuse from existing aiPlaybook)
 const getOpenAIKey = () => {
@@ -46,6 +46,7 @@ interface MarketAnalysis {
   currentPrice: number;
   rsi: number;
   rvol: number;
+  timestamp: Date; // Market data timestamp
 }
 
 interface AIPrediction {
@@ -110,7 +111,8 @@ async function getRealMarketData(ticker: string): Promise<MarketAnalysis | null>
       ticker: ticker.toUpperCase(),
       currentPrice: price,
       rsi: historicalData.rsi,
-      rvol: historicalData.rvol
+      rvol: historicalData.rvol,
+      timestamp: new Date() // Use current time for real market data
     };
   } catch (error) {
     console.error(`❌ Error in getRealMarketData for ${ticker}:`, error);
@@ -187,7 +189,8 @@ function getMockMarketData(ticker: string): MarketAnalysis {
     ticker: ticker.toUpperCase(),
     currentPrice: Math.round(currentPrice * 100) / 100,
     rsi: Math.round(rsi),
-    rvol: Math.round(rvol * 100) / 100
+    rvol: Math.round(rvol * 100) / 100,
+    timestamp: new Date() // Use current time for mock data
   };
 }
 
@@ -444,13 +447,23 @@ async function savePredictionToDatabase(
       }
     }
 
+    // Use upsert (insert on conflict update) to prevent duplicates
     await db.insert(predictions).values({
       symbol: ticker,
       prediction: aiPrediction.prediction,
       confidence: aiPrediction.confidence,
       target_price: aiPrediction.targetPrice.toString(),
       timeframe: '1W', // 1 week as requested
+      created_at: marketData.timestamp, // Use market data timestamp, not new Date()
       learning_metadata: learningMetadata
+    }).onConflictDoUpdate({
+      target: [predictions.symbol, sql`DATE(${predictions.created_at})`],
+      set: {
+        prediction: aiPrediction.prediction,
+        confidence: aiPrediction.confidence,
+        target_price: aiPrediction.targetPrice.toString(),
+        learning_metadata: learningMetadata
+      }
     });
 
     console.log(`✅ Saved prediction for ${ticker} with strategy note: ${strategyNote}`);
@@ -487,6 +500,24 @@ async function populateOracle(): Promise<void> {
     for (const ticker of batch) {
       try {
         console.log(`\n🔄 Processing ${ticker}...`);
+
+        // Step 0: Check if ticker already exists in predictions_history for today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Start of today
+
+        const existingHistoryRecord = await db
+          .select()
+          .from(predictionsHistory)
+          .where(and(
+            eq(predictionsHistory.symbol, ticker),
+            sql`DATE(${predictionsHistory.created_at}) = DATE(${today.toISOString()})`
+          ))
+          .limit(1);
+
+        if (existingHistoryRecord.length > 0) {
+          console.log(`⏭️  Skipping ${ticker} - already exists in history for today`);
+          continue;
+        }
 
         // Step 1: Get market data
         const marketData = await getMarketDataForTicker(ticker);

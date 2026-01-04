@@ -31,7 +31,10 @@ export const predictions = pgTable("predictions", {
   outcome_price: decimal("outcome_price", { precision: 10, scale: 2 }), // Price when outcome was determined
   outcome_date: timestamp("outcome_date"), // When outcome was determined
   learning_metadata: jsonb("learning_metadata"), // AI lessons learned from historical simulation
-});
+}, (t) => ({
+  // Prevent duplicate predictions for same symbol on same day
+  unq: unique().on(t.symbol, sql`DATE(${t.created_at})`),
+}));
 
 // Predictions History Table (audit trail for all graded predictions)
 export const predictionsHistory = pgTable("predictions_history", {
@@ -47,7 +50,10 @@ export const predictionsHistory = pgTable("predictions_history", {
   outcome_date: timestamp("outcome_date"), // When outcome was determined
   learning_metadata: jsonb("learning_metadata"), // AI learning insights from historical simulations
   moved_at: timestamp("moved_at").defaultNow(), // When record was archived
-});
+}, (t) => ({
+  // Prevent duplicate historical records for same symbol on same day
+  unq: unique().on(t.symbol, sql`DATE(${t.created_at})`),
+}));
 
 // Portfolios Table (personal watchlists)
 export const portfolios = pgTable("portfolios", {

@@ -15,7 +15,8 @@
     "run-simulation": "tsx scripts/runHistoricalSimulation.ts",
     "mass-training": "tsx scripts/massTraining.ts",
     "daily-predictions": "node scripts/daily-predictions-cron.js",
-    "cleanup-duplicates": "tsx scripts/cleanupDuplicates.ts"
+    "cleanup-duplicates": "tsx scripts/cleanupDuplicates.ts",
+    "migrate-db": "tsx scripts/migrateDatabase.ts"
   },
   "dependencies": {
     "@heroicons/react": "^2.1.1",
