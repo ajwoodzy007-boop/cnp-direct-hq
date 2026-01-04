@@ -6,7 +6,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { users, type User } from "../shared/schema.js";
 import { db } from "./db.js";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import MemoryStoreConfig from "memorystore";
 
 const scryptAsync = promisify(scrypt);
@@ -61,22 +61,31 @@ export function setupAuth(app: Express) {
       try {
         console.log("Login attempt for email:", email);
 
-        // Raw SQL to avoid column-mismatch crashes between schema and DB
-        const result = await db.execute<any>(sql`select * from users where email = ${email} limit 1;`);
-        const user = Array.isArray(result) ? result[0] : result?.rows?.[0];
-
-        console.log("User found:", !!user);
+        // Try raw SQL first, fall back to Drizzle if it fails
+        let user = null;
+        try {
+          const result = await db.execute<any>(sql`select * from users where email = ${email} limit 1;`);
+          user = Array.isArray(result) ? result[0] : result?.rows?.[0];
+          console.log("Raw SQL query successful, user found:", !!user);
+        } catch (rawSqlError) {
+          console.log("Raw SQL failed, trying Drizzle:", rawSqlError.message);
+          try {
+            const [drizzleUser] = await db.select().from(users).where(eq(users.email, email));
+            user = drizzleUser;
+            console.log("Drizzle query successful, user found:", !!user);
+          } catch (drizzleError) {
+            console.log("Both raw SQL and Drizzle failed:", drizzleError.message);
+          }
+        }
 
         if (!user) {
-          console.log("User not found");
+          console.log("User not found in database");
           return done(null, false, { message: "Invalid credentials" });
         }
 
         console.log("User details:", {
           id: user.id,
           email: user.email,
-          subscription_tier: user.subscription_tier || user.tier,
-          isAdmin: user.is_admin ?? user.isAdmin ?? user.admin,
           hasPasswordHash: !!(user.password_hash || user.password || user.passwordHash)
         });
 
@@ -86,7 +95,7 @@ export function setupAuth(app: Express) {
           return done(null, user);
         }
 
-        // Resolve password hash (support legacy "password" column)
+        // Resolve password hash (support multiple column names)
         const storedHash = user.password_hash || user.password || user.passwordHash;
         if (!storedHash) {
           console.log("User has no password hash");
@@ -158,5 +167,19 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
+  });
+
+  // TEMPORARY DEBUG ROUTE - REMOVE AFTER FIXING
+  app.get("/api/debug/users", async (req, res) => {
+    try {
+      console.log("DEBUG: Checking users table");
+      const result = await db.execute<any>(sql`select * from users limit 5;`);
+      const usersData = Array.isArray(result) ? result : result?.rows || [];
+      console.log("DEBUG: Users found:", usersData.length);
+      res.json({ users: usersData });
+    } catch (err) {
+      console.error("DEBUG: Users query failed:", err);
+      res.status(500).json({ error: err.message });
+    }
   });
 }
