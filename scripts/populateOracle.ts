@@ -507,7 +507,7 @@ async function populateOracle(): Promise<void> {
           .limit(1);
 
         if (existingHistoryRecord.length > 0) {
-          console.log(`⏭️  Skipping ${ticker} - already exists in history for today`);
+          console.log(`⏭️ ${ticker} already processed`);
           continue;
         }
 

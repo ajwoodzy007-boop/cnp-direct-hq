@@ -171,8 +171,12 @@ export default function TheSummary({ onNavigate }: TheSummaryProps) {
 
   // Signal Accuracy Query
   const { data: statsData } = useQuery({
-    queryKey: ['top10', 'stats'],
-    queryFn: async () => ({ winRate: 73, wins: 22, losses: 8, sessionActive: false }),
+    queryKey: ['ai', 'accuracy-stats'],
+    queryFn: async () => {
+      const response = await fetch('/api/ai/accuracy-stats');
+      const data = await response.json();
+      return data.data || { winRate: 0, wins: 0, losses: 0, sessionActive: false };
+    },
   });
 
   const signalAccuracy = statsData?.winRate || 0;
