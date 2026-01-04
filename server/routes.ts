@@ -14,6 +14,7 @@ import top10Routes from "./routes/top10.js";
 import userRoutes from "./routes/user.js";
 import aiRoutes from "./routes/ai.js";
 import academyRoutes from "./routes/academy.js";
+import systemRoutes from "./routes/system.js";
 import { requireAdmin } from "./middleware/admin.js";
 import { requirePremium } from "./middleware/premium.js"; 
 
@@ -45,6 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/strategist", strategistRoutes);
   app.use("/api/ai", aiRoutes);
   app.use("/api/academy", academyRoutes);
+  app.use("/api/system", systemRoutes);
 
   // 2. RAILWAY HEALTHCHECK
   // Confirms the server is breathing on Railway
