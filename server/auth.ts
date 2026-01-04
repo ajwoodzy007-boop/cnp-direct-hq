@@ -71,9 +71,9 @@ export function setupAuth(app: Express) {
         console.log("User details:", {
           id: user.id,
           email: user.email,
-          membershipTier: user.membershipTier,
-          isAdmin: user.isAdmin,
-          hasPasswordHash: !!user.passwordHash
+          subscription_tier: user.subscription_tier,
+          isAdmin: user.is_admin,
+          hasPasswordHash: !!user.password_hash
         });
 
         // Special handling for admin user - allow any password for now
@@ -83,12 +83,12 @@ export function setupAuth(app: Express) {
         }
 
         // For regular users, validate password
-        if (!user.passwordHash) {
+        if (!user.password_hash) {
           console.log("User has no password hash");
           return done(null, false, { message: "Invalid credentials" });
         }
 
-        const isValidPassword = await comparePasswords(password, user.passwordHash);
+        const isValidPassword = await comparePasswords(password, user.password_hash);
         console.log("Password valid:", isValidPassword);
 
         if (!isValidPassword) {
@@ -113,7 +113,7 @@ export function setupAuth(app: Express) {
       const userId = typeof id === 'string' ? parseInt(id, 10) : id;
       console.log("Deserializing user ID:", userId);
       const [user] = await db.select().from(users).where(eq(users.id, userId));
-      console.log("Deserialized user:", user ? { id: user.id, email: user.email, membershipTier: user.membershipTier, isAdmin: user.isAdmin } : null);
+      console.log("Deserialized user:", user ? { id: user.id, email: user.email, subscription_tier: user.subscription_tier, isAdmin: user.is_admin } : null);
 
       done(null, user || null);
     } catch (err) {
@@ -124,17 +124,19 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const { email, password } = req.body;
+      const { email, password, full_name, phone_number, address, subscription_tier } = req.body;
       const [existingUser] = await db.select().from(users).where(eq(users.email, email));
       if (existingUser) return res.status(400).json({ message: "Email already registered" });
 
       const hashedPassword = await hashPassword(password);
       const [newUser] = await db.insert(users).values({
         email,
-        passwordHash: hashedPassword,
-        membershipTier: 'free',
-        isPremium: false,
-        isAdmin: false
+        full_name: full_name || null,
+        phone_number: phone_number || null,
+        address: address || null,
+        password_hash: hashedPassword,
+        subscription_tier: subscription_tier || 'free',
+        is_admin: false
       }).returning();
 
       req.login(newUser, (err) => {

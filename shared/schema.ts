@@ -96,12 +96,16 @@ export const playbookSections = pgTable("playbook_sections", {
 
 // Users Table
 export const users = pgTable("users", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: serial("id").primaryKey(),
+  full_name: text("full_name"),
   email: text("email").notNull().unique(),
-  password: text("password").notNull(),
-  is_premium: boolean("is_premium").default(false),
-  tier: text("tier").default("FREE"),
-  isAdmin: boolean("is_admin").default(false),
+  phone_number: text("phone_number"),
+  address: text("address"),
+  password_hash: text("password_hash"),
+  subscription_tier: text("subscription_tier").default("free"),
+  is_admin: boolean("is_admin").default(false),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
 });
 
 // Type Definitions & Schemas

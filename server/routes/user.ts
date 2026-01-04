@@ -22,7 +22,7 @@ router.get('/profile', async (req, res) => {
         phone_number: users.phone_number,
         address: users.address,
         subscription_tier: users.subscription_tier,
-        created_at: users.createdAt,
+        created_at: users.created_at,
         updated_at: users.updated_at
       })
       .from(users)
