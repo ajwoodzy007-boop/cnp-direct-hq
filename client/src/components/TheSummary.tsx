@@ -37,6 +37,18 @@ interface Props {
 export default function TheSummary({ onNavigate, user }: Props) {
   const [showAccuracyModal, setShowAccuracyModal] = useState(false);
   const [showHeatModal, setShowHeatModal] = useState(false);
+  const [systemHeat, setSystemHeat] = useState(-14.2);
+
+  React.useEffect(() => {
+    fetch('/api/system/health')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && typeof data.heat === 'number') {
+          setSystemHeat(data.heat);
+        }
+      })
+      .catch(err => console.error('Failed to fetch system heat:', err));
+  }, []);
 
   const { data: sentinelData, isLoading: sentinelLoading } = useQuery<{ data?: MarketMover[] }>({
     queryKey: ['/api/market/sentinel'],
@@ -77,9 +89,9 @@ export default function TheSummary({ onNavigate, user }: Props) {
   });
 
   const { data: statsData } = useQuery<{ success?: boolean; data?: PredictionStats }>({
-    queryKey: ['/api/top10/stats'],
+    queryKey: ['/api/ai/accuracy-stats'],
     queryFn: async () => {
-      const res = await fetch('/api/top10/stats', {
+      const res = await fetch('/api/ai/accuracy-stats', {
         credentials: 'include',
       });
       if (!res.ok) throw new Error(`Status: ${res.status}`);
@@ -107,7 +119,7 @@ export default function TheSummary({ onNavigate, user }: Props) {
   const topPredictions: Prediction[] = sortedPredictions.slice(0, 3);
   // Safety check: Ensure stats object exists before accessing properties
   const signalAccuracy = statsData?.data?.winRate ?? 0;
-  const systemHeat = -14.2;
+  // const systemHeat = -14.2; // Handled by useState/useEffect now
 
   const currentHour = new Date().getHours();
   const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';

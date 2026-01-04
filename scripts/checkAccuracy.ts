@@ -71,22 +71,22 @@ function determineOutcome(prediction: string, currentPrice: number, targetPrice:
 async function checkPredictionAccuracy(): Promise<void> {
   console.log('🎯 Starting Prediction Accuracy Check...');
 
-  // Check if market has closed (4:15 PM ET minimum)
+  // Target 4:15 PM ET (21:15 UTC) to ensure market close
+  // This logic is robust for cloud servers running on UTC
   const now = new Date();
-  const easternTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
-  const marketCloseHour = 16; // 4:00 PM ET
-  const marketCloseMinute = 15; // 4:15 PM ET buffer
-
-  const isMarketClosed = easternTime.getHours() > marketCloseHour ||
-    (easternTime.getHours() === marketCloseHour && easternTime.getMinutes() >= marketCloseMinute);
+  const currentUTCHour = now.getUTCHours();
+  const currentUTCMinute = now.getUTCMinutes();
+  
+  // Market close check: 21:00 UTC (4:00 PM ET standard) + 15 min buffer
+  const isMarketClosed = currentUTCHour > 21 || (currentUTCHour === 21 && currentUTCMinute >= 15);
 
   if (!isMarketClosed) {
-    console.log('⏰ Market still open - accuracy check will only run after 4:15 PM ET');
-    console.log(`📅 Current ET time: ${easternTime.toLocaleTimeString('en-US')}`);
+    console.log('⏰ Market still open (or pre-buffer) - accuracy check will only run after 21:15 UTC (4:15 PM ET)');
+    console.log(`📅 Current UTC time: ${currentUTCHour}:${currentUTCMinute < 10 ? '0' + currentUTCMinute : currentUTCMinute}`);
     return;
   }
 
-  console.log('✅ Market closed - proceeding with accuracy check');
+  console.log('✅ Market closed (UTC check passed) - proceeding with accuracy check');
 
   try {
     // Get all predictions (we'll filter client-side since outcome column might not exist yet)
@@ -110,6 +110,19 @@ async function checkPredictionAccuracy(): Promise<void> {
     for (const prediction of ungradedPredictions) {
       try {
         console.log(`\n🔍 Grading prediction for ${prediction.symbol} (ID: ${prediction.id})`);
+        
+        // 🛡️ Timeframe Protection: Ensure prediction period has actually elapsed
+        const createdDate = new Date(prediction.created_at);
+        const predictionDurationMs = prediction.timeframe === '1W' ? 7 * 24 * 60 * 60 * 1000 : 
+                                     prediction.timeframe === '1D' ? 24 * 60 * 60 * 1000 : 0;
+        
+        const maturityDate = new Date(createdDate.getTime() + predictionDurationMs);
+        
+        // If not enough time has passed, skip grading
+        if (now < maturityDate) {
+          console.log(`⏳ Prediction not mature yet. Created: ${createdDate.toISOString()}, Matures: ${maturityDate.toISOString()}`);
+          continue;
+        }
 
         // Skip if timeframe is not 1W (1 week) - we only grade weekly predictions
         if (prediction.timeframe !== '1W') {
