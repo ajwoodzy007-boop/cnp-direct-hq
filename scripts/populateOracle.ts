@@ -2,7 +2,7 @@ import OpenAI from 'openai';
 import { db } from '../server/db.js';
 import { predictions, simulationResults } from '../shared/schema.js';
 import { runMarketScan } from '../server/lib/sentinel.js';
-import { desc, eq, and } from 'drizzle-orm';
+import { desc, eq, and, sql } from 'drizzle-orm';
 
 // OpenAI configuration (reuse from existing aiPlaybook)
 const getOpenAIKey = () => {
