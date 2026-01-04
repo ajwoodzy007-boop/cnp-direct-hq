@@ -457,7 +457,8 @@ async function savePredictionToDatabase(
       created_at: marketData.timestamp, // Use market data timestamp, not new Date()
       learning_metadata: learningMetadata
     }).onConflictDoUpdate({
-      target: [predictions.symbol, sql`DATE(${predictions.created_at})`],
+      // Use symbol-only conflict target to avoid ESM/Neon expression issues
+      target: [predictions.symbol],
       set: {
         prediction: aiPrediction.prediction,
         confidence: aiPrediction.confidence,
