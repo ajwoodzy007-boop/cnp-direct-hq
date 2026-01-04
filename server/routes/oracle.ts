@@ -5,6 +5,61 @@ import { desc, sql, eq } from 'drizzle-orm';
 
 const router = express.Router();
 
+// GET /api/oracle/active - Get today's active predictions (same as daily)
+router.get('/active', async (req, res) => {
+  console.log('ENTERING ROUTE: ', req.path);
+  try {
+    console.log('--- Querying Active Predictions ---');
+    console.log('[Oracle] Checking database connection...');
+
+    // Get today's active predictions only
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+
+    const predictionData = await db
+      .select()
+      .from(predictions)
+      .where(sql`${predictions.created_at} >= ${today}`)
+      .orderBy(desc(predictions.created_at))
+      .limit(50);
+
+    console.log(`[Oracle] Found ${predictionData?.length || 0} active predictions`);
+
+    // Transform database fields to frontend-expected format
+    const transformedData = (predictionData || []).map(pred => ({
+      id: pred.id,
+      ticker: pred.symbol,
+      predictedPrice: parseFloat(pred.target_price),
+      confidenceScore: pred.confidence,
+      signal: pred.prediction,
+      entryPrice: 0,
+      outcome: pred.outcome,
+      learning_metadata: pred.learning_metadata,
+      category: pred.learning_metadata?.category || 'UNKNOWN',
+      created_at: pred.created_at,
+      displayDate: new Date(pred.created_at).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      })
+    }));
+
+    console.log(`[Oracle] Transformed ${transformedData.length} predictions for frontend`);
+
+    res.json({
+      success: true,
+      data: transformedData
+    });
+  } catch (error) {
+    console.error('[Oracle Active] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch active predictions'
+    });
+  }
+});
+
 // GET /api/oracle/daily - Get latest predictions from predictions table (no date filter)
 router.get('/daily', async (req, res) => {
   console.log('ENTERING ROUTE: ', req.path);
