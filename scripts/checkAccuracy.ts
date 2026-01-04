@@ -17,6 +17,49 @@ interface PredictionResult {
   created_at: Date;
 }
 
+async function getHistoricalEODPrice(symbol: string, date: Date): Promise<number | null> {
+  try {
+    console.log(`📊 Fetching EOD price for ${symbol} on ${date.toISOString().split('T')[0]}...`);
+
+    // Convert date to Unix timestamp (seconds since epoch)
+    const timestamp = Math.floor(date.getTime() / 1000);
+
+    // Use Finnhub's historical data endpoint
+    const response = await fetch(
+      `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${timestamp}&to=${timestamp}&token=${FINNHUB_API_KEY}`
+    );
+
+    if (!response.ok) {
+      console.error(`❌ Finnhub API error for ${symbol}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (!data.c || !Array.isArray(data.c) || data.c.length === 0) {
+      console.error(`❌ No historical price data for ${symbol} on ${date.toISOString().split('T')[0]}`);
+      // Fallback to current price if historical data not available
+      console.log(`🔄 Falling back to current price for ${symbol}...`);
+      return await getCurrentPrice(symbol);
+    }
+
+    const eodPrice = data.c[0]; // Close price for the day
+
+    if (!eodPrice || eodPrice === 0) {
+      console.error(`❌ Invalid EOD price data for ${symbol}`);
+      return null;
+    }
+
+    console.log(`📊 ${symbol} EOD price for ${date.toISOString().split('T')[0]}: $${eodPrice}`);
+    return eodPrice;
+  } catch (error) {
+    console.error(`❌ Error fetching historical price for ${symbol}:`, error);
+    // Fallback to current price on error
+    console.log(`🔄 Falling back to current price for ${symbol}...`);
+    return await getCurrentPrice(symbol);
+  }
+}
+
 async function getCurrentPrice(symbol: string): Promise<number | null> {
   try {
     console.log(`📊 Fetching current price for ${symbol}...`);
@@ -117,10 +160,12 @@ async function checkPredictionAccuracy(): Promise<void> {
           continue;
         }
 
-        // Get current price
-        const currentPrice = await getCurrentPrice(prediction.symbol);
-        if (!currentPrice) {
-          console.log(`❌ Could not get price for ${prediction.symbol}, skipping`);
+        // Get historical EOD price for the prediction date
+        // Use the date when the prediction was created to get the proper closing price
+        const predictionDate = new Date(prediction.created_at);
+        const eodPrice = await getHistoricalEODPrice(prediction.symbol, predictionDate);
+        if (!eodPrice) {
+          console.log(`❌ Could not get EOD price for ${prediction.symbol}, skipping`);
           errorCount++;
           continue;
         }
@@ -133,18 +178,18 @@ async function checkPredictionAccuracy(): Promise<void> {
           continue;
         }
 
-        // Determine outcome
-        const outcome = determineOutcome(prediction.prediction, currentPrice, targetPrice);
+        // Determine outcome using EOD price
+        const outcome = determineOutcome(prediction.prediction, eodPrice, targetPrice);
         const outcomeDate = new Date();
 
-        console.log(`📈 ${prediction.symbol}: Current=$${currentPrice}, Target=$${targetPrice}, Outcome=${outcome}`);
+        console.log(`📈 ${prediction.symbol}: EOD=$${eodPrice}, Target=$${targetPrice}, Outcome=${outcome} (Prediction date: ${predictionDate.toISOString().split('T')[0]})`);
 
         // Update the database
         await db
           .update(predictions)
           .set({
             outcome: outcome,
-            outcome_price: currentPrice.toString(),
+            outcome_price: eodPrice.toString(),
             outcome_date: outcomeDate
           })
           .where(eq(predictions.id, prediction.id));

@@ -93,8 +93,7 @@ router.get('/vault', async (req, res) => {
       displayDate: new Date(pred.created_at).toLocaleDateString('en-US', {
         month: 'short',
         day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit'
+        year: 'numeric'
       }),
       moved_at: pred.moved_at,
       isArchived: true
