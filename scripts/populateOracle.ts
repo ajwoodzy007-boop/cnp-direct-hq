@@ -456,16 +456,7 @@ async function savePredictionToDatabase(
       timeframe: '1W', // 1 week as requested
       created_at: marketData.timestamp, // Use market data timestamp, not new Date()
       learning_metadata: learningMetadata
-    }).onConflictDoUpdate({
-      // Use symbol-only conflict target to avoid ESM/Neon expression issues
-      target: [predictions.symbol],
-      set: {
-        prediction: aiPrediction.prediction,
-        confidence: aiPrediction.confidence,
-        target_price: aiPrediction.targetPrice.toString(),
-        learning_metadata: learningMetadata
-      }
-    });
+    }).onConflictDoNothing();
 
     console.log(`✅ Saved prediction for ${ticker} with strategy note: ${strategyNote}`);
   } catch (error) {

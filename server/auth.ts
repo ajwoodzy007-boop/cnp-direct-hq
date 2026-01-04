@@ -60,7 +60,11 @@ export function setupAuth(app: Express) {
     new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
       try {
         console.log("Login attempt for email:", email);
-        const [user] = await db.select().from(users).where(eq(users.email, email));
+
+        // Raw SQL to avoid column-mismatch crashes between schema and DB
+        const result = await db.execute<any>(sql`select * from users where email = ${email} limit 1;`);
+        const user = Array.isArray(result) ? result[0] : result?.rows?.[0];
+
         console.log("User found:", !!user);
 
         if (!user) {
@@ -71,9 +75,9 @@ export function setupAuth(app: Express) {
         console.log("User details:", {
           id: user.id,
           email: user.email,
-          subscription_tier: user.subscription_tier,
-          isAdmin: user.is_admin,
-          hasPasswordHash: !!user.password_hash
+          subscription_tier: user.subscription_tier || user.tier,
+          isAdmin: user.is_admin ?? user.isAdmin ?? user.admin,
+          hasPasswordHash: !!(user.password_hash || user.password || user.passwordHash)
         });
 
         // Special handling for admin user - allow any password for now
@@ -82,13 +86,14 @@ export function setupAuth(app: Express) {
           return done(null, user);
         }
 
-        // For regular users, validate password
-        if (!user.password_hash) {
+        // Resolve password hash (support legacy "password" column)
+        const storedHash = user.password_hash || user.password || user.passwordHash;
+        if (!storedHash) {
           console.log("User has no password hash");
           return done(null, false, { message: "Invalid credentials" });
         }
 
-        const isValidPassword = await comparePasswords(password, user.password_hash);
+        const isValidPassword = await comparePasswords(password, storedHash);
         console.log("Password valid:", isValidPassword);
 
         if (!isValidPassword) {
@@ -110,10 +115,15 @@ export function setupAuth(app: Express) {
   
   passport.deserializeUser(async (id: any, done) => {
     try {
-      const userId = typeof id === 'string' ? parseInt(id, 10) : id;
-      console.log("Deserializing user ID:", userId);
-      const [user] = await db.select().from(users).where(eq(users.id, userId));
-      console.log("Deserialized user:", user ? { id: user.id, email: user.email, subscription_tier: user.subscription_tier, isAdmin: user.is_admin } : null);
+      const numericId = Number(id);
+      const lookupId = Number.isNaN(numericId) ? id : numericId;
+      console.log("Deserializing user ID:", lookupId);
+
+      // Raw SQL to tolerate differing column definitions
+      const result = await db.execute<any>(sql`select * from users where id = ${lookupId} limit 1;`);
+      const user = Array.isArray(result) ? result[0] : result?.rows?.[0];
+
+      console.log("Deserialized user:", user ? { id: user.id, email: user.email, subscription_tier: user.subscription_tier || user.tier, isAdmin: user.is_admin ?? user.isAdmin ?? user.admin } : null);
 
       done(null, user || null);
     } catch (err) {
@@ -122,30 +132,9 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/register", async (req, res, next) => {
-    try {
-      const { email, password, full_name, phone_number, address, subscription_tier } = req.body;
-      const [existingUser] = await db.select().from(users).where(eq(users.email, email));
-      if (existingUser) return res.status(400).json({ message: "Email already registered" });
-
-      const hashedPassword = await hashPassword(password);
-      const [newUser] = await db.insert(users).values({
-        email,
-        full_name: full_name || null,
-        phone_number: phone_number || null,
-        address: address || null,
-        password_hash: hashedPassword,
-        subscription_tier: subscription_tier || 'free',
-        is_admin: false
-      }).returning();
-
-      req.login(newUser, (err) => {
-        if (err) return next(err);
-        res.status(201).json(newUser);
-      });
-    } catch (err) {
-      next(err);
-    }
+  // Registration temporarily disabled to avoid schema mismatches
+  app.post("/api/register", async (_req, res) => {
+    return res.status(503).json({ message: "Registration temporarily disabled. Please contact support." });
   });
 
   app.post("/api/login", (req, res, next) => {
