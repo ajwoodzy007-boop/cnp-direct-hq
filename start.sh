@@ -1,13 +1,19 @@
 #!/bin/bash
-# Exit on any error
-set -e
+echo '🏛️ Starting Sentinel OS...'
+echo "Current directory: $(pwd)"
+echo "Node version: $(node --version)"
+echo "NPM version: $(npm --version)"
 
-echo '🏛️ Starting Sentinel OS Background Tasks...'
-
-# Run accuracy check and oracle population in the background
+# Start background tasks first
+echo '📊 Starting background accuracy check...'
 npm run check-accuracy &
+
+echo '🤖 Starting background oracle population...'
 npm run populate-oracle &
 
-echo '⚡ Launching Main Server...'
-# Run the main server in the foreground so the container stays alive
+# Give background tasks a moment to start
+sleep 2
+
+# Start the main server (this keeps the container alive)
+echo '🚀 Launching Main Server...'
 npm start

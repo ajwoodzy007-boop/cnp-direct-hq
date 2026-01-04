@@ -4,7 +4,7 @@ import session from "express-session";
 import express, { type Express } from "express";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { members as users, type User } from "../drizzle/schema.js";
+import { users, type User } from "../shared/schema.js";
 import { db } from "./db.js";
 import { eq } from "drizzle-orm";
 import MemoryStoreConfig from "memorystore";
