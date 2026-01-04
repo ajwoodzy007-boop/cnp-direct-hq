@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
-import { db } from '../server/db';
-import { predictions, simulationResults } from '../shared/schema';
-import { runMarketScan } from '../server/lib/sentinel';
+import { db } from '../server/db.js';
+import { predictions, simulationResults } from '../shared/schema.js';
+import { runMarketScan } from '../server/lib/sentinel.js';
 import { desc, eq } from 'drizzle-orm';
 
 // OpenAI configuration (reuse from existing aiPlaybook)
@@ -204,12 +204,18 @@ async function getHistoricalLearning(ticker: string): Promise<string> {
       .limit(5);
 
     // Get simulation results for bias adjustments
-    const simResults = await db
-      .select()
-      .from(simulationResults)
-      .where(eq(simulationResults.symbol, ticker))
-      .orderBy(desc(simulationResults.created_at))
-      .limit(20);
+    let simResults = [];
+    try {
+      simResults = await db
+        .select()
+        .from(simulationResults)
+        .where(eq(simulationResults.symbol, ticker))
+        .orderBy(desc(simulationResults.created_at))
+        .limit(20);
+    } catch (simError) {
+      console.log(`📊 Simulation results table not available for ${ticker}. Skipping historical bias analysis.`);
+      simResults = [];
+    }
 
     let learningString = '';
 
