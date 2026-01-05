@@ -46,11 +46,22 @@ router.get('/profile', async (req, res) => {
 // PATCH /api/user/profile - Update user profile information
 router.patch('/profile', async (req, res) => {
   try {
+    console.log('PROFILE UPDATE REQUEST:', {
+      userId: req.user!.id,
+      userIdType: typeof req.user!.id,
+      body: req.body
+    });
+
     const userId = req.user!.id;
     const { full_name, phone_number, address } = req.body;
 
+    // Convert userId to number if it's a string (handle UUID vs serial mismatch)
+    const numericUserId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+
+    console.log('Converted userId:', numericUserId, typeof numericUserId);
+
     // Update user profile
-    await db
+    const updateResult = await db
       .update(users)
       .set({
         full_name: full_name || null,
@@ -58,7 +69,9 @@ router.patch('/profile', async (req, res) => {
         address: address || null,
         updated_at: new Date()
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, numericUserId));
+
+    console.log('Update result:', updateResult);
 
     res.json({
       success: true,
@@ -185,6 +198,31 @@ router.delete('/portfolio/remove/:id', async (req, res) => {
   } catch (error: any) {
     console.error('Portfolio remove error:', error);
     res.status(500).json({ success: false, error: 'Failed to remove from portfolio' });
+  }
+});
+
+// DEBUG: Check database schema and user data
+router.get('/debug', async (req, res) => {
+  try {
+    // Check users table structure
+    const usersResult = await db.execute(sql`SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'users' ORDER BY ordinal_position;`);
+
+    // Check if we have any users
+    const userCount = await db.$count(users);
+
+    // Get first user if exists
+    const firstUser = userCount > 0 ?
+      await db.select().from(users).limit(1) :
+      null;
+
+    res.json({
+      schema: usersResult,
+      userCount,
+      firstUser: firstUser ? { ...firstUser[0], password_hash: '[HIDDEN]' } : null
+    });
+  } catch (error: any) {
+    console.error('Debug error:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
