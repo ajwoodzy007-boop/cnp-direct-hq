@@ -226,4 +226,78 @@ router.get('/debug', async (req, res) => {
   }
 });
 
+// PROFILE SUCCESS VERIFICATION
+router.get('/verify', async (req, res) => {
+  try {
+    console.log('🔍 Profile Verification Request');
+
+    // Get user count
+    const userCount = await db.$count(users);
+    console.log(`👥 Total users: ${userCount}`);
+
+    if (userCount === 0) {
+      return res.json({
+        success: false,
+        message: 'No users found in database',
+        users: [],
+        verification: 'FAILED'
+      });
+    }
+
+    // Get all user profiles (without sensitive data)
+    const userProfiles = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        full_name: users.full_name,
+        phone_number: users.phone_number,
+        address: users.address,
+        subscription_tier: users.subscription_tier,
+        created_at: users.created_at,
+        updated_at: users.updated_at
+      })
+      .from(users);
+
+    // Check for complete profiles
+    const completeProfiles = userProfiles.filter(user =>
+      user.full_name && user.phone_number && user.address
+    );
+
+    // Check recent updates
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentUpdates = userProfiles.filter(user =>
+      user.updated_at && new Date(user.updated_at) > yesterday
+    );
+
+    const verification = {
+      totalUsers: userCount,
+      completeProfiles: completeProfiles.length,
+      recentUpdates: recentUpdates.length,
+      success: completeProfiles.length > 0,
+      message: completeProfiles.length > 0
+        ? 'Profile system working correctly!'
+        : 'Profile updates may not be working'
+    };
+
+    console.log('✅ Verification Results:', verification);
+
+    res.json({
+      success: true,
+      verification,
+      users: userProfiles.map(user => ({
+        ...user,
+        hasCompleteProfile: !!(user.full_name && user.phone_number && user.address)
+      }))
+    });
+
+  } catch (error: any) {
+    console.error('❌ Profile verification failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      verification: 'ERROR'
+    });
+  }
+});
+
 export default router;
