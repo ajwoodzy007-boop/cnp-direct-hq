@@ -129,45 +129,62 @@ export default function TheSummary({ onNavigate }: TheSummaryProps) {
   const [showAccuracyModal, setShowAccuracyModal] = useState(false);
   const [showHeatModal, setShowHeatModal] = useState(false);
 
-  const currentHour = new Date().getHours();
+  // Real API queries for live data
+  const { data: oracleData, isLoading: predictionsLoading } = useQuery({
+    queryKey: ['oracle', 'active'],
+    queryFn: async () => {
+      const response = await fetch('/api/oracle/active');
+      const data = await response.json();
+      return data.data || [];
+    },
+  });
 
-  // Mock data for demonstration
-  const predictionsLoading = false;
-  const sentinelLoading = false;
-  const topPredictions = [
-    { ticker: 'AAPL', signal: 'MOMENTUM BUY' },
-    { ticker: 'MSFT', signal: 'VALUE BUY' },
-    { ticker: 'TSLA', signal: 'MOMENTUM BUY' },
-  ];
+  const { data: sentinelData, isLoading: sentinelLoading } = useQuery({
+    queryKey: ['market', 'sentinel'],
+    queryFn: async () => {
+      const response = await fetch('/api/market/sentinel');
+      const data = await response.json();
+      return data.data || [];
+    },
+  });
 
-  const marketMovers = [
-    { ticker: 'AAPL', price: 180.50, changePercent: 2.3, signal: 'MOMENTUM BUY' },
-    { ticker: 'TSLA', price: 245.20, changePercent: -1.8, signal: 'VALUE BUY' },
-    { ticker: 'NVDA', price: 875.30, changePercent: 5.7, signal: 'MOMENTUM BUY' },
-  ];
+  const { data: portfolioData } = useQuery({
+    queryKey: ['user', 'portfolio'],
+    queryFn: async () => {
+      // For now, return empty portfolio - can be wired to real API later
+      return { portfolio: [] };
+    },
+  });
 
-  const portfolioData = { portfolio: [] };
-  const predictionsData = { data: topPredictions };
-  const sentinelData = { data: marketMovers };
+  // Get top 3 predictions for dashboard display
+  const topPredictions = oracleData?.slice(0, 3) || [];
+  const marketMovers = sentinelData || [];
 
-  // Calculate Dynamic Volatility Score
-  const systemHeat = useMemo(() => {
-    if (!marketMovers || marketMovers.length === 0) return -14.2;
+  // Real system heat query
+  const { data: heatData } = useQuery({
+    queryKey: ['system', 'heat'],
+    queryFn: async () => {
+      // For now, calculate from market data - can be replaced with dedicated heat endpoint
+      if (!marketMovers || marketMovers.length === 0) return { heat: -14.2 };
 
-    const positiveChanges = marketMovers.filter(m => m.changePercent > 0).length;
-    const negativeChanges = marketMovers.filter(m => m.changePercent < 0).length;
-    const totalChanges = positiveChanges + negativeChanges;
+      const positiveChanges = marketMovers.filter(m => (m.changePercent || 0) > 0).length;
+      const negativeChanges = marketMovers.filter(m => (m.changePercent || 0) < 0).length;
+      const totalChanges = positiveChanges + negativeChanges;
 
-    if (totalChanges === 0) return 0;
+      if (totalChanges === 0) return { heat: 0 };
 
-    const fluctuationRatio = positiveChanges / negativeChanges;
-    const avgAbsChange = marketMovers.reduce((sum, m) => sum + Math.abs(m.changePercent), 0) / marketMovers.length;
-    const baseHeat = (fluctuationRatio - 1) * 25;
-    const volatilityBonus = avgAbsChange * 2;
+      const fluctuationRatio = positiveChanges / negativeChanges;
+      const avgAbsChange = marketMovers.reduce((sum, m) => sum + Math.abs(m.changePercent || 0), 0) / marketMovers.length;
+      const baseHeat = (fluctuationRatio - 1) * 25;
+      const volatilityBonus = avgAbsChange * 2;
 
-    const heatScore = baseHeat + volatilityBonus;
-    return Math.max(-100, Math.min(100, heatScore));
-  }, [marketMovers]);
+      const heatScore = Math.max(-100, Math.min(100, baseHeat + volatilityBonus));
+      return { heat: heatScore };
+    },
+    enabled: !!marketMovers,
+  });
+
+  const systemHeat = heatData?.heat || -14.2;
 
   // Signal Accuracy Query
   const { data: statsData } = useQuery({

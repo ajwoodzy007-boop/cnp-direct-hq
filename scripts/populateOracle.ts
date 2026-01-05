@@ -18,40 +18,22 @@ const openai = new OpenAI({
 
 // 10-Pick Daily Model - Stratified Selection Buckets
 
-// CORE_51: Most liquid stocks (Nasdaq-100, S&P 500 constituents)
+// CORE_51: Most liquid stocks (Top 5 selection)
 const CORE_51 = [
-  // Tech Giants (High volume, market leaders)
   'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'META', 'AMZN', 'TSLA', 'AMD',
-
-  // Financials (Banks, payments, insurance)
-  'JPM', 'BAC', 'WFC', 'GS', 'MS', 'V', 'MA', 'AXP',
-
-  // Healthcare (Pharma, biotech, insurance)
-  'UNH', 'JNJ', 'PFE', 'ABT', 'TMO', 'CVS', 'CI', 'MDT',
-
-  // Consumer (Retail, staples, discretionary)
-  'WMT', 'HD', 'MCD', 'KO', 'PEP', 'COST', 'NKE', 'SBUX',
-
-  // Energy & Industrials
-  'XOM', 'CVX', 'COP', 'BA', 'CAT', 'HON', 'UPS', 'RTX',
-
-  // ETFs & Market Benchmarks
-  'SPY', 'QQQ', 'IWM', 'VTI', 'BND', 'GLD',
-
-  // Communication Services
-  'T', 'VZ', 'CMCSA', 'NFLX', 'DIS'
+  'JPM', 'GS', 'UNH', 'COST', 'V', 'MA', 'AVGO'
 ];
 
-// LOW_COST: High-volatility, speculative plays under $30
+// LOW_COST: High-volatility, speculative plays under $30 (Top 2 selection)
 const LOW_COST = [
-  'SOFI', 'PLTR', 'F', 'NU', 'RIVN', 'LCID', 'NIO', 'XPEV',
-  'TQQQ', 'UVXY', 'AMC', 'GME', 'BB', 'DKNG', 'HOOD', 'COIN'
+  'SOFI', 'PLTR', 'F', 'NU', 'AAL', 'PFE', 'RKLB', 'HOOD',
+  'SNAP', 'GRAB'
 ];
 
-// MOVERS_CRYPTO: Cryptocurrency and crypto-related tickers
+// MOVERS_CRYPTO: Cryptocurrency and crypto-related tickers (Top 3 selection)
 const MOVERS_CRYPTO = [
-  'BTC-USD', 'ETH-USD', 'MSTR', 'COIN', 'RIOT', 'MARA', 'HIVE',
-  'BITO', 'GBTC', 'ETHE', 'SQ', 'PYPL'
+  'BTC-USD', 'ETH-USD', 'SOL-USD', 'MSTR', 'COIN', 'MARA',
+  'RIOT', 'CLSK'
 ];
 
 // Combined universe for analysis (all tickers get AI analysis)
