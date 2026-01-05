@@ -160,28 +160,39 @@ export default function TheSummary({ onNavigate }: TheSummaryProps) {
   const topPredictions = oracleData?.slice(0, 3) || [];
   const marketMovers = sentinelData || [];
 
-  // Real system heat query
+  // Real system heat query - uses historical volatility
   const { data: heatData } = useQuery({
     queryKey: ['system', 'heat'],
     queryFn: async () => {
-      // For now, calculate from market data - can be replaced with dedicated heat endpoint
-      if (!marketMovers || marketMovers.length === 0) return { heat: -14.2 };
+      try {
+        // Query historical data for volatility calculation
+        const response = await fetch('/api/market/heat');
+        if (!response.ok) {
+          // Fallback to market data calculation if historical endpoint fails
+          console.log('Historical heat data unavailable, using market data fallback');
+          if (!marketMovers || marketMovers.length === 0) return { heat: -14.2 };
 
-      const positiveChanges = marketMovers.filter(m => (m.changePercent || 0) > 0).length;
-      const negativeChanges = marketMovers.filter(m => (m.changePercent || 0) < 0).length;
-      const totalChanges = positiveChanges + negativeChanges;
+          const positiveChanges = marketMovers.filter(m => (m.changePercent || 0) > 0).length;
+          const negativeChanges = marketMovers.filter(m => (m.changePercent || 0) < 0).length;
+          const totalChanges = positiveChanges + negativeChanges;
 
-      if (totalChanges === 0) return { heat: 0 };
+          if (totalChanges === 0) return { heat: 0 };
 
-      const fluctuationRatio = positiveChanges / negativeChanges;
-      const avgAbsChange = marketMovers.reduce((sum, m) => sum + Math.abs(m.changePercent || 0), 0) / marketMovers.length;
-      const baseHeat = (fluctuationRatio - 1) * 25;
-      const volatilityBonus = avgAbsChange * 2;
+          const fluctuationRatio = positiveChanges / negativeChanges;
+          const avgAbsChange = marketMovers.reduce((sum, m) => sum + Math.abs(m.changePercent || 0), 0) / marketMovers.length;
+          const baseHeat = (fluctuationRatio - 1) * 25;
+          const volatilityBonus = avgAbsChange * 2;
 
-      const heatScore = Math.max(-100, Math.min(100, baseHeat + volatilityBonus));
-      return { heat: heatScore };
+          return { heat: Math.max(-100, Math.min(100, baseHeat + volatilityBonus)) };
+        }
+
+        const data = await response.json();
+        return { heat: data.heat || -14.2 };
+      } catch (error) {
+        console.error('Heat calculation error:', error);
+        return { heat: -14.2 };
+      }
     },
-    enabled: !!marketMovers,
   });
 
   const systemHeat = heatData?.heat || -14.2;
